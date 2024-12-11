@@ -4,7 +4,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.unit.Constraints
 import com.darkrockstudios.texteditor.LineWrap
-import com.darkrockstudios.texteditor.TextEditorState
+import com.darkrockstudios.texteditor.state.TextEditorState
 import com.darkrockstudios.texteditor.TextOffset
 
 fun TextEditorState.calculateCursorPosition(

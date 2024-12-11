@@ -3,7 +3,6 @@ package com.darkrockstudios.texteditor
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.KeyEventType
@@ -14,6 +13,13 @@ import androidx.compose.ui.input.key.utf16CodePoint
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.unit.Constraints
+import com.darkrockstudios.texteditor.state.TextEditorState
+import com.darkrockstudios.texteditor.state.moveCursorDown
+import com.darkrockstudios.texteditor.state.moveCursorLeft
+import com.darkrockstudios.texteditor.state.moveCursorRight
+import com.darkrockstudios.texteditor.state.moveCursorToLineEnd
+import com.darkrockstudios.texteditor.state.moveCursorToLineStart
+import com.darkrockstudios.texteditor.state.moveCursorUp
 import kotlin.math.min
 
 fun Modifier.textEditorKeyboardInputHandler(state: TextEditorState): Modifier {
