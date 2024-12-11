@@ -5,6 +5,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -15,11 +16,14 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.toSize
 import com.darkrockstudios.texteditor.cursor.drawCursor
 import com.darkrockstudios.texteditor.state.TextEditorState
 import com.darkrockstudios.texteditor.state.rememberTextEditorState
@@ -49,14 +53,7 @@ fun TextEditor(
 		}
 	}
 
-	LaunchedEffect(Unit) {
-		val text = "test ssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss\nxxxxxxxxxxxxxxxxxx\nHello cat\n".repeat(5)
-		state.setInitialText(text)
-
-		state.selector.updateSelection(TextOffset(0, 10), TextOffset(0, 20))
-	}
-
-	Box(
+	BoxWithConstraints(
 		modifier = modifier
 			.border(width = 2.dp, color = if (state.isFocused) Color.Green else Color.Blue)
 			.padding(8.dp)
@@ -66,8 +63,10 @@ fun TextEditor(
 			}
 			.focusable(enabled = true, interactionSource = interactionSource)
 			.textEditorKeyboardInputHandler(state)
+			.onSizeChanged { size -> state.onViewportSizeChange(size.toSize()) }
 			.verticalScroll(state.scrollState)
 	) {
+
 		// We need a fixed height Box to enable scrolling
 		Box(
 			modifier = Modifier
@@ -79,6 +78,7 @@ fun TextEditor(
 					.fillMaxWidth()
 					.height(state.totalContentHeight.dp)
 					.textEditorPointerInputHandling(state, state.scrollState, textMeasurer)
+					.onSizeChanged { size -> state.onCanvasSizeChange(size.toSize()) }
 			) {
 				// Calculate content and draw text
 				val offsets = mutableListOf<LineWrap>()

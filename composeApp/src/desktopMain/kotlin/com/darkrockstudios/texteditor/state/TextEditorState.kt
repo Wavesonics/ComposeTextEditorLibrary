@@ -5,11 +5,19 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.text.TextMeasurer
+import androidx.compose.ui.text.rememberTextMeasurer
 import com.darkrockstudios.texteditor.LineWrap
 import com.darkrockstudios.texteditor.TextOffset
+import kotlinx.coroutines.CoroutineScope
 
-class TextEditorState {
+class TextEditorState(
+	private val scope: CoroutineScope,
+	private val textMeasurer: TextMeasurer,
+) {
 	private var _version by mutableStateOf(0)
 	private val _textLines = mutableListOf<String>("")
 	val textLines: List<String> get() = _textLines
@@ -19,15 +27,26 @@ class TextEditorState {
 	var isFocused by mutableStateOf(false)
 	var lineOffsets by mutableStateOf(emptyList<LineWrap>())
 
-	val scrollState = ScrollState(0)
-	var totalContentHeight by mutableStateOf(0)
-		private set
+	private var canvasSize: Size = Size(1f, 1f)
+	private var viewportSize: Size = Size(1f, 1f)
+
+	val scrollManager = TextEditorScrollManager(
+		scope = scope,
+		scrollState = ScrollState(0),
+		textMeasurer = textMeasurer,
+		getLines = { textLines },
+		getCanvasSize = { canvasSize },
+		getViewportSize = { viewportSize },
+		getCursorPosition = { cursorPosition },
+		getLineOffsets = { lineOffsets },
+	)
 
 	val selector = TextEditorSelectionManager(this)
 
-	fun updateContentHeight(height: Int) {
-		totalContentHeight = height
-	}
+	val scrollState get() = scrollManager.scrollState
+	val totalContentHeight get() = scrollManager.totalContentHeight
+
+	fun updateContentHeight(height: Int) = scrollManager.updateContentHeight(height)
 
 	internal fun notifyContentChanged() {
 		_version++
@@ -53,6 +72,7 @@ class TextEditorState {
 
 	fun updateCursorPosition(position: TextOffset) {
 		cursorPosition = position
+		scrollManager.ensureCursorVisible()
 	}
 
 	fun insertNewlineAtCursor() {
@@ -127,9 +147,29 @@ class TextEditorState {
 			lineOffset.line == position.line && lineOffset.wrapStartsAtIndex <= position.char
 		}
 	}
+
+	fun onCanvasSizeChange(size: Size) {
+		canvasSize = size
+
+		println("onCanvasSizeChange: $size")
+	}
+
+	fun onViewportSizeChange(size: Size) {
+		viewportSize = size
+
+		println("onViewportSizeChange: $size")
+	}
 }
 
 @Composable
 fun rememberTextEditorState(): TextEditorState {
-	return remember { TextEditorState() }
+	val scope = rememberCoroutineScope()
+	val textMeasurer = rememberTextMeasurer()
+
+	return remember {
+		TextEditorState(
+			scope = scope,
+			textMeasurer = textMeasurer,
+		)
+	}
 }
