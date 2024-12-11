@@ -1,5 +1,3 @@
-package org.example.project
-
 import androidx.compose.runtime.remember
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
