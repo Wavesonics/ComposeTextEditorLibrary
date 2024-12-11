@@ -52,6 +52,8 @@ fun TextEditor(
 	LaunchedEffect(Unit) {
 		val text = "test ssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss\nxxxxxxxxxxxxxxxxxx\nHello cat\n".repeat(5)
 		state.setInitialText(text)
+
+		state.updateSelection(TextOffset(0, 10), TextOffset(0, 20))
 	}
 
 	Box(
@@ -129,6 +131,8 @@ fun TextEditor(
 				state.updateContentHeight(currentY.toInt())
 
 				state.updateLineOffsets(offsets)
+
+				drawSelection(textMeasurer, state)
 
 				if (state.isFocused && state.isCursorVisible) {
 					drawCursor(textMeasurer, state)

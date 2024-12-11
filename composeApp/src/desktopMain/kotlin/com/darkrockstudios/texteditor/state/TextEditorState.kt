@@ -23,8 +23,28 @@ class TextEditorState {
 	var totalContentHeight by mutableStateOf(0)
 		private set
 
+	var selection by mutableStateOf<TextSelection?>(null)
+		private set
+
 	fun updateContentHeight(height: Int) {
 		totalContentHeight = height
+	}
+
+	fun updateSelection(start: TextOffset, end: TextOffset) {
+		selection = if (start != end) {
+			// Ensure start is always before end in the document
+			if (isBeforeInDocument(start, end)) {
+				TextSelection(start, end)
+			} else {
+				TextSelection(end, start)
+			}
+		} else {
+			null
+		}
+	}
+
+	fun clearSelection() {
+		selection = null
 	}
 
 	private fun notifyContentChanged() {
@@ -112,7 +132,6 @@ class TextEditorState {
 		}
 	}
 }
-
 
 @Composable
 fun rememberTextEditorState(): TextEditorState {
