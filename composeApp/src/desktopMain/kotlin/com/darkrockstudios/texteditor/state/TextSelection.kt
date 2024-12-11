@@ -7,6 +7,8 @@ data class TextSelection(
 	val end: TextOffset
 ) {
 	val isValid: Boolean get() = start != end
+
+	fun isSingleLine(): Boolean = start.line == end.line
 }
 
 internal fun isBeforeInDocument(a: TextOffset, b: TextOffset): Boolean {

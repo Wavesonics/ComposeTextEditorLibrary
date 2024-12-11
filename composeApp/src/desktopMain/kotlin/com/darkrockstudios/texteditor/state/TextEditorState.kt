@@ -47,6 +47,37 @@ class TextEditorState {
 		selection = null
 	}
 
+	fun getSelectedText(): String {
+		val selection = selection ?: return ""
+
+		return buildString {
+			when {
+				// Single line selection
+				selection.isSingleLine() -> {
+					append(textLines[selection.start.line].substring(
+						selection.start.char,
+						selection.end.char
+					))
+				}
+				// Multi-line selection
+				else -> {
+					// First line - from selection start to end of line
+					append(textLines[selection.start.line].substring(selection.start.char))
+					append('\n')
+
+					// Middle lines - entire lines
+					for (line in (selection.start.line + 1) until selection.end.line) {
+						append(textLines[line])
+						append('\n')
+					}
+
+					// Last line - from start of line to selection end
+					append(textLines[selection.end.line].substring(0, selection.end.char))
+				}
+			}
+		}
+	}
+
 	private fun notifyContentChanged() {
 		_version++
 	}
