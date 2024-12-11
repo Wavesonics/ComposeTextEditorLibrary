@@ -23,62 +23,13 @@ class TextEditorState {
 	var totalContentHeight by mutableStateOf(0)
 		private set
 
-	var selection by mutableStateOf<TextSelection?>(null)
-		private set
+	val selector = TextEditorSelectionManager(this)
 
 	fun updateContentHeight(height: Int) {
 		totalContentHeight = height
 	}
 
-	fun updateSelection(start: TextOffset, end: TextOffset) {
-		selection = if (start != end) {
-			// Ensure start is always before end in the document
-			if (isBeforeInDocument(start, end)) {
-				TextSelection(start, end)
-			} else {
-				TextSelection(end, start)
-			}
-		} else {
-			null
-		}
-	}
-
-	fun clearSelection() {
-		selection = null
-	}
-
-	fun getSelectedText(): String {
-		val selection = selection ?: return ""
-
-		return buildString {
-			when {
-				// Single line selection
-				selection.isSingleLine() -> {
-					append(textLines[selection.start.line].substring(
-						selection.start.char,
-						selection.end.char
-					))
-				}
-				// Multi-line selection
-				else -> {
-					// First line - from selection start to end of line
-					append(textLines[selection.start.line].substring(selection.start.char))
-					append('\n')
-
-					// Middle lines - entire lines
-					for (line in (selection.start.line + 1) until selection.end.line) {
-						append(textLines[line])
-						append('\n')
-					}
-
-					// Last line - from start of line to selection end
-					append(textLines[selection.end.line].substring(0, selection.end.char))
-				}
-			}
-		}
-	}
-
-	private fun notifyContentChanged() {
+	internal fun notifyContentChanged() {
 		_version++
 	}
 
@@ -148,6 +99,20 @@ class TextEditorState {
 			_textLines[line].substring(0, charIndex) + char + _textLines[line].substring(charIndex)
 		notifyContentChanged()
 		updateCursorPosition(TextOffset(line, charIndex + 1))
+	}
+
+	internal fun replaceLine(index: Int, text: String) {
+		_textLines[index] = text
+	}
+
+	internal fun removeLines(startIndex: Int, count: Int) {
+		repeat(count) {
+			_textLines.removeAt(startIndex)
+		}
+	}
+
+	internal fun insertLine(index: Int, text: String) {
+		_textLines.add(index, text)
 	}
 
 	// Helper functions for cursor movement

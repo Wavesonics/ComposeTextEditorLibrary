@@ -53,7 +53,7 @@ fun TextEditor(
 		val text = "test ssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss\nxxxxxxxxxxxxxxxxxx\nHello cat\n".repeat(5)
 		state.setInitialText(text)
 
-		state.updateSelection(TextOffset(0, 10), TextOffset(0, 20))
+		state.selector.updateSelection(TextOffset(0, 10), TextOffset(0, 20))
 	}
 
 	Box(
