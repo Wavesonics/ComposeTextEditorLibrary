@@ -28,6 +28,21 @@ class TextEditorSelectionManager(
 		selection = null
 	}
 
+	fun selectAll() {
+		if (state.textLines.isEmpty()) {
+			clearSelection()
+			return
+		}
+
+		val lastLineIndex = state.textLines.lastIndex
+		val lastLineLength = state.textLines[lastLineIndex].length
+
+		updateSelection(
+			start = TextOffset(0, 0),
+			end = TextOffset(lastLineIndex, lastLineLength)
+		)
+	}
+
 	fun getSelectedText(): String {
 		val selection = selection ?: return ""
 
@@ -57,6 +72,10 @@ class TextEditorSelectionManager(
 				}
 			}
 		}
+	}
+
+	fun deleteSelection(text: String) {
+		replaceSelection("")
 	}
 
 	fun replaceSelection(text: String) {
