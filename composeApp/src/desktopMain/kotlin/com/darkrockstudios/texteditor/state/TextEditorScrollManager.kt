@@ -87,11 +87,17 @@ class TextEditorScrollManager(
 		}
 	}
 
-	private fun getViewportInfo(): ViewportInfo {
-		val scrollOffset = scrollState.value
+
+	fun getViewportInfo(): ViewportInfo {
+		val scrollOffset = scrollState.value.toFloat()
 		val canvasWidth = getCanvasSize().width
 		val viewportHeight = getViewportSize().height
 		val lines = getLines()
+
+		println("====== getViewportInfo ======")
+		println("scrollOffset: $scrollOffset")
+		println("viewportHeight: $viewportHeight")
+		println("viewport bottom should be: ${scrollOffset + viewportHeight}")
 
 		var currentY = 0f
 		var startLine = 0
@@ -99,45 +105,61 @@ class TextEditorScrollManager(
 		var isStartPartial = false
 		var isEndPartial = false
 
-		// Find start line
+		// Find the first visible line
 		for ((index, line) in lines.withIndex()) {
 			val layout = textMeasurer.measure(
 				text = line,
 				constraints = Constraints(maxWidth = maxOf(1, canvasWidth.toInt()))
 			)
 			val lineHeight = layout.size.height
+			val nextY = currentY + lineHeight
 
-			if (currentY + lineHeight > scrollOffset) {
+			// If this line extends past the scroll offset, it's our start line
+			if (nextY > scrollOffset) {
 				startLine = index
+				// It's partial if it starts before the viewport
 				isStartPartial = currentY < scrollOffset
+				println("Found start line: $index at Y: $currentY (partial=$isStartPartial)")
 				break
 			}
-			currentY += lineHeight
+			currentY = nextY
 		}
 
-		// For finding end line, we need to check against viewport bottom
-		val viewportBottom = scrollOffset + viewportHeight
-
-		// Continue measuring lines until we pass the viewport bottom
-		for (index in startLine..lines.lastIndex) {
-			val line = lines[index]
+		// Reset currentY to the start line's Y position for end line calculation
+		currentY = 0f
+		for (index in 0..<startLine) {
 			val layout = textMeasurer.measure(
-				text = line,
+				text = lines[index],
+				constraints = Constraints(maxWidth = maxOf(1, canvasWidth.toInt()))
+			)
+			currentY += layout.size.height
+		}
+
+		// Find the last visible line
+		for (index in startLine..lines.lastIndex) {
+			val layout = textMeasurer.measure(
+				text = lines[index],
 				constraints = Constraints(maxWidth = maxOf(1, canvasWidth.toInt()))
 			)
 			val lineHeight = layout.size.height
+			val nextY = currentY + lineHeight
 
-			if (currentY >= viewportBottom) {  // Changed from currentY > scrollOffset + viewportHeight
-				endLine = index - 1  // Changed to index - 1 since this line is past viewport
-				isEndPartial = true
+			// Changed condition: if the line starts at or after viewport bottom, use previous line
+			if (currentY >= scrollOffset + viewportHeight) {
+				endLine = index - 1
+				isEndPartial = false
 				break
 			}
-			currentY += lineHeight
+
+			if (index == lines.lastIndex) {
+				endLine = index
+				isEndPartial = nextY > scrollOffset + viewportHeight
+			}
+
+			currentY = nextY
 		}
 
-		// Ensure bounds are valid
-		endLine = endLine.coerceIn(startLine, lines.lastIndex)
-
+		println("Final viewport: $startLine..$endLine (partial start=$isStartPartial, partial end=$isEndPartial)")
 		return ViewportInfo(
 			startLine = startLine,
 			endLine = endLine,
@@ -148,22 +170,34 @@ class TextEditorScrollManager(
 
 	private fun isOffsetVisible(offset: TextOffset): Boolean {
 		val viewport = getViewportInfo()
+		println("======= isOffsetVisible =======")
+		println("Offset line: ${offset.line}")
+		println("Viewport: start=${viewport.startLine}, end=${viewport.endLine}")
+		println("isStartPartial=${viewport.isStartPartial}, isEndPartial=${viewport.isEndPartial}")
+
 		if (offset.line < viewport.startLine || offset.line > viewport.endLine) {
+			println("Not visible: Outside line bounds")
 			return false
 		}
 
-		// If the line is partially visible, we need to check the specific position
-		if ((viewport.isStartPartial && offset.line == viewport.startLine) ||
-			(viewport.isEndPartial && offset.line == viewport.endLine)) {
-
+		// Changed logic to always check Y position for end line
+		if (offset.line == viewport.endLine) {
 			val scrollOffset = scrollState.value.toFloat()
 			val viewportHeight = getViewportSize().height
 			val viewportBottom = scrollOffset + viewportHeight
 			val offsetY = calculateOffsetYPosition(offset)
 
-			return offsetY in scrollOffset..viewportBottom
+			println("End line Y check:")
+			println("- offsetY: $offsetY")
+			println("- scroll range: $scrollOffset..$viewportBottom")
+
+			if (offsetY !in scrollOffset..viewportBottom) {
+				println("Not visible: Y position outside viewport")
+				return false
+			}
 		}
 
+		println("Visible!")
 		return true
 	}
 
