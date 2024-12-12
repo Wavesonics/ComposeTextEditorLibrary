@@ -21,6 +21,10 @@ internal fun Modifier.textEditorPointerInputHandling(
 			onDoubleTap = { offset: Offset ->
 				val position = state.getOffsetAtPosition(offset)
 				state.selectWordAt(position)
+			},
+			onTripleTap = { offset: Offset ->
+				val position = state.getOffsetAtPosition(offset)
+				state.selectLineAt(position)
 			}
 		)
 	}.pointerInput(Unit) {
@@ -49,6 +53,13 @@ internal fun Modifier.textEditorPointerInputHandling(
 			}
 		)
 	}
+}
+
+private fun TextEditorState.selectLineAt(position: TextOffset) {
+	val lineStart = TextOffset(position.line, 0)
+	val lineEnd = TextOffset(position.line, textLines[position.line].length)
+	updateCursorPosition(lineEnd)
+	selector.updateSelection(lineStart, lineEnd)
 }
 
 private fun TextEditorState.selectWordAt(position: TextOffset) {
@@ -94,10 +105,13 @@ private fun isWordChar(char: Char): Boolean {
 suspend fun PointerInputScope.detectTapsImperatively(
 	onTap: (Offset) -> Unit,
 	onDoubleTap: (Offset) -> Unit,
+	onTripleTap: (Offset) -> Unit,
 ) {
 	awaitPointerEventScope {
 		var lastTapTime = 0L
+		var secondLastTapTime = 0L
 		var lastTapPosition: Offset? = null
+		var secondLastTapPosition: Offset? = null
 
 		while (true) {
 			// Wait for tap down
@@ -113,20 +127,57 @@ suspend fun PointerInputScope.detectTapsImperatively(
 				val event = awaitPointerEvent()
 			} while (event.changes.any { it.pressed })
 
-			// Check if this is a double tap
-			val isDoubleTap = lastTapPosition?.let { lastPos ->
-				val timeDiff = downTime - lastTapTime
-				val posDiff = (downPosition - lastPos).getDistance()
-				timeDiff < 300L && posDiff < 20f
+			// Check for triple tap first
+			val isTripleTap = lastTapPosition?.let { lastPos ->
+				secondLastTapPosition?.let { secondLastPos ->
+					val firstToSecondTimeDiff = lastTapTime - secondLastTapTime
+					val secondToThirdTimeDiff = downTime - lastTapTime
+					val firstToSecondPosDiff = (lastPos - secondLastPos).getDistance()
+					val secondToThirdPosDiff = (downPosition - lastPos).getDistance()
+
+					firstToSecondTimeDiff < 300L &&
+							secondToThirdTimeDiff < 300L &&
+							firstToSecondPosDiff < 20f &&
+							secondToThirdPosDiff < 20f
+				}
 			} ?: false
 
-			if (isDoubleTap) {
-				onDoubleTap(downPosition)
-				lastTapTime = 0L
-				lastTapPosition = null
-			} else {
-				lastTapTime = downTime
-				lastTapPosition = downPosition
+			// Check for double tap
+			val isDoubleTap = if (!isTripleTap) {
+				lastTapPosition?.let { lastPos ->
+					val timeDiff = downTime - lastTapTime
+					val posDiff = (downPosition - lastPos).getDistance()
+					timeDiff < 300L && posDiff < 20f
+				} ?: false
+			} else false
+
+			when {
+				isTripleTap -> {
+					onTripleTap(downPosition)
+					// Reset all tap tracking
+					lastTapTime = 0L
+					secondLastTapTime = 0L
+					lastTapPosition = null
+					secondLastTapPosition = null
+				}
+
+				isDoubleTap -> {
+					onDoubleTap(downPosition)
+					// Save second last tap info before resetting
+					secondLastTapTime = lastTapTime
+					secondLastTapPosition = lastTapPosition
+					// Update last tap info
+					lastTapTime = downTime
+					lastTapPosition = downPosition
+				}
+
+				else -> {
+					// Update tap tracking
+					secondLastTapTime = lastTapTime
+					secondLastTapPosition = lastTapPosition
+					lastTapTime = downTime
+					lastTapPosition = downPosition
+				}
 			}
 		}
 	}
