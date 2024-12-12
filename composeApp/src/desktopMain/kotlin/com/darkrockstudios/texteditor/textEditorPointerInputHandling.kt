@@ -1,8 +1,10 @@
 package com.darkrockstudios.texteditor
 
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.pointer.PointerInputScope
 import androidx.compose.ui.input.pointer.pointerInput
 import com.darkrockstudios.texteditor.state.TextEditorState
 
@@ -10,18 +12,17 @@ internal fun Modifier.textEditorPointerInputHandling(
 	state: TextEditorState,
 ): Modifier {
 	return this.pointerInput(Unit) {
-		detectTapGestures(
-			onTap = { tapOffset ->
-				val position = state.getOffsetAtPosition(tapOffset)
+		detectTapsImperatively(
+			onTap = { offset: Offset ->
+				val position = state.getOffsetAtPosition(offset)
 				state.updateCursorPosition(position)
 				state.selector.clearSelection()
 			},
-			onDoubleTap = { tapOffset ->
-				val position = state.getOffsetAtPosition(tapOffset)
+			onDoubleTap = { offset: Offset ->
+				val position = state.getOffsetAtPosition(offset)
 				state.selectWordAt(position)
-			},
-
-			)
+			}
+		)
 	}.pointerInput(Unit) {
 		var dragStartPosition: TextOffset? = null
 		detectDragGestures(
@@ -88,4 +89,45 @@ private fun TextEditorState.findWordBoundary(position: TextOffset): Pair<TextOff
 
 private fun isWordChar(char: Char): Boolean {
 	return char.isLetterOrDigit() || char == '_'
+}
+
+suspend fun PointerInputScope.detectTapsImperatively(
+	onTap: (Offset) -> Unit,
+	onDoubleTap: (Offset) -> Unit,
+) {
+	awaitPointerEventScope {
+		var lastTapTime = 0L
+		var lastTapPosition: Offset? = null
+
+		while (true) {
+			// Wait for tap down
+			val down = awaitFirstDown()
+			val downTime = System.currentTimeMillis()
+			val downPosition = down.position
+
+			// Handle single tap immediately
+			onTap(downPosition)
+
+			// Wait for tap up
+			do {
+				val event = awaitPointerEvent()
+			} while (event.changes.any { it.pressed })
+
+			// Check if this is a double tap
+			val isDoubleTap = lastTapPosition?.let { lastPos ->
+				val timeDiff = downTime - lastTapTime
+				val posDiff = (downPosition - lastPos).getDistance()
+				timeDiff < 300L && posDiff < 20f
+			} ?: false
+
+			if (isDoubleTap) {
+				onDoubleTap(downPosition)
+				lastTapTime = 0L
+				lastTapPosition = null
+			} else {
+				lastTapTime = downTime
+				lastTapPosition = downPosition
+			}
+		}
+	}
 }
