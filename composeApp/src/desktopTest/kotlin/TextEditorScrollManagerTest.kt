@@ -14,7 +14,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.test.TestScope
 import org.junit.Before
 import kotlin.test.Test
-import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
@@ -62,10 +61,8 @@ class TextEditorScrollManagerTest {
 
 		scrollManager = TextEditorScrollManager(
 			scope = scope,
-			textMeasurer = textMeasurer,
 			getLines = { lines },
 			getLineOffsets = { emptyList() },
-			getCanvasSize = { getCanvasSize },
 			getViewportSize = { getViewportSize },
 			getCursorPosition = { getCursorPosition },
 			scrollState = scrollState
