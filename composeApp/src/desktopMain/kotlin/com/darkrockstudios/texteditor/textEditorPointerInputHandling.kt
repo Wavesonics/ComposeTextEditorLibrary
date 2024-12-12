@@ -28,7 +28,7 @@ internal fun Modifier.textEditorPointerInputHandling(
 			}
 		)
 	}.pointerInput(Unit) {
-		var dragStartPosition: TextOffset? = null
+		var dragStartPosition: CharLineOffset? = null
 		detectDragGestures(
 			onDragStart = { offset ->
 				// Convert the initial click position to a TextOffset
@@ -55,20 +55,20 @@ internal fun Modifier.textEditorPointerInputHandling(
 	}
 }
 
-private fun TextEditorState.selectLineAt(position: TextOffset) {
-	val lineStart = TextOffset(position.line, 0)
-	val lineEnd = TextOffset(position.line, textLines[position.line].length)
+private fun TextEditorState.selectLineAt(position: CharLineOffset) {
+	val lineStart = CharLineOffset(position.line, 0)
+	val lineEnd = CharLineOffset(position.line, textLines[position.line].length)
 	updateCursorPosition(lineEnd)
 	selector.updateSelection(lineStart, lineEnd)
 }
 
-private fun TextEditorState.selectWordAt(position: TextOffset) {
+private fun TextEditorState.selectWordAt(position: CharLineOffset) {
 	val (wordStart, wordEnd) = findWordBoundary(position)
 	updateCursorPosition(wordEnd)
 	selector.updateSelection(wordStart, wordEnd)
 }
 
-private fun TextEditorState.findWordBoundary(position: TextOffset): Pair<TextOffset, TextOffset> {
+private fun TextEditorState.findWordBoundary(position: CharLineOffset): Pair<CharLineOffset, CharLineOffset> {
 	val line = textLines[position.line]
 	var startChar = position.char
 	var endChar = position.char
@@ -93,8 +93,8 @@ private fun TextEditorState.findWordBoundary(position: TextOffset): Pair<TextOff
 	}
 
 	return Pair(
-		TextOffset(position.line, startChar),
-		TextOffset(position.line, endChar)
+		CharLineOffset(position.line, startChar),
+		CharLineOffset(position.line, endChar)
 	)
 }
 

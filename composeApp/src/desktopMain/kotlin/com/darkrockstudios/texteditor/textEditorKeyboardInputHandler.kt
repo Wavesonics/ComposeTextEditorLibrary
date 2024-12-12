@@ -10,6 +10,8 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.key.utf16CodePoint
+import androidx.compose.ui.platform.ClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import com.darkrockstudios.texteditor.state.TextEditorState
 import com.darkrockstudios.texteditor.state.moveCursorDown
 import com.darkrockstudios.texteditor.state.moveCursorLeft
@@ -18,12 +20,15 @@ import com.darkrockstudios.texteditor.state.moveCursorToLineEnd
 import com.darkrockstudios.texteditor.state.moveCursorToLineStart
 import com.darkrockstudios.texteditor.state.moveCursorUp
 
-internal fun Modifier.textEditorKeyboardInputHandler(state: TextEditorState): Modifier {
-	return this.onPreviewKeyEvent {
-		if (it.type == KeyEventType.KeyDown) {
+internal fun Modifier.textEditorKeyboardInputHandler(
+	state: TextEditorState,
+	clipboardManager: ClipboardManager
+): Modifier {
+	return this.onPreviewKeyEvent { keyEvent ->
+		if (keyEvent.type == KeyEventType.KeyDown) {
 			when {
-				it.isCtrlPressed -> handleShortcutKey(it, state)
-				else -> handleEditorKey(it, state)
+				keyEvent.isCtrlPressed -> handleShortcutKey(keyEvent, state, clipboardManager)
+				else -> handleEditorKey(keyEvent, state)
 			}
 		} else {
 			false
@@ -31,13 +36,45 @@ internal fun Modifier.textEditorKeyboardInputHandler(state: TextEditorState): Mo
 	}
 }
 
-private fun handleShortcutKey(keyEvent: KeyEvent, state: TextEditorState): Boolean {
+private fun handleShortcutKey(
+	keyEvent: KeyEvent,
+	state: TextEditorState,
+	clipboardManager: ClipboardManager
+): Boolean {
 	return when (keyEvent.key) {
 		Key.A -> {
 			state.selector.selectAll()
 			true
 		}
+		Key.C -> {
+			state.selector.selection?.let {
+				val selectedText = state.selector.getSelectedText()
+				clipboardManager.setText(AnnotatedString(selectedText))
+			}
+			true
+		}
 
+		Key.X -> {
+			state.selector.selection?.let {
+				val selectedText = state.selector.getSelectedText()
+				state.selector.deleteSelection()
+				clipboardManager.setText(AnnotatedString(selectedText))
+			}
+			true
+		}
+
+		Key.V -> {
+			clipboardManager.getText()?.text?.let { text ->
+				val curSelection = state.selector.selection
+				if (curSelection != null) {
+					state.replace(curSelection.range, text)
+				} else {
+					state.insertStringAtCursor(text)
+				}
+			}
+			state.selector.clearSelection()
+			true
+		}
 		else -> false
 	}
 }
@@ -179,7 +216,10 @@ private fun keyEventToUTF8Character(keyEvent: KeyEvent): Char? {
 	}
 }
 
-private fun updateSelectionForCursorMovement(state: TextEditorState, initialPosition: TextOffset) {
+private fun updateSelectionForCursorMovement(
+	state: TextEditorState,
+	initialPosition: CharLineOffset
+) {
 	val currentSelection = state.selector.selection
 	when {
 		// No existing selection - start a new one

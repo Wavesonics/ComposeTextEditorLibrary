@@ -5,8 +5,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Size
+import com.darkrockstudios.texteditor.CharLineOffset
 import com.darkrockstudios.texteditor.LineWrap
-import com.darkrockstudios.texteditor.TextOffset
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
@@ -15,7 +15,7 @@ class TextEditorScrollManager(
 	private val getLines: () -> List<String>,
 	private val getLineOffsets: () -> List<LineWrap>,
 	private val getViewportSize: () -> Size,
-	private val getCursorPosition: () -> TextOffset,
+	private val getCursorPosition: () -> CharLineOffset,
 	val scrollState: ScrollState
 ) {
 	var totalContentHeight by mutableStateOf(0)
@@ -51,7 +51,7 @@ class TextEditorScrollManager(
 		}
 	}
 
-	fun scrollToPosition(offset: TextOffset) {
+	fun scrollToPosition(offset: CharLineOffset) {
 		if (offset.line >= getLines().size) return
 
 		val cursorTop = calculateOffsetYPosition(offset).toInt()
@@ -89,7 +89,7 @@ class TextEditorScrollManager(
 		}
 	}
 
-	fun isOffsetVisible(offset: TextOffset): Boolean {
+	fun isOffsetVisible(offset: CharLineOffset): Boolean {
 		val cursorTop = calculateOffsetYPosition(offset).toInt()
 		// Assuming cursor height is roughly the line height - we can make this more precise
 		// by passing in the actual cursor height from text measurement if needed
@@ -107,7 +107,7 @@ class TextEditorScrollManager(
 		return (topVisible && bottomVisible) || cursorSpansViewport
 	}
 
-	private fun calculateOffsetYPosition(offset: TextOffset): Float {
+	private fun calculateOffsetYPosition(offset: CharLineOffset): Float {
 		val lineOffsets = getLineOffsets()
 		val wrappedLineIndex = lineOffsets.indexOfLast { lineWrap ->
 			lineWrap.line == offset.line && lineWrap.wrapStartsAtIndex <= offset.char
@@ -119,7 +119,7 @@ class TextEditorScrollManager(
 		return wrappedLine.offset.y
 	}
 
-	private fun calculateLineHeight(offset: TextOffset): Int {
+	private fun calculateLineHeight(offset: CharLineOffset): Int {
 		val lineOffsets = getLineOffsets()
 		val currentLineIndex = lineOffsets.indexOfLast { lineWrap ->
 			lineWrap.line == offset.line && lineWrap.wrapStartsAtIndex <= offset.char

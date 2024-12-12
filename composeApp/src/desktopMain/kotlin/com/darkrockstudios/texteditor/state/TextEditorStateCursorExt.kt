@@ -1,6 +1,6 @@
 package com.darkrockstudios.texteditor.state
 
-import com.darkrockstudios.texteditor.TextOffset
+import com.darkrockstudios.texteditor.CharLineOffset
 import kotlin.math.min
 
 internal fun TextEditorState.moveCursorLeft() {
@@ -8,7 +8,7 @@ internal fun TextEditorState.moveCursorLeft() {
 	if (charIndex > 0) {
 		updateCursorPosition(cursorPosition.copy(char = charIndex - 1))
 	} else if (line > 0) {
-		updateCursorPosition(TextOffset(line - 1, textLines[line - 1].length))
+		updateCursorPosition(CharLineOffset(line - 1, textLines[line - 1].length))
 	}
 }
 
@@ -17,7 +17,7 @@ internal fun TextEditorState.moveCursorRight() {
 	if (charIndex < textLines[line].length) {
 		updateCursorPosition(cursorPosition.copy(char = charIndex + 1))
 	} else if (line < textLines.size - 1) {
-		updateCursorPosition(TextOffset(line + 1, 0))
+		updateCursorPosition(CharLineOffset(line + 1, 0))
 	}
 }
 
@@ -33,7 +33,7 @@ internal fun TextEditorState.moveCursorUp() {
 		)
 
 		updateCursorPosition(
-			TextOffset(
+			CharLineOffset(
 				line = previousWrappedSegment.line,
 				char = newCharIndex
 			)
@@ -54,7 +54,7 @@ internal fun TextEditorState.moveCursorDown() {
 		)
 
 		updateCursorPosition(
-			TextOffset(
+			CharLineOffset(
 				line = nextWrappedSegment.line,
 				char = newCharIndex
 			)

@@ -1,20 +1,17 @@
 package com.darkrockstudios.texteditor.state
 
-import com.darkrockstudios.texteditor.TextOffset
+import com.darkrockstudios.texteditor.CharLineOffset
+import com.darkrockstudios.texteditor.TextRange
+import com.darkrockstudios.texteditor.toRange
 
 data class TextSelection(
-	val start: TextOffset,
-	val end: TextOffset
+	val start: CharLineOffset,
+	val end: CharLineOffset
 ) {
-	val isValid: Boolean get() = start != end
+	val range: TextRange
+		get() = start.toRange(end)
+
+	val isValid: Boolean get() = start != end && start isBefore end
 
 	fun isSingleLine(): Boolean = start.line == end.line
-}
-
-internal fun isBeforeInDocument(a: TextOffset, b: TextOffset): Boolean {
-	return when {
-		a.line < b.line -> true
-		a.line > b.line -> false
-		else -> a.char < b.char
-	}
 }

@@ -3,7 +3,7 @@ package com.darkrockstudios.texteditor.state
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import com.darkrockstudios.texteditor.TextOffset
+import com.darkrockstudios.texteditor.CharLineOffset
 
 class TextEditorSelectionManager(
 	private val state: TextEditorState
@@ -11,7 +11,7 @@ class TextEditorSelectionManager(
 	var selection by mutableStateOf<TextSelection?>(null)
 		private set
 
-	fun updateSelection(start: TextOffset, end: TextOffset) {
+	fun updateSelection(start: CharLineOffset, end: CharLineOffset) {
 		selection = if (start != end) {
 			// Ensure start is always before end in the document
 			if (isBeforeInDocument(start, end)) {
@@ -38,8 +38,8 @@ class TextEditorSelectionManager(
 		val lastLineLength = state.textLines[lastLineIndex].length
 
 		updateSelection(
-			start = TextOffset(0, 0),
-			end = TextOffset(lastLineIndex, lastLineLength)
+			start = CharLineOffset(0, 0),
+			end = CharLineOffset(lastLineIndex, lastLineLength)
 		)
 	}
 
@@ -99,10 +99,10 @@ class TextEditorSelectionManager(
 					// Multi-line replacement text
 					newLines.size > 1 -> {
 						val lastLine = selection.start.line + newLines.size - 1
-						TextOffset(lastLine, newLines.last().length)
+						CharLineOffset(lastLine, newLines.last().length)
 					}
 					// Single line replacement text
-					else -> TextOffset(
+					else -> CharLineOffset(
 						selection.start.line,
 						selection.start.char + text.length
 					)
@@ -128,12 +128,18 @@ class TextEditorSelectionManager(
 					0 -> {
 						// Empty replacement
 						state.insertLine(selection.start.line, startText + endText)
-						state.updateCursorPosition(TextOffset(selection.start.line, startText.length))
+						state.updateCursorPosition(
+							CharLineOffset(
+								selection.start.line,
+								startText.length
+							)
+						)
 					}
 					1 -> {
 						// Single line replacement
 						state.insertLine(selection.start.line, startText + newLines[0] + endText)
-						state.updateCursorPosition(TextOffset(
+						state.updateCursorPosition(
+							CharLineOffset(
 							selection.start.line,
 							startText.length + newLines[0].length
 						))
@@ -152,7 +158,12 @@ class TextEditorSelectionManager(
 						val lastIndex = selection.start.line + newLines.size - 1
 						state.insertLine(lastIndex, newLines.last() + endText)
 
-						state.updateCursorPosition(TextOffset(lastIndex, newLines.last().length))
+						state.updateCursorPosition(
+							CharLineOffset(
+								lastIndex,
+								newLines.last().length
+							)
+						)
 					}
 				}
 			}
@@ -162,7 +173,7 @@ class TextEditorSelectionManager(
 		state.notifyContentChanged()
 	}
 
-	private fun isBeforeInDocument(a: TextOffset, b: TextOffset): Boolean {
+	private fun isBeforeInDocument(a: CharLineOffset, b: CharLineOffset): Boolean {
 		return when {
 			a.line < b.line -> true
 			a.line > b.line -> false

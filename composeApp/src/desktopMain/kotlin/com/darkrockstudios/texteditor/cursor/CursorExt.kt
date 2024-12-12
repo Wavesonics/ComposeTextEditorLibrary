@@ -3,9 +3,9 @@ package com.darkrockstudios.texteditor.cursor
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.unit.Constraints
+import com.darkrockstudios.texteditor.CharLineOffset
 import com.darkrockstudios.texteditor.LineWrap
 import com.darkrockstudios.texteditor.state.TextEditorState
-import com.darkrockstudios.texteditor.TextOffset
 
 fun TextEditorState.calculateCursorPosition(
 	textMeasurer: TextMeasurer,
@@ -36,13 +36,13 @@ fun TextEditorState.calculateCursorPosition(
 	)
 }
 
-private fun List<LineWrap>.getWrappedLineIndex(position: TextOffset): Int {
+private fun List<LineWrap>.getWrappedLineIndex(position: CharLineOffset): Int {
 	return indexOfLast { lineOffset ->
 		lineOffset.line == position.line && lineOffset.wrapStartsAtIndex <= position.char
 	}
 }
 
-private fun List<LineWrap>.getWrappedLine(position: TextOffset): LineWrap {
+private fun List<LineWrap>.getWrappedLine(position: CharLineOffset): LineWrap {
 	return last { lineOffset ->
 		lineOffset.line == position.line && lineOffset.wrapStartsAtIndex <= position.char
 	}

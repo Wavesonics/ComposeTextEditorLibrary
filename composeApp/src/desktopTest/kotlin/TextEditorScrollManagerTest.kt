@@ -4,8 +4,8 @@ import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.IntSize
+import com.darkrockstudios.texteditor.CharLineOffset
 import com.darkrockstudios.texteditor.LineWrap
-import com.darkrockstudios.texteditor.TextOffset
 import com.darkrockstudios.texteditor.state.TextEditorScrollManager
 import io.mockk.every
 import io.mockk.mockk
@@ -25,7 +25,7 @@ class TextEditorScrollManagerTest {
 
 	private var getCanvasSize: Size = Size.Zero
 	private var getViewportSize: Size = Size.Zero
-	private lateinit var getCursorPosition: TextOffset
+	private lateinit var getCursorPosition: CharLineOffset
 
 	// Test data
 	private val lines = listOf(
@@ -57,7 +57,7 @@ class TextEditorScrollManagerTest {
 
 		getCanvasSize = Size(500f, 500f)
 		getViewportSize = Size(500f, 60f) // Shows 3 lines at a time
-		getCursorPosition = TextOffset(0, 0)
+		getCursorPosition = CharLineOffset(0, 0)
 
 		scrollManager = TextEditorScrollManager(
 			scope = scope,
@@ -72,9 +72,9 @@ class TextEditorScrollManagerTest {
 	@Test
 	fun `isOffsetVisible - fully visible within viewport`() {
 		every { scrollState.value } returns 0
-		getCursorPosition = TextOffset(1, 0)
+		getCursorPosition = CharLineOffset(1, 0)
 
-		val isVisible = scrollManager.isOffsetVisible(TextOffset(1, 0))
+		val isVisible = scrollManager.isOffsetVisible(CharLineOffset(1, 0))
 
 		assertTrue(isVisible, "Expected the cursor to be fully visible within the viewport.")
 	}
@@ -83,7 +83,7 @@ class TextEditorScrollManagerTest {
 	fun `isOffsetVisible - partially visible at top`() {
 		every { scrollState.value } returns 10 // Partially scrolled into line 1
 
-		val isVisible = scrollManager.isOffsetVisible(TextOffset(0, 0))
+		val isVisible = scrollManager.isOffsetVisible(CharLineOffset(0, 0))
 
 		assertTrue(isVisible, "Expected the cursor to be partially visible at the top.")
 	}
@@ -91,9 +91,9 @@ class TextEditorScrollManagerTest {
 	@Test
 	fun `isOffsetVisible - partially visible at bottom`() {
 		every { scrollState.value } returns 40 // End of line 2 is partially visible
-		getCursorPosition = TextOffset(2, 0)
+		getCursorPosition = CharLineOffset(2, 0)
 
-		val isVisible = scrollManager.isOffsetVisible(TextOffset(2, 0))
+		val isVisible = scrollManager.isOffsetVisible(CharLineOffset(2, 0))
 
 		assertTrue(isVisible, "Expected the cursor to be partially visible at the bottom.")
 	}
@@ -101,9 +101,9 @@ class TextEditorScrollManagerTest {
 	@Test
 	fun `isOffsetVisible - below viewport`() {
 		every { scrollState.value } returns 0 // Showing lines 0-2
-		getCursorPosition = TextOffset(4, 0)
+		getCursorPosition = CharLineOffset(4, 0)
 
-		val isVisible = scrollManager.isOffsetVisible(TextOffset(4, 0))
+		val isVisible = scrollManager.isOffsetVisible(CharLineOffset(4, 0))
 
 		assertFalse(isVisible, "Expected the cursor to be outside the viewport.")
 	}
@@ -111,9 +111,9 @@ class TextEditorScrollManagerTest {
 	@Test
 	fun `isOffsetVisible - above viewport`() {
 		every { scrollState.value } returns 20 // Showing lines 1-3
-		getCursorPosition = TextOffset(3, 0)
+		getCursorPosition = CharLineOffset(3, 0)
 
-		val isVisible = scrollManager.isOffsetVisible(TextOffset(0, 0))
+		val isVisible = scrollManager.isOffsetVisible(CharLineOffset(0, 0))
 
 		assertFalse(isVisible, "Expected the cursor to be outside the viewport.")
 	}
@@ -122,7 +122,7 @@ class TextEditorScrollManagerTest {
 	fun `isOffsetVisible - edge case at first line`() {
 		every { scrollState.value } returns 0
 
-		val isVisible = scrollManager.isOffsetVisible(TextOffset(0, 0))
+		val isVisible = scrollManager.isOffsetVisible(CharLineOffset(0, 0))
 
 		assertTrue(isVisible, "Expected the cursor to be visible at the very first line.")
 	}
@@ -130,9 +130,9 @@ class TextEditorScrollManagerTest {
 	@Test
 	fun `isOffsetVisible - edge case at last visible line`() {
 		every { scrollState.value } returns 0
-		getCursorPosition = TextOffset(2, 0)
+		getCursorPosition = CharLineOffset(2, 0)
 
-		val isVisible = scrollManager.isOffsetVisible(TextOffset(2, 0))
+		val isVisible = scrollManager.isOffsetVisible(CharLineOffset(2, 0))
 
 		assertTrue(isVisible, "Expected the cursor to be visible at the last visible line.")
 	}
@@ -161,9 +161,9 @@ class TextEditorScrollManagerTest {
 		}
 
 		every { scrollState.value } returns 0
-		getCursorPosition = TextOffset(3, 0)
+		getCursorPosition = CharLineOffset(3, 0)
 
-		val isVisible = scrollManager.isOffsetVisible(TextOffset(2, 0))
+		val isVisible = scrollManager.isOffsetVisible(CharLineOffset(2, 0))
 
 		assertFalse(
 			isVisible,

@@ -12,8 +12,9 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.Constraints
+import com.darkrockstudios.texteditor.CharLineOffset
 import com.darkrockstudios.texteditor.LineWrap
-import com.darkrockstudios.texteditor.TextOffset
+import com.darkrockstudios.texteditor.TextRange
 import kotlinx.coroutines.CoroutineScope
 import kotlin.math.min
 
@@ -25,7 +26,7 @@ class TextEditorState(
 	private val _textLines = mutableListOf<String>("")
 	val textLines: List<String> get() = _textLines
 
-	var cursorPosition by mutableStateOf(TextOffset(0, 0))
+	var cursorPosition by mutableStateOf(CharLineOffset(0, 0))
 	var isCursorVisible by mutableStateOf(true)
 	var isFocused by mutableStateOf(false)
 	var lineOffsets by mutableStateOf(emptyList<LineWrap>())
@@ -69,7 +70,7 @@ class TextEditorState(
 		isFocused = focused
 	}
 
-	fun updateCursorPosition(position: TextOffset) {
+	fun updateCursorPosition(position: CharLineOffset) {
 		cursorPosition = position
 		scrollManager.ensureCursorVisible()
 	}
@@ -81,7 +82,7 @@ class TextEditorState(
 		_textLines.add(line + 1, newLine)
 		updateBookKeeping()
 		notifyContentChanged()
-		updateCursorPosition(TextOffset(line + 1, 0))
+		updateCursorPosition(CharLineOffset(line + 1, 0))
 	}
 
 	fun backspaceAtCursor() {
@@ -91,14 +92,14 @@ class TextEditorState(
 				_textLines[line].substring(0, charIndex - 1) + _textLines[line].substring(charIndex)
 			updateBookKeeping()
 			notifyContentChanged()
-			updateCursorPosition(TextOffset(line, charIndex - 1))
+			updateCursorPosition(CharLineOffset(line, charIndex - 1))
 		} else if (line > 0) {
 			val previousLineLength = _textLines[line - 1].length
 			_textLines[line - 1] += _textLines[line]
 			_textLines.removeAt(line)
 			updateBookKeeping()
 			notifyContentChanged()
-			updateCursorPosition(TextOffset(line - 1, previousLineLength))
+			updateCursorPosition(CharLineOffset(line - 1, previousLineLength))
 		}
 	}
 
@@ -123,7 +124,107 @@ class TextEditorState(
 			_textLines[line].substring(0, charIndex) + char + _textLines[line].substring(charIndex)
 		updateBookKeeping()
 		notifyContentChanged()
-		updateCursorPosition(TextOffset(line, charIndex + 1))
+		updateCursorPosition(CharLineOffset(line, charIndex + 1))
+	}
+
+	fun insertStringAtCursor(string: String) {
+		val (line, charIndex) = cursorPosition
+		_textLines[line] =
+			_textLines[line].substring(
+				0,
+				charIndex
+			) + string + _textLines[line].substring(charIndex)
+		updateBookKeeping()
+		notifyContentChanged()
+		updateCursorPosition(CharLineOffset(line, charIndex + 1))
+	}
+
+	fun replace(range: TextRange, newText: String) {
+		val newLines = newText.split('\n')
+
+		when {
+			// Single line replacement
+			range.isSingleLine() -> {
+				val line = _textLines[range.start.line]
+				_textLines[range.start.line] = line.substring(0, range.start.char) +
+						newText +
+						line.substring(range.end.char)
+				updateBookKeeping()
+				notifyContentChanged()
+
+				// Calculate new cursor position
+				when {
+					newLines.size > 1 -> {
+						// Multi-line replacement text
+						val lastLine = range.start.line + newLines.size - 1
+						updateCursorPosition(CharLineOffset(lastLine, newLines.last().length))
+					}
+
+					else -> {
+						// Single line replacement text
+						updateCursorPosition(
+							CharLineOffset(
+								range.start.line,
+								range.start.char + newText.length
+							)
+						)
+					}
+				}
+			}
+
+			// Multi-line replacement
+			else -> {
+				// Handle first line
+				val firstLine = _textLines[range.start.line]
+				val startText = firstLine.substring(0, range.start.char)
+
+				// Handle last line
+				val lastLine = _textLines[range.end.line]
+				val endText = lastLine.substring(range.end.char)
+
+				// Remove all lines in the range
+				removeLines(range.start.line, range.end.line - range.start.line + 1)
+
+				when (newLines.size) {
+					0 -> {
+						// Empty replacement
+						insertLine(range.start.line, startText + endText)
+						updateCursorPosition(CharLineOffset(range.start.line, startText.length))
+					}
+
+					1 -> {
+						// Single line replacement
+						insertLine(range.start.line, startText + newLines[0] + endText)
+						updateCursorPosition(
+							CharLineOffset(
+								range.start.line,
+								startText.length + newLines[0].length
+							)
+						)
+					}
+
+					else -> {
+						// Multi-line replacement
+						// First line
+						insertLine(range.start.line, startText + newLines[0])
+
+						// Middle lines
+						for (i in 1 until newLines.size - 1) {
+							insertLine(range.start.line + i, newLines[i])
+						}
+
+						// Last line
+						val lastIndex = range.start.line + newLines.size - 1
+						insertLine(lastIndex, newLines.last() + endText)
+
+						updateCursorPosition(CharLineOffset(lastIndex, newLines.last().length))
+					}
+				}
+
+				updateBookKeeping()
+				notifyContentChanged()
+			}
+		}
 	}
 
 	internal fun replaceLine(index: Int, text: String) {
@@ -144,13 +245,13 @@ class TextEditorState(
 	}
 
 	// Helper functions for cursor movement
-	fun getWrappedLineIndex(position: TextOffset): Int {
+	fun getWrappedLineIndex(position: CharLineOffset): Int {
 		return lineOffsets.indexOfLast { lineOffset ->
 			lineOffset.line == position.line && lineOffset.wrapStartsAtIndex <= position.char
 		}
 	}
 
-	fun getWrappedLine(position: TextOffset): LineWrap {
+	fun getWrappedLine(position: CharLineOffset): LineWrap {
 		return lineOffsets.last { lineOffset ->
 			lineOffset.line == position.line && lineOffset.wrapStartsAtIndex <= position.char
 		}
@@ -161,8 +262,8 @@ class TextEditorState(
 		updateBookKeeping()
 	}
 
-	fun getOffsetAtPosition(offset: Offset): TextOffset {
-		if (lineOffsets.isEmpty()) return TextOffset(0, 0)
+	fun getOffsetAtPosition(offset: Offset): CharLineOffset {
+		if (lineOffsets.isEmpty()) return CharLineOffset(0, 0)
 
 		var curRealLine: LineWrap = lineOffsets[0]
 
@@ -180,13 +281,13 @@ class TextEditorState(
 			val relativeOffset = offset - curRealLine.offset
 			if (offset.y in curRealLine.offset.y..(curRealLine.offset.y + textLayoutResult.size.height)) {
 				val charPos = textLayoutResult.multiParagraph.getOffsetForPosition(relativeOffset)
-				return TextOffset(lineWrap.line, min(charPos, textLines[lineWrap.line].length))
+				return CharLineOffset(lineWrap.line, min(charPos, textLines[lineWrap.line].length))
 			}
 		}
 
 		// If we're below all lines, return position at end of last line
 		val lastLine = textLines.lastIndex
-		return TextOffset(lastLine, textLines[lastLine].length)
+		return CharLineOffset(lastLine, textLines[lastLine].length)
 	}
 
 	private fun updateBookKeeping() {

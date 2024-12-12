@@ -23,6 +23,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.toSize
@@ -39,6 +40,7 @@ fun TextEditor(
 ) {
 	val focusRequester = remember { FocusRequester() }
 	val interactionSource = remember { MutableInteractionSource() }
+	val clipboardManager = LocalClipboardManager.current
 
 	LaunchedEffect(Unit) {
 		focusRequester.requestFocus()
@@ -62,7 +64,7 @@ fun TextEditor(
 					state.updateFocus(focusState.isFocused)
 				}
 				.focusable(enabled = true, interactionSource = interactionSource)
-				.textEditorKeyboardInputHandler(state)
+				.textEditorKeyboardInputHandler(state, clipboardManager)
 				.onSizeChanged { size ->
 					state.onViewportSizeChange(size.toSize())
 				}
