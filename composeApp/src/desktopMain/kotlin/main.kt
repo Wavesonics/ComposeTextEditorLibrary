@@ -9,7 +9,7 @@ fun main() = application {
     Window(
         onCloseRequest = ::exitApplication,
         title = "TextTest",
-        state = remember { WindowState(size = DpSize(width = 256.dp, height = 512.dp)) }
+        state = remember { WindowState(size = DpSize(width = 512.dp, height = 512.dp)) }
     ) {
         App()
     }
