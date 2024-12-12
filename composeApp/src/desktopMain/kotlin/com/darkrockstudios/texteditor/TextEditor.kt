@@ -1,18 +1,22 @@
 package com.darkrockstudios.texteditor
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.foundation.border
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -48,61 +52,71 @@ fun TextEditor(
 		}
 	}
 
-	BoxWithConstraints(
-		modifier = modifier
-			.focusBorder(state.isFocused)
-			.padding(8.dp)
-			.focusRequester(focusRequester)
-			.onFocusChanged { focusState ->
-				state.updateFocus(focusState.isFocused)
-			}
-			.focusable(enabled = true, interactionSource = interactionSource)
-			.textEditorKeyboardInputHandler(state)
-			.onSizeChanged { size ->
-				state.onViewportSizeChange(size.toSize())
-			}
-			.verticalScroll(state.scrollState)
-	) {
-
-		// We need a fixed height Box to enable scrolling
-		Box(
+	Box(modifier = modifier) {
+		BoxWithConstraints(
 			modifier = Modifier
-				.fillMaxWidth()
-				.height(state.totalContentHeight.dp)
+				.focusBorder(state.isFocused)
+				.padding(8.dp)
+				.focusRequester(focusRequester)
+				.onFocusChanged { focusState ->
+					state.updateFocus(focusState.isFocused)
+				}
+				.focusable(enabled = true, interactionSource = interactionSource)
+				.textEditorKeyboardInputHandler(state)
+				.onSizeChanged { size ->
+					state.onViewportSizeChange(size.toSize())
+				}
+				.verticalScroll(state.scrollState)
 		) {
-			Canvas(
+
+			// We need a fixed height Box to enable scrolling
+			Box(
 				modifier = Modifier
 					.fillMaxWidth()
 					.height(state.totalContentHeight.dp)
-					.textEditorPointerInputHandling(state)
 			) {
-				var lastLine = -1
-				state.lineOffsets.fastForEach { virtualLine ->
-					if (lastLine != virtualLine.line) {
-						val line = state.textLines[virtualLine.line]
-						try {
-							drawText(
-								state.textMeasurer,
-								line,
-								topLeft = virtualLine.offset
-							)
-						} catch (e: IllegalArgumentException) {
-							// TODO obviously have to fix this at some point.
-							// but drawText is throwing an exception when you resize the view
-							// If you catch it then we just move on happily
+				Canvas(
+					modifier = Modifier
+						.fillMaxWidth()
+						.height(state.totalContentHeight.dp)
+						.textEditorPointerInputHandling(state)
+				) {
+					var lastLine = -1
+					state.lineOffsets.fastForEach { virtualLine ->
+						if (lastLine != virtualLine.line) {
+							val line = state.textLines[virtualLine.line]
+							try {
+								drawText(
+									state.textMeasurer,
+									line,
+									topLeft = virtualLine.offset
+								)
+							} catch (e: IllegalArgumentException) {
+								// TODO obviously have to fix this at some point.
+								// but drawText is throwing an exception when you resize the view
+								// If you catch it then we just move on happily
+							}
+
+							lastLine = virtualLine.line
 						}
-
-						lastLine = virtualLine.line
 					}
-				}
 
-				drawSelection(state.textMeasurer, state)
+					drawSelection(state.textMeasurer, state)
 
-				if (state.isFocused && state.isCursorVisible) {
-					drawCursor(state.textMeasurer, state)
+					if (state.isFocused && state.isCursorVisible) {
+						drawCursor(state.textMeasurer, state)
+					}
 				}
 			}
 		}
+
+		VerticalScrollbar(
+			modifier = Modifier
+				.align(Alignment.CenterEnd)
+				.fillMaxHeight()
+				.padding(end = 1.dp),
+			adapter = rememberScrollbarAdapter(state.scrollState)
+		)
 	}
 }
 
