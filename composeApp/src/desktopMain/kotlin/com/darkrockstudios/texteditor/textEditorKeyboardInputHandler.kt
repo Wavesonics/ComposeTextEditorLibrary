@@ -4,6 +4,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.isCtrlPressed
 import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
@@ -17,129 +18,141 @@ import com.darkrockstudios.texteditor.state.moveCursorToLineEnd
 import com.darkrockstudios.texteditor.state.moveCursorToLineStart
 import com.darkrockstudios.texteditor.state.moveCursorUp
 
-fun Modifier.textEditorKeyboardInputHandler(state: TextEditorState): Modifier {
+internal fun Modifier.textEditorKeyboardInputHandler(state: TextEditorState): Modifier {
 	return this.onPreviewKeyEvent {
 		if (it.type == KeyEventType.KeyDown) {
-			val initialPosition = state.cursorPosition
-
-			return@onPreviewKeyEvent when {
-				// Selection handling with shift held
-				it.isShiftPressed && it.key == Key.DirectionLeft -> {
-					state.moveCursorLeft()
-					updateSelectionForCursorMovement(state, initialPosition)
-					true
-				}
-
-				it.isShiftPressed && it.key == Key.DirectionRight -> {
-					state.moveCursorRight()
-					updateSelectionForCursorMovement(state, initialPosition)
-					true
-				}
-
-				it.isShiftPressed && it.key == Key.DirectionUp -> {
-					state.moveCursorUp()
-					updateSelectionForCursorMovement(state, initialPosition)
-					true
-				}
-
-				it.isShiftPressed && it.key == Key.DirectionDown -> {
-					state.moveCursorDown()
-					updateSelectionForCursorMovement(state, initialPosition)
-					true
-				}
-
-				it.isShiftPressed && it.key == Key.MoveHome -> {
-					state.moveCursorToLineStart()
-					updateSelectionForCursorMovement(state, initialPosition)
-					true
-				}
-
-				it.isShiftPressed && (it.key == Key.MoveEnd) -> {
-					state.moveCursorToLineEnd()
-					updateSelectionForCursorMovement(state, initialPosition)
-					true
-				}
-
-				// Regular cursor movement (clear selection)
-				it.key == Key.DirectionLeft -> {
-					state.selector.clearSelection()
-					state.moveCursorLeft()
-					true
-				}
-
-				it.key == Key.DirectionRight -> {
-					state.selector.clearSelection()
-					state.moveCursorRight()
-					true
-				}
-
-				it.key == Key.DirectionUp -> {
-					state.selector.clearSelection()
-					state.moveCursorUp()
-					true
-				}
-
-				it.key == Key.DirectionDown -> {
-					state.selector.clearSelection()
-					state.moveCursorDown()
-					true
-				}
-
-				it.key == Key.MoveHome -> {
-					state.selector.clearSelection()
-					state.moveCursorToLineStart()
-					true
-				}
-
-				it.key == Key.MoveEnd -> {
-					state.selector.clearSelection()
-					state.moveCursorToLineEnd()
-					true
-				}
-
-				// Character deletion (handle selection)
-				it.key == Key.Delete -> {
-					if (state.selector.selection != null) {
-						state.selector.deleteSelection()
-					} else {
-						state.deleteAtCursor()
-					}
-					true
-				}
-
-				it.key == Key.Backspace -> {
-					if (state.selector.selection != null) {
-						state.selector.deleteSelection()
-					} else {
-						state.backspaceAtCursor()
-					}
-					true
-				}
-
-				// Other cases remain the same
-				it.key == Key.Enter -> {
-					if (state.selector.selection != null) {
-						state.selector.deleteSelection()
-					}
-					state.insertNewlineAtCursor()
-					true
-				}
-
-				else -> {
-					val char = keyEventToUTF8Character(it)
-					if (char != null) {
-						if (state.selector.selection != null) {
-							state.selector.deleteSelection()
-						}
-						state.insertCharacterAtCursor(char)
-						true
-					} else {
-						false
-					}
-				}
+			when {
+				it.isCtrlPressed -> handleShortcutKey(it, state)
+				else -> handleEditorKey(it, state)
 			}
 		} else {
 			false
+		}
+	}
+}
+
+private fun handleShortcutKey(keyEvent: KeyEvent, state: TextEditorState): Boolean {
+	return when (keyEvent.key) {
+		Key.A -> {
+			state.selector.selectAll()
+			true
+		}
+
+		else -> false
+	}
+}
+
+private fun handleEditorKey(keyEvent: KeyEvent, state: TextEditorState): Boolean {
+	return when (keyEvent.key) {
+		Key.Delete -> {
+			if (state.selector.selection != null) {
+				state.selector.deleteSelection()
+			} else {
+				state.deleteAtCursor()
+			}
+			true
+		}
+
+		Key.Backspace -> {
+			if (state.selector.selection != null) {
+				state.selector.deleteSelection()
+			} else {
+				state.backspaceAtCursor()
+			}
+			true
+		}
+
+		Key.Enter -> {
+			if (state.selector.selection != null) {
+				state.selector.deleteSelection()
+			}
+			state.insertNewlineAtCursor()
+			true
+		}
+
+		Key.DirectionLeft -> {
+			if (keyEvent.isShiftPressed) {
+				val initialPosition = state.cursorPosition
+				state.moveCursorLeft()
+				updateSelectionForCursorMovement(state, initialPosition)
+			} else {
+				state.selector.clearSelection()
+				state.moveCursorLeft()
+			}
+			true
+		}
+
+		Key.DirectionRight -> {
+			if (keyEvent.isShiftPressed) {
+				val initialPosition = state.cursorPosition
+				state.moveCursorRight()
+				updateSelectionForCursorMovement(state, initialPosition)
+			} else {
+				state.selector.clearSelection()
+				state.moveCursorRight()
+			}
+			true
+		}
+
+		Key.DirectionUp -> {
+			if (keyEvent.isShiftPressed) {
+				val initialPosition = state.cursorPosition
+				state.moveCursorUp()
+				updateSelectionForCursorMovement(state, initialPosition)
+			} else {
+				state.selector.clearSelection()
+				state.moveCursorUp()
+			}
+			true
+		}
+
+		Key.DirectionDown -> {
+			if (keyEvent.isShiftPressed) {
+				val initialPosition = state.cursorPosition
+				state.moveCursorDown()
+				updateSelectionForCursorMovement(state, initialPosition)
+			} else {
+				state.selector.clearSelection()
+				state.moveCursorDown()
+			}
+			true
+		}
+
+		Key.MoveHome -> {
+			if (keyEvent.isShiftPressed) {
+				val initialPosition = state.cursorPosition
+				state.moveCursorToLineStart()
+				updateSelectionForCursorMovement(state, initialPosition)
+			} else {
+				state.selector.clearSelection()
+				state.moveCursorToLineStart()
+			}
+			true
+		}
+
+		Key.MoveEnd -> {
+			if (keyEvent.isShiftPressed) {
+				val initialPosition = state.cursorPosition
+				state.moveCursorToLineEnd()
+				updateSelectionForCursorMovement(state, initialPosition)
+			} else {
+				state.selector.clearSelection()
+				state.moveCursorToLineEnd()
+			}
+			true
+		}
+
+		else -> {
+			val char = keyEventToUTF8Character(keyEvent)
+			if (char != null) {
+				if (state.selector.selection != null) {
+					state.selector.deleteSelection()
+				}
+				state.insertCharacterAtCursor(char)
+				true
+			} else {
+				false
+			}
 		}
 	}
 }
