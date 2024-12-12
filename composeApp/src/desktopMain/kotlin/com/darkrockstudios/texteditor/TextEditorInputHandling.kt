@@ -10,7 +10,6 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.key.utf16CodePoint
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.unit.Constraints
 import com.darkrockstudios.texteditor.state.TextEditorState
 import com.darkrockstudios.texteditor.state.moveCursorDown
@@ -110,7 +109,6 @@ private fun keyEventToUTF8Character(keyEvent: KeyEvent): Char? {
 
 internal fun Modifier.textEditorPointerInputHandling(
 	state: TextEditorState,
-	textMeasurer: TextMeasurer,
 ): Modifier {
 	return this.pointerInput(Unit) {
 		detectTapGestures { tapOffset ->

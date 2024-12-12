@@ -18,7 +18,7 @@ import kotlinx.coroutines.CoroutineScope
 
 class TextEditorState(
 	private val scope: CoroutineScope,
-	private val textMeasurer: TextMeasurer,
+	internal val textMeasurer: TextMeasurer,
 ) {
 	private var _version by mutableStateOf(0)
 	private val _textLines = mutableListOf<String>("")

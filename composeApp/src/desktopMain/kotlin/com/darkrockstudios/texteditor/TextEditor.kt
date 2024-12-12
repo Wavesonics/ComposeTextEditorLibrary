@@ -21,7 +21,6 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.drawText
-import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.toSize
 import androidx.compose.ui.util.fastForEach
@@ -37,7 +36,6 @@ fun TextEditor(
 	modifier: Modifier = Modifier
 ) {
 	val focusRequester = remember { FocusRequester() }
-	val textMeasurer = rememberTextMeasurer()
 	val interactionSource = remember { MutableInteractionSource() }
 	val scope = rememberCoroutineScope()
 
@@ -80,14 +78,14 @@ fun TextEditor(
 				modifier = Modifier
 					.fillMaxWidth()
 					.height(state.totalContentHeight.dp)
-					.textEditorPointerInputHandling(state, textMeasurer)
+					.textEditorPointerInputHandling(state)
 			) {
 				var lastLine = -1
 				state.lineOffsets.fastForEach { virtualLine ->
 					if (lastLine != virtualLine.line) {
 						val line = state.textLines[virtualLine.line]
 						drawText(
-							textMeasurer,
+							state.textMeasurer,
 							line,
 							topLeft = virtualLine.offset
 						)
@@ -95,10 +93,10 @@ fun TextEditor(
 					}
 				}
 
-				drawSelection(textMeasurer, state)
+				drawSelection(state.textMeasurer, state)
 
 				if (state.isFocused && state.isCursorVisible) {
-					drawCursor(textMeasurer, state)
+					drawCursor(state.textMeasurer, state)
 				}
 			}
 		}
