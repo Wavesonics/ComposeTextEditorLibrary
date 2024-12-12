@@ -54,19 +54,20 @@ class TextEditorScrollManager(
 	fun scrollToPosition(offset: TextOffset) {
 		if (offset.line >= getLines().size) return
 
-		val offsetY = calculateOffsetYPosition(offset).toInt()
+		val cursorTop = calculateOffsetYPosition(offset).toInt()
+		val cursorHeight = calculateLineHeight(offset)
 		val viewportTop = scrollState.value
 		val maxScroll = maxOf(0, totalContentHeight - viewportHeight)
 
 		val buffer = 10
-		val targetScroll = if (offsetY < viewportTop) {
+		val targetScroll = if (cursorTop < viewportTop + buffer) {
 			// Scrolling up - align cursor near top
-			(offsetY - buffer).coerceIn(0, maxScroll)
-		} else if (offsetY > viewportTop + viewportHeight) {
-			// Scrolling down - align cursor near bottom
-			(offsetY - viewportHeight + buffer).coerceIn(0, maxScroll)
+			(cursorTop - buffer).coerceIn(0, maxScroll)
+		} else if (cursorTop + cursorHeight > viewportTop + viewportHeight - buffer) {
+			// Scrolling down - ensure full cursor height is visible
+			(cursorTop + cursorHeight - viewportHeight + buffer).coerceIn(0, maxScroll)
 		} else {
-			// Cursor already visible, maintain current scroll
+			// Cursor already fully visible, maintain current scroll
 			viewportTop
 		}
 
@@ -89,13 +90,21 @@ class TextEditorScrollManager(
 	}
 
 	fun isOffsetVisible(offset: TextOffset): Boolean {
-		val cursorY = calculateOffsetYPosition(offset).toInt()
+		val cursorTop = calculateOffsetYPosition(offset).toInt()
+		// Assuming cursor height is roughly the line height - we can make this more precise
+		// by passing in the actual cursor height from text measurement if needed
+		val cursorHeight = calculateLineHeight(offset)
+		val cursorBottom = cursorTop + cursorHeight
+
 		val viewPortTop = scrollState.value
-		val viewPortBottom = viewPortTop + getViewportSize().height.toInt()
+		val viewPortBottom = viewPortTop + viewportHeight
 
-		val isVisible = cursorY in viewPortTop..viewPortBottom
+		// Check if both top and bottom of cursor are within viewport
+		val topVisible = cursorTop in viewPortTop..viewPortBottom
+		val bottomVisible = cursorBottom in viewPortTop..viewPortBottom
+		val cursorSpansViewport = cursorTop <= viewPortTop && cursorBottom >= viewPortBottom
 
-		return isVisible
+		return (topVisible && bottomVisible) || cursorSpansViewport
 	}
 
 	private fun calculateOffsetYPosition(offset: TextOffset): Float {
@@ -108,5 +117,22 @@ class TextEditorScrollManager(
 
 		val wrappedLine = lineOffsets[wrappedLineIndex]
 		return wrappedLine.offset.y
+	}
+
+	private fun calculateLineHeight(offset: TextOffset): Int {
+		val lineOffsets = getLineOffsets()
+		val currentLineIndex = lineOffsets.indexOfLast { lineWrap ->
+			lineWrap.line == offset.line && lineWrap.wrapStartsAtIndex <= offset.char
+		}
+
+		// Find next line's Y position to calculate height
+		val currentY = if (currentLineIndex >= 0) lineOffsets[currentLineIndex].offset.y else 0f
+		val nextY = if (currentLineIndex + 1 < lineOffsets.size) {
+			lineOffsets[currentLineIndex + 1].offset.y
+		} else {
+			currentY + 20f // Default height if we can't determine it
+		}
+
+		return (nextY - currentY).toInt().coerceAtLeast(1)
 	}
 }
