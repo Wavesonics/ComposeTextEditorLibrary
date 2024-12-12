@@ -33,9 +33,7 @@ class TextEditorState(
 	val scrollManager = TextEditorScrollManager(
 		scope = scope,
 		scrollState = ScrollState(0),
-		textMeasurer = textMeasurer,
 		getLines = { textLines },
-		getCanvasSize = { canvasSize },
 		getViewportSize = { viewportSize },
 		getCursorPosition = { cursorPosition },
 		getLineOffsets = { lineOffsets },
@@ -71,7 +69,6 @@ class TextEditorState(
 	}
 
 	fun updateCursorPosition(position: TextOffset) {
-		println("cursorPosition: $position")
 		cursorPosition = position
 		scrollManager.ensureCursorVisible()
 	}

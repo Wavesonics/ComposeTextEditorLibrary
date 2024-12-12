@@ -1,6 +1,5 @@
 package com.darkrockstudios.texteditor
 
-import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.Key
@@ -111,15 +110,12 @@ private fun keyEventToUTF8Character(keyEvent: KeyEvent): Char? {
 
 internal fun Modifier.textEditorPointerInputHandling(
 	state: TextEditorState,
-	scrollState: ScrollState,
 	textMeasurer: TextMeasurer,
 ): Modifier {
 	return this.pointerInput(Unit) {
 		detectTapGestures { tapOffset ->
 			state.apply {
 				if (lineOffsets.isEmpty()) return@detectTapGestures
-
-				val scrollAdjustedTap = tapOffset.copy(y = tapOffset.y + scrollState.value)
 
 				var curRealLine: LineWrap = lineOffsets[0]
 				// Calculate the clicked line and character within the wrapped text
@@ -133,8 +129,8 @@ internal fun Modifier.textEditorPointerInputHandling(
 						constraints = Constraints(maxWidth = size.width)
 					)
 
-					val relativeTapOffset = scrollAdjustedTap - curRealLine.offset
-					if (scrollAdjustedTap.y in curRealLine.offset.y..(curRealLine.offset.y + textLayoutResult.size.height)) {
+					val relativeTapOffset = tapOffset - curRealLine.offset
+					if (tapOffset.y in curRealLine.offset.y..(curRealLine.offset.y + textLayoutResult.size.height)) {
 						val charPos =
 							textLayoutResult.multiParagraph.getOffsetForPosition(relativeTapOffset)
 						cursorPosition =

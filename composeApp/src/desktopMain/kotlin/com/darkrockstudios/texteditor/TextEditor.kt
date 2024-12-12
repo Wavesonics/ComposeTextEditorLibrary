@@ -16,7 +16,6 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.drawText
@@ -63,7 +62,9 @@ fun TextEditor(
 			}
 			.focusable(enabled = true, interactionSource = interactionSource)
 			.textEditorKeyboardInputHandler(state)
-			.onSizeChanged { size -> state.onViewportSizeChange(size.toSize()) }
+			.onSizeChanged { size ->
+				state.onViewportSizeChange(size.toSize())
+			}
 			.verticalScroll(state.scrollState)
 	) {
 
@@ -77,12 +78,11 @@ fun TextEditor(
 				modifier = Modifier
 					.fillMaxWidth()
 					.height(state.totalContentHeight.dp)
-					.textEditorPointerInputHandling(state, state.scrollState, textMeasurer)
+					.textEditorPointerInputHandling(state, textMeasurer)
 					.onSizeChanged { size -> state.onCanvasSizeChange(size.toSize()) }
 			) {
-				// Calculate content and draw text
 				val offsets = mutableListOf<LineWrap>()
-				var currentY = 0f
+				var yOffset = 0f  // Track absolute Y position from top of entire content
 
 				state.textLines.forEachIndexed { lineIndex, line ->
 					val textLayoutResult = textMeasurer.measure(
@@ -94,22 +94,17 @@ fun TextEditor(
 						)
 					)
 
-					// Adjust drawing position for scroll offset
-					val adjustedY = currentY - state.scrollState.value
-
 					// Only draw if the line is visible in the viewport
-					if (adjustedY + textLayoutResult.size.height >= 0 && adjustedY <= size.height) {
+					if (yOffset + textLayoutResult.size.height >= 0 && yOffset <= size.height) {
 						drawText(
 							textMeasurer,
 							line,
-							topLeft = Offset(0f, adjustedY)
+							topLeft = Offset(0f, yOffset)
 						)
 					}
 
+					// Process each virtual line (word wrap creates multiple virtual lines)
 					for (virtualLineIndex in 0 until textLayoutResult.multiParagraph.lineCount) {
-						val lineTop = currentY
-						val lineOffset = Offset(0f, lineTop)
-
 						val lineWrapsAt = if (virtualLineIndex == 0) {
 							0
 						} else {
@@ -120,15 +115,16 @@ fun TextEditor(
 							LineWrap(
 								line = lineIndex,
 								wrapStartsAtIndex = lineWrapsAt,
-								offset = lineOffset,
+								offset = Offset(0f, yOffset),
 							)
 						)
-						currentY += textLayoutResult.multiParagraph.getLineHeight(virtualLineIndex)
+
+						yOffset += textLayoutResult.multiParagraph.getLineHeight(virtualLineIndex)
 					}
 				}
 
 				// Update total content height
-				state.updateContentHeight(currentY.toInt())
+				state.updateContentHeight(yOffset.toInt())
 
 				state.updateLineOffsets(offsets)
 

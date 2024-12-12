@@ -10,7 +10,6 @@ import com.darkrockstudios.texteditor.TextOffset
 fun TextEditorState.calculateCursorPosition(
 	textMeasurer: TextMeasurer,
 	canvasWidth: Float,
-	scrollOffset: Int
 ): CursorMetrics {
 	val (line, charIndex) = cursorPosition
 	val layout = textMeasurer.measure(
@@ -28,7 +27,7 @@ fun TextEditorState.calculateCursorPosition(
 
 	val currentLine = layout.multiParagraph.getLineForOffset(charIndex)
 	val cursorX = layout.multiParagraph.getHorizontalPosition(charIndex, true)
-	val cursorY = startOfLineOffset.y - scrollOffset + layout.multiParagraph.getLineTop(currentLine)
+	val cursorY = startOfLineOffset.y + layout.multiParagraph.getLineTop(currentLine)
 	val lineHeight = layout.multiParagraph.getLineHeight(currentLine)
 
 	return CursorMetrics(

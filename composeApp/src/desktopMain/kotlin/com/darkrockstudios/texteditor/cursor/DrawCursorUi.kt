@@ -9,7 +9,7 @@ internal fun DrawScope.drawCursor(
 	textMeasurer: TextMeasurer,
 	state: TextEditorState,
 ) {
-	val metrics = state.calculateCursorPosition(textMeasurer, size.width, state.scrollState.value)
+	val metrics = state.calculateCursorPosition(textMeasurer, size.width)
 
 	// Only draw cursor if it's in the visible area
 	if (metrics.position.y + metrics.height >= 0 && metrics.position.y <= size.height) {
