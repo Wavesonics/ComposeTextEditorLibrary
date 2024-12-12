@@ -7,9 +7,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.unit.Constraints
 import com.darkrockstudios.texteditor.LineWrap
 import com.darkrockstudios.texteditor.TextOffset
 import kotlinx.coroutines.CoroutineScope
@@ -44,8 +46,6 @@ class TextEditorState(
 	val scrollState get() = scrollManager.scrollState
 	val totalContentHeight get() = scrollManager.totalContentHeight
 
-	fun updateContentHeight(height: Int) = scrollManager.updateContentHeight(height)
-
 	internal fun notifyContentChanged() {
 		_version++
 	}
@@ -53,11 +53,8 @@ class TextEditorState(
 	fun setInitialText(text: String) {
 		_textLines.clear()
 		_textLines.addAll(text.split("\n"))
+		updateBookKeeping()
 		notifyContentChanged()
-	}
-
-	fun updateLineOffsets(newOffsets: List<LineWrap>) {
-		lineOffsets = newOffsets
 	}
 
 	fun toggleCursor() {
@@ -78,6 +75,7 @@ class TextEditorState(
 		val newLine = _textLines[line].substring(charIndex)
 		_textLines[line] = _textLines[line].substring(0, charIndex)
 		_textLines.add(line + 1, newLine)
+		updateBookKeeping()
 		notifyContentChanged()
 		updateCursorPosition(TextOffset(line + 1, 0))
 	}
@@ -87,12 +85,14 @@ class TextEditorState(
 		if (charIndex > 0) {
 			_textLines[line] =
 				_textLines[line].substring(0, charIndex - 1) + _textLines[line].substring(charIndex)
+			updateBookKeeping()
 			notifyContentChanged()
 			updateCursorPosition(TextOffset(line, charIndex - 1))
 		} else if (line > 0) {
 			val previousLineLength = _textLines[line - 1].length
 			_textLines[line - 1] += _textLines[line]
 			_textLines.removeAt(line)
+			updateBookKeeping()
 			notifyContentChanged()
 			updateCursorPosition(TextOffset(line - 1, previousLineLength))
 		}
@@ -103,10 +103,12 @@ class TextEditorState(
 		if (charIndex < _textLines[line].length) {
 			_textLines[line] =
 				_textLines[line].substring(0, charIndex) + _textLines[line].substring(charIndex + 1)
+			updateBookKeeping()
 			notifyContentChanged()
 		} else if (line < _textLines.size - 1) {
 			_textLines[line] += _textLines[line + 1]
 			_textLines.removeAt(line + 1)
+			updateBookKeeping()
 			notifyContentChanged()
 		}
 	}
@@ -115,22 +117,26 @@ class TextEditorState(
 		val (line, charIndex) = cursorPosition
 		_textLines[line] =
 			_textLines[line].substring(0, charIndex) + char + _textLines[line].substring(charIndex)
+		updateBookKeeping()
 		notifyContentChanged()
 		updateCursorPosition(TextOffset(line, charIndex + 1))
 	}
 
 	internal fun replaceLine(index: Int, text: String) {
 		_textLines[index] = text
+		updateBookKeeping()
 	}
 
 	internal fun removeLines(startIndex: Int, count: Int) {
 		repeat(count) {
 			_textLines.removeAt(startIndex)
 		}
+		updateBookKeeping()
 	}
 
 	internal fun insertLine(index: Int, text: String) {
 		_textLines.add(index, text)
+		updateBookKeeping()
 	}
 
 	// Helper functions for cursor movement
@@ -148,14 +154,52 @@ class TextEditorState(
 
 	fun onCanvasSizeChange(size: Size) {
 		canvasSize = size
-
+		updateBookKeeping()
 		println("onCanvasSizeChange: $size")
 	}
 
 	fun onViewportSizeChange(size: Size) {
 		viewportSize = size
-
+		updateBookKeeping()
 		println("onViewportSizeChange: $size")
+	}
+
+	private fun updateBookKeeping() {
+		val offsets = mutableListOf<LineWrap>()
+		var yOffset = 0f  // Track absolute Y position from top of entire content
+
+		textLines.forEachIndexed { lineIndex, line ->
+			val textLayoutResult = textMeasurer.measure(
+				line,
+				constraints = Constraints(
+					maxWidth = maxOf(1, viewportSize.width.toInt()),
+					minHeight = 0,
+					maxHeight = Constraints.Infinity
+				)
+			)
+
+			// Process each virtual line (word wrap creates multiple virtual lines)
+			for (virtualLineIndex in 0 until textLayoutResult.multiParagraph.lineCount) {
+				val lineWrapsAt = if (virtualLineIndex == 0) {
+					0
+				} else {
+					textLayoutResult.getLineEnd(virtualLineIndex - 1, visibleEnd = true) + 1
+				}
+
+				offsets.add(
+					LineWrap(
+						line = lineIndex,
+						wrapStartsAtIndex = lineWrapsAt,
+						offset = Offset(0f, yOffset),
+					)
+				)
+
+				yOffset += textLayoutResult.multiParagraph.getLineHeight(virtualLineIndex)
+			}
+		}
+
+		lineOffsets = offsets
+		scrollManager.updateContentHeight(yOffset.toInt())
 	}
 }
 

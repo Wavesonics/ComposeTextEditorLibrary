@@ -10,19 +10,21 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
-import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.toSize
+import androidx.compose.ui.util.fastForEach
 import com.darkrockstudios.texteditor.cursor.drawCursor
 import com.darkrockstudios.texteditor.state.TextEditorState
 import com.darkrockstudios.texteditor.state.rememberTextEditorState
@@ -81,52 +83,18 @@ fun TextEditor(
 					.textEditorPointerInputHandling(state, textMeasurer)
 					.onSizeChanged { size -> state.onCanvasSizeChange(size.toSize()) }
 			) {
-				val offsets = mutableListOf<LineWrap>()
-				var yOffset = 0f  // Track absolute Y position from top of entire content
-
-				state.textLines.forEachIndexed { lineIndex, line ->
-					val textLayoutResult = textMeasurer.measure(
-						line,
-						constraints = Constraints(
-							maxWidth = maxOf(1, size.width.toInt()),
-							minHeight = 0,
-							maxHeight = Constraints.Infinity
-						)
-					)
-
-					// Only draw if the line is visible in the viewport
-					if (yOffset + textLayoutResult.size.height >= 0 && yOffset <= size.height) {
+				var lastLine = -1
+				state.lineOffsets.fastForEach { virtualLine ->
+					if (lastLine != virtualLine.line) {
+						val line = state.textLines[virtualLine.line]
 						drawText(
 							textMeasurer,
 							line,
-							topLeft = Offset(0f, yOffset)
+							topLeft = virtualLine.offset
 						)
-					}
-
-					// Process each virtual line (word wrap creates multiple virtual lines)
-					for (virtualLineIndex in 0 until textLayoutResult.multiParagraph.lineCount) {
-						val lineWrapsAt = if (virtualLineIndex == 0) {
-							0
-						} else {
-							textLayoutResult.getLineEnd(virtualLineIndex - 1, visibleEnd = true) + 1
-						}
-
-						offsets.add(
-							LineWrap(
-								line = lineIndex,
-								wrapStartsAtIndex = lineWrapsAt,
-								offset = Offset(0f, yOffset),
-							)
-						)
-
-						yOffset += textLayoutResult.multiParagraph.getLineHeight(virtualLineIndex)
+						lastLine = virtualLine.line
 					}
 				}
-
-				// Update total content height
-				state.updateContentHeight(yOffset.toInt())
-
-				state.updateLineOffsets(offsets)
 
 				drawSelection(textMeasurer, state)
 
