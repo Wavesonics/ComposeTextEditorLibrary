@@ -74,7 +74,7 @@ class TextEditorSelectionManager(
 		}
 	}
 
-	fun deleteSelection(text: String) {
+	fun deleteSelection() {
 		replaceSelection("")
 	}
 

@@ -15,6 +15,7 @@ import androidx.compose.ui.unit.Constraints
 import com.darkrockstudios.texteditor.LineWrap
 import com.darkrockstudios.texteditor.TextOffset
 import kotlinx.coroutines.CoroutineScope
+import kotlin.math.min
 
 class TextEditorState(
 	private val scope: CoroutineScope,
@@ -158,6 +159,34 @@ class TextEditorState(
 	fun onViewportSizeChange(size: Size) {
 		viewportSize = size
 		updateBookKeeping()
+	}
+
+	fun getOffsetAtPosition(offset: Offset): TextOffset {
+		if (lineOffsets.isEmpty()) return TextOffset(0, 0)
+
+		var curRealLine: LineWrap = lineOffsets[0]
+
+		// Find the line that contains the offset
+		for (lineWrap in lineOffsets) {
+			if (lineWrap.line != curRealLine.line) {
+				curRealLine = lineWrap
+			}
+
+			val textLayoutResult = textMeasurer.measure(
+				textLines[lineWrap.line],
+				constraints = Constraints(maxWidth = viewportSize.width.toInt())
+			)
+
+			val relativeOffset = offset - curRealLine.offset
+			if (offset.y in curRealLine.offset.y..(curRealLine.offset.y + textLayoutResult.size.height)) {
+				val charPos = textLayoutResult.multiParagraph.getOffsetForPosition(relativeOffset)
+				return TextOffset(lineWrap.line, min(charPos, textLines[lineWrap.line].length))
+			}
+		}
+
+		// If we're below all lines, return position at end of last line
+		val lastLine = textLines.lastIndex
+		return TextOffset(lastLine, textLines[lastLine].length)
 	}
 
 	private fun updateBookKeeping() {
