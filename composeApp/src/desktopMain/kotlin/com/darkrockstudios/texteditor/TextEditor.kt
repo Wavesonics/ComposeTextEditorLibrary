@@ -13,7 +13,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -28,7 +27,6 @@ import com.darkrockstudios.texteditor.cursor.drawCursor
 import com.darkrockstudios.texteditor.state.TextEditorState
 import com.darkrockstudios.texteditor.state.rememberTextEditorState
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 
 @Composable
 fun TextEditor(
@@ -37,24 +35,22 @@ fun TextEditor(
 ) {
 	val focusRequester = remember { FocusRequester() }
 	val interactionSource = remember { MutableInteractionSource() }
-	val scope = rememberCoroutineScope()
 
 	LaunchedEffect(Unit) {
 		focusRequester.requestFocus()
 	}
 
-	LaunchedEffect(state.isFocused) {
-		scope.launch {
-			while (state.isFocused) {
-				state.toggleCursor()
-				delay(750)
-			}
+	LaunchedEffect(state.isFocused, state.cursorPosition) {
+		state.setCursorVisible()
+		while (state.isFocused) {
+			delay(500)
+			state.toggleCursor()
 		}
 	}
 
 	BoxWithConstraints(
 		modifier = modifier
-			.border(width = 2.dp, color = if (state.isFocused) Color.Green else Color.Blue)
+			.focusBorder(state.isFocused)
 			.padding(8.dp)
 			.focusRequester(focusRequester)
 			.onFocusChanged { focusState ->
@@ -108,4 +104,11 @@ fun TextEditor(
 			}
 		}
 	}
+}
+
+fun Modifier.focusBorder(isFocused: Boolean): Modifier {
+	return this.border(
+		width = 1.dp,
+		color = if (isFocused) Color(0xFFcfd6dc) else Color(0xFFDDDDDD)
+	)
 }

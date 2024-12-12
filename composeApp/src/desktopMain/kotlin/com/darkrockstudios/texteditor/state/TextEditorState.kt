@@ -56,6 +56,10 @@ class TextEditorState(
 		notifyContentChanged()
 	}
 
+	fun setCursorVisible() {
+		isCursorVisible = true
+	}
+
 	fun toggleCursor() {
 		isCursorVisible = !isCursorVisible
 	}
@@ -154,7 +158,6 @@ class TextEditorState(
 	fun onViewportSizeChange(size: Size) {
 		viewportSize = size
 		updateBookKeeping()
-		println("onViewportSizeChange: $size")
 	}
 
 	private fun updateBookKeeping() {
