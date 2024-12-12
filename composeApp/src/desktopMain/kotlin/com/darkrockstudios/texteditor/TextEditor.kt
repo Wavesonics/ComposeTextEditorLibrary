@@ -84,11 +84,18 @@ fun TextEditor(
 				state.lineOffsets.fastForEach { virtualLine ->
 					if (lastLine != virtualLine.line) {
 						val line = state.textLines[virtualLine.line]
-						drawText(
-							state.textMeasurer,
-							line,
-							topLeft = virtualLine.offset
-						)
+						try {
+							drawText(
+								state.textMeasurer,
+								line,
+								topLeft = virtualLine.offset
+							)
+						} catch (e: IllegalArgumentException) {
+							// TODO obviously have to fix this at some point.
+							// but drawText is throwing an exception when you resize the view
+							// If you catch it then we just move on happily
+						}
+
 						lastLine = virtualLine.line
 					}
 				}
