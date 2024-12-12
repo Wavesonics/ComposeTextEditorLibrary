@@ -71,6 +71,7 @@ class TextEditorState(
 	}
 
 	fun updateCursorPosition(position: TextOffset) {
+		println("cursorPosition: $position")
 		cursorPosition = position
 		scrollManager.ensureCursorVisible()
 	}

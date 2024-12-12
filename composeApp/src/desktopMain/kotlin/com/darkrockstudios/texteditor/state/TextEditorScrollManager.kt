@@ -101,6 +101,7 @@ class TextEditorScrollManager(
 
 		var currentY = 0f
 		var startLine = 0
+		var startLineY = 0f
 		var endLine = lines.lastIndex.coerceAtLeast(0)
 		var isStartPartial = false
 		var isEndPartial = false
@@ -112,11 +113,13 @@ class TextEditorScrollManager(
 				constraints = Constraints(maxWidth = maxOf(1, canvasWidth.toInt()))
 			)
 			val lineHeight = layout.size.height
+			println("lineHeight: $lineHeight")
 			val nextY = currentY + lineHeight
 
 			// If this line extends past the scroll offset, it's our start line
 			if (nextY > scrollOffset) {
 				startLine = index
+				startLineY = currentY
 				// It's partial if it starts before the viewport
 				isStartPartial = currentY < scrollOffset
 				println("Found start line: $index at Y: $currentY (partial=$isStartPartial)")
@@ -126,14 +129,7 @@ class TextEditorScrollManager(
 		}
 
 		// Reset currentY to the start line's Y position for end line calculation
-		currentY = 0f
-		for (index in 0..<startLine) {
-			val layout = textMeasurer.measure(
-				text = lines[index],
-				constraints = Constraints(maxWidth = maxOf(1, canvasWidth.toInt()))
-			)
-			currentY += layout.size.height
-		}
+		currentY = startLineY
 
 		// Find the last visible line
 		for (index in startLine..lines.lastIndex) {
@@ -168,7 +164,7 @@ class TextEditorScrollManager(
 		)
 	}
 
-	private fun isOffsetVisible(offset: TextOffset): Boolean {
+	fun isOffsetVisible(offset: TextOffset): Boolean {
 		val viewport = getViewportInfo()
 		println("======= isOffsetVisible =======")
 		println("Offset line: ${offset.line}")
