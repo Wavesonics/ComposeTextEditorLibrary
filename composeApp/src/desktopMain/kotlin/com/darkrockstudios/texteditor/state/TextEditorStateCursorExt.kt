@@ -3,22 +3,18 @@ package com.darkrockstudios.texteditor.state
 import com.darkrockstudios.texteditor.CharLineOffset
 import kotlin.math.min
 
-internal fun TextEditorState.moveCursorLeft() {
-	val (line, charIndex) = cursorPosition
-	if (charIndex > 0) {
-		updateCursorPosition(cursorPosition.copy(char = charIndex - 1))
-	} else if (line > 0) {
-		updateCursorPosition(CharLineOffset(line - 1, textLines[line - 1].length))
-	}
+internal fun TextEditorState.moveCursorLeft(n: Int = 1) {
+	val currentCharIndex = getCharacterIndex(cursorPosition)
+	val newCharIndex = maxOf(currentCharIndex - n, 0)
+	updateCursorPosition(getOffsetAtCharacter(newCharIndex))
 }
 
-internal fun TextEditorState.moveCursorRight() {
-	val (line, charIndex) = cursorPosition
-	if (charIndex < textLines[line].length) {
-		updateCursorPosition(cursorPosition.copy(char = charIndex + 1))
-	} else if (line < textLines.size - 1) {
-		updateCursorPosition(CharLineOffset(line + 1, 0))
-	}
+internal fun TextEditorState.moveCursorRight(n: Int = 1) {
+	val currentCharIndex = getCharacterIndex(cursorPosition)
+	val totalChars =
+		textLines.sumOf { it.length + 1 } - 1  // -1 since last line doesn't have newline
+	val newCharIndex = minOf(currentCharIndex + n, totalChars)
+	updateCursorPosition(getOffsetAtCharacter(newCharIndex))
 }
 
 internal fun TextEditorState.moveCursorUp() {

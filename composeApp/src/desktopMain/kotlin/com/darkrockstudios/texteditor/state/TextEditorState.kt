@@ -290,6 +290,38 @@ class TextEditorState(
 		return CharLineOffset(lastLine, textLines[lastLine].length)
 	}
 
+	fun getOffsetAtCharacter(index: Int): CharLineOffset {
+		var remainingChars = index
+
+		for (lineIndex in textLines.indices) {
+			val lineLength = textLines[lineIndex].length + 1  // +1 for newline
+			if (remainingChars < lineLength) {
+				return CharLineOffset(lineIndex, remainingChars)
+			}
+			remainingChars -= lineLength
+		}
+
+		return CharLineOffset(
+			textLines.lastIndex,
+			textLines.last().length
+		)
+	}
+
+	fun getCharacterIndex(offset: CharLineOffset): Int {
+		var totalChars = 0
+
+		// Add up characters from previous lines
+		for (lineIndex in 0 until offset.line) {
+			totalChars += textLines[lineIndex].length + 1  // +1 for newline
+		}
+
+		// Add characters in current line
+		totalChars += offset.char
+
+		return totalChars
+	}
+
+
 	private fun updateBookKeeping() {
 		val offsets = mutableListOf<LineWrap>()
 		var yOffset = 0f  // Track absolute Y position from top of entire content

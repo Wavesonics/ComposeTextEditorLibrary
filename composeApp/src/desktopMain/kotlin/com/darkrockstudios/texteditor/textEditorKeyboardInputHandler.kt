@@ -46,6 +46,7 @@ private fun handleShortcutKey(
 			state.selector.selectAll()
 			true
 		}
+		
 		Key.C -> {
 			state.selector.selection?.let {
 				val selectedText = state.selector.getSelectedText()
@@ -71,6 +72,7 @@ private fun handleShortcutKey(
 				} else {
 					state.insertStringAtCursor(text)
 				}
+				state.moveCursorRight(text.length)
 			}
 			state.selector.clearSelection()
 			true
