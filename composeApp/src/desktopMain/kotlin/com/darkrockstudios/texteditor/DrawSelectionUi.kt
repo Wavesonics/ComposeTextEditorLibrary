@@ -12,7 +12,6 @@ internal fun DrawScope.drawSelection(
 	textMeasurer: TextMeasurer,
 	state: TextEditorState,
 ) {
-	val scrollOffset = state.scrollState.value
 	state.selector.selection?.let { selection ->
 		for (lineIndex in state.textLines.indices) {
 			val line = state.textLines[lineIndex]

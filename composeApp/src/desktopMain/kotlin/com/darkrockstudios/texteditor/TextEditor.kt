@@ -83,30 +83,31 @@ fun TextEditor(
 						.height(state.totalContentHeight.dp)
 						.textEditorPointerInputHandling(state)
 				) {
-					var lastLine = -1
-					state.lineOffsets.fastForEach { virtualLine ->
-						if (lastLine != virtualLine.line) {
-							val line = state.textLines[virtualLine.line]
-							try {
+					try {
+						var lastLine = -1
+						state.lineOffsets.fastForEach { virtualLine ->
+							if (lastLine != virtualLine.line) {
+								val line = state.textLines[virtualLine.line]
+
 								drawText(
 									state.textMeasurer,
 									line,
 									topLeft = virtualLine.offset
 								)
-							} catch (e: IllegalArgumentException) {
-								// TODO obviously have to fix this at some point.
-								// but drawText is throwing an exception when you resize the view
-								// If you catch it then we just move on happily
+
+								lastLine = virtualLine.line
 							}
-
-							lastLine = virtualLine.line
 						}
-					}
 
-					drawSelection(state.textMeasurer, state)
+						drawSelection(state.textMeasurer, state)
 
-					if (state.isFocused && state.isCursorVisible) {
-						drawCursor(state.textMeasurer, state)
+						if (state.isFocused && state.isCursorVisible) {
+							drawCursor(state.textMeasurer, state)
+						}
+					} catch (e: IllegalArgumentException) {
+						// TODO obviously have to fix this at some point.
+						// but drawText is throwing an exception when you resize the view
+						// If you catch it then we just move on happily
 					}
 				}
 			}
