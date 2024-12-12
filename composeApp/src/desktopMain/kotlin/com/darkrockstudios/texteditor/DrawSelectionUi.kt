@@ -29,7 +29,7 @@ internal fun DrawScope.drawSelection(
 			val lineWraps = state.lineOffsets.filter { it.line == lineIndex }
 
 			for (wrap in lineWraps) {
-				val adjustedY = wrap.offset.y - scrollOffset
+				val adjustedY = wrap.offset.y
 
 				// Only process if this wrapped line is visible
 				if (adjustedY + textLayoutResult.size.height >= 0 && adjustedY <= size.height) {
