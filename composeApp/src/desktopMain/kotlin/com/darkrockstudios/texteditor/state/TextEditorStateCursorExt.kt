@@ -81,3 +81,80 @@ internal fun TextEditorState.moveCursorToLineEnd() {
 		updateCursorPosition(cursorPosition.copy(char = textLines[line].length))
 	}
 }
+
+fun TextEditorState.moveToNextWord() {
+	// Get document length
+	val totalChars = textLines.sumOf { it.length + 1 } - 1
+	val currentCharIndex = getCharacterIndex(cursorPosition)
+	if (currentCharIndex >= totalChars) return
+
+	var newPosition = currentCharIndex
+
+	// First skip current word if we're in one
+	while (newPosition < totalChars) {
+		val pos = getOffsetAtCharacter(newPosition)
+		val line = textLines[pos.line]
+
+		if (pos.char < line.length && !isWordChar(line[pos.char])) {
+			break
+		}
+		newPosition++
+	}
+
+	// Then skip non-word characters
+	while (newPosition < totalChars) {
+		val pos = getOffsetAtCharacter(newPosition)
+		val line = textLines[pos.line]
+
+		if (pos.char < line.length && isWordChar(line[pos.char])) {
+			break
+		}
+		newPosition++
+	}
+
+	updateCursorPosition(getOffsetAtCharacter(newPosition))
+}
+
+fun TextEditorState.moveToPreviousWord() {
+	// Get current absolute position
+	val currentCharIndex = getCharacterIndex(cursorPosition)
+	if (currentCharIndex == 0) return
+
+	// Convert to offset for easier text access
+	val currentOffset = cursorPosition
+	val currentLine = textLines[currentOffset.line]
+
+	var newPosition = currentCharIndex
+
+	// Handle if we're in whitespace or at word end
+	if (currentOffset.char == 0 ||
+		(currentOffset.char > 0 && !isWordChar(currentLine[currentOffset.char - 1]))
+	) {
+		// Move back one to get to potential word
+		newPosition--
+	}
+
+	// Keep moving back until we hit the start of a word
+	while (newPosition > 0) {
+		val pos = getOffsetAtCharacter(newPosition)
+		val line = textLines[pos.line]
+
+		// If we're at a word char and either:
+		// 1. We're at the start of the line, or
+		// 2. The previous char is not a word char
+		// Then we've found the start of a word
+		if (pos.char < line.length && isWordChar(line[pos.char]) &&
+			(pos.char == 0 || !isWordChar(line[pos.char - 1]))
+		) {
+			break
+		}
+
+		newPosition--
+	}
+
+	updateCursorPosition(getOffsetAtCharacter(newPosition))
+}
+
+private fun isWordChar(char: Char): Boolean {
+	return char.isLetterOrDigit() || char == '_'
+}
