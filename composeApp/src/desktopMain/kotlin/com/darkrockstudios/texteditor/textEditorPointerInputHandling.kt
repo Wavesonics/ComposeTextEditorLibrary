@@ -4,43 +4,24 @@ import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.unit.Constraints
 import com.darkrockstudios.texteditor.state.TextEditorState
-import kotlin.math.min
 
 internal fun Modifier.textEditorPointerInputHandling(
 	state: TextEditorState,
 ): Modifier {
 	return this.pointerInput(Unit) {
-		detectTapGestures { tapOffset ->
-			state.apply {
-				if (lineOffsets.isEmpty()) return@detectTapGestures
+		detectTapGestures(
+			onTap = { tapOffset ->
+				val position = state.getOffsetAtPosition(tapOffset)
+				state.updateCursorPosition(position)
+				state.selector.clearSelection()
+			},
+			onDoubleTap = { tapOffset ->
+				val position = state.getOffsetAtPosition(tapOffset)
+				state.selectWordAt(position)
+			},
 
-				var curRealLine: LineWrap = lineOffsets[0]
-				// Calculate the clicked line and character within the wrapped text
-				for (lineWrap in lineOffsets) {
-					if (lineWrap.line != curRealLine.line) {
-						curRealLine = lineWrap
-					}
-
-					val textLayoutResult = textMeasurer.measure(
-						textLines[lineWrap.line],
-						constraints = Constraints(maxWidth = size.width)
-					)
-
-					val relativeTapOffset = tapOffset - curRealLine.offset
-					if (tapOffset.y in curRealLine.offset.y..(curRealLine.offset.y + textLayoutResult.size.height)) {
-						val charPos =
-							textLayoutResult.multiParagraph.getOffsetForPosition(relativeTapOffset)
-						cursorPosition =
-							TextOffset(lineWrap.line, min(charPos, textLines[lineWrap.line].length))
-
-						state.selector.clearSelection()
-						break
-					}
-				}
-			}
-		}
+			)
 	}.pointerInput(Unit) {
 		var dragStartPosition: TextOffset? = null
 		detectDragGestures(
@@ -67,4 +48,44 @@ internal fun Modifier.textEditorPointerInputHandling(
 			}
 		)
 	}
+}
+
+private fun TextEditorState.selectWordAt(position: TextOffset) {
+	val (wordStart, wordEnd) = findWordBoundary(position)
+	updateCursorPosition(wordEnd)
+	selector.updateSelection(wordStart, wordEnd)
+}
+
+private fun TextEditorState.findWordBoundary(position: TextOffset): Pair<TextOffset, TextOffset> {
+	val line = textLines[position.line]
+	var startChar = position.char
+	var endChar = position.char
+
+	// If we're at a word boundary or whitespace, try to find the nearest word
+	if (startChar >= line.length || !isWordChar(line[startChar])) {
+		// Look backward for the start of a word
+		startChar = (startChar - 1).coerceAtLeast(0)
+		while (startChar > 0 && !isWordChar(line[startChar])) {
+			startChar--
+		}
+	}
+
+	// Find start of word
+	while (startChar > 0 && isWordChar(line[startChar - 1])) {
+		startChar--
+	}
+
+	// Find end of word
+	while (endChar < line.length && isWordChar(line[endChar])) {
+		endChar++
+	}
+
+	return Pair(
+		TextOffset(position.line, startChar),
+		TextOffset(position.line, endChar)
+	)
+}
+
+private fun isWordChar(char: Char): Boolean {
+	return char.isLetterOrDigit() || char == '_'
 }
