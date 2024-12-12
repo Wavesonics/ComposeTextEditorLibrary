@@ -52,7 +52,6 @@ class TextEditorScrollManager(
 	}
 
 	fun scrollToPosition(offset: TextOffset) {
-		if (scrollState.isScrollInProgress) return
 		if (offset.line >= getLines().size) return
 
 		val offsetY = calculateOffsetYPosition(offset).toInt()
