@@ -81,7 +81,6 @@ fun TextEditor(
 					.fillMaxWidth()
 					.height(state.totalContentHeight.dp)
 					.textEditorPointerInputHandling(state, textMeasurer)
-					.onSizeChanged { size -> state.onCanvasSizeChange(size.toSize()) }
 			) {
 				var lastLine = -1
 				state.lineOffsets.fastForEach { virtualLine ->

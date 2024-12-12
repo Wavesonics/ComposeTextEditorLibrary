@@ -29,7 +29,6 @@ class TextEditorState(
 	var isFocused by mutableStateOf(false)
 	var lineOffsets by mutableStateOf(emptyList<LineWrap>())
 
-	private var canvasSize: Size = Size(1f, 1f)
 	private var viewportSize: Size = Size(1f, 1f)
 
 	val scrollManager = TextEditorScrollManager(
@@ -150,12 +149,6 @@ class TextEditorState(
 		return lineOffsets.last { lineOffset ->
 			lineOffset.line == position.line && lineOffset.wrapStartsAtIndex <= position.char
 		}
-	}
-
-	fun onCanvasSizeChange(size: Size) {
-		canvasSize = size
-		updateBookKeeping()
-		println("onCanvasSizeChange: $size")
 	}
 
 	fun onViewportSizeChange(size: Size) {
