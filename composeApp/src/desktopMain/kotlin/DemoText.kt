@@ -1,3 +1,14 @@
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.sp
+
 const val alice_wounder_land = """
   **Down the Rabbit-Hole**
 
@@ -134,3 +145,90 @@ know how to begin.'  For, you see, so many out-of-the-way things
 had happened lately, that Alice had begun to think that very few
 things indeed were really impossible.
 """
+
+fun createRichTextDemo(): AnnotatedString = buildAnnotatedString {
+	// Title
+	withStyle(SpanStyle(fontSize = 24.sp, color = Color(0xFF1a73e8))) {
+		append("Welcome to Rich Text Formatting\n\n")
+	}
+
+	// First major paragraph
+	append("In the world of digital typography, formatting plays a crucial role in how we perceive and interact with text. ")
+	withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
+		append("The careful application of styles can transform ordinary text into engaging, hierarchical content that guides the reader's eye and emphasizes key information. ")
+	}
+	append("Consider, for instance, how different formatting choices affect readability across long passages of text. When we examine documents that span multiple pages or screens, the importance of consistent and thoughtful styling becomes even more apparent. ")
+	withStyle(SpanStyle(fontStyle = FontStyle.Italic, color = Color(0xFF0F9D58))) {
+		append("The interplay between various typographic elements – from font choices to spacing, from color to weight – creates a visual rhythm that can either enhance or detract from the reading experience.")
+	}
+	append("\n\n")
+
+	// Technical paragraph with monospace
+	withStyle(SpanStyle(fontFamily = FontFamily.Monospace)) {
+		append("When we consider the technical aspects of text rendering, we must account for various factors such as word wrapping, line spacing, and character kerning. These elements work together to ensure optimal readability across different screen sizes and resolutions. The challenge lies in maintaining consistency while adapting to different viewing contexts. ")
+	}
+	append("This becomes particularly evident when we ")
+	withStyle(SpanStyle(textDecoration = TextDecoration.Underline)) {
+		append("examine how text flows across multiple lines and pages, adapting to different container widths and heights while maintaining its fundamental styling attributes")
+	}
+	append(".\n\n")
+
+	// Extended colored section
+	withStyle(SpanStyle(color = Color(0xFF6200EE))) {
+		append("Typography in the digital age presents unique challenges and opportunities. While traditional print media operated within fixed constraints, digital text must remain flexible and adaptable. ")
+		withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
+			append("The way we style and present text can significantly impact how information is absorbed and retained. Consider how different formatting choices affect the reading experience: headlines draw attention, body text provides the core content, and highlighted elements guide the reader through key points. ")
+			withStyle(SpanStyle(fontStyle = FontStyle.Italic)) {
+				append("The interplay between these elements creates a visual hierarchy that helps readers navigate through complex information structures.")
+			}
+		}
+		append(" This dynamic relationship between content and presentation forms the foundation of modern digital typography.")
+	}
+	append("\n\n")
+
+	// Large block of mixed text
+	append("In examining the history of typography, we find that many principles remain relevant even as technology evolves. ")
+	withStyle(SpanStyle(color = Color(0xFFF4B400))) {
+		append("The fundamental goals of clarity, readability, and visual appeal continue to guide design decisions in both print and digital media. Modern tools and technologies have expanded our capabilities, allowing for more sophisticated formatting options and dynamic adjustments based on viewing context. ")
+	}
+	withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
+		append("Yet the core principles of good typography remain constant: text should be easy to read, visually pleasing, and structured in a way that supports the content's message and purpose.")
+	}
+	append("\n\n")
+
+	// Technical considerations
+	append("When implementing text rendering systems, developers must consider numerous factors: character encoding, font rendering, line breaking algorithms, and support for various writing systems. ")
+	withStyle(SpanStyle(fontFamily = FontFamily.Monospace)) {
+		append("Each of these components plays a crucial role in ensuring text displays correctly across different platforms and devices. The complexity increases when dealing with rich text formatting, where multiple styles can be applied to different portions of the text, sometimes overlapping or nested within each other.")
+	}
+	append("\n\n")
+
+	// Large styled paragraph
+	withStyle(SpanStyle(letterSpacing = 0.5.sp)) {
+		append("The impact of good typography extends beyond mere aesthetics. Studies have shown that well-formatted text can significantly improve reading comprehension and retention. When text is properly formatted, readers can more easily scan content, identify key points, and maintain focus over longer periods. This becomes particularly important in educational materials, technical documentation, and long-form content where reader engagement is crucial. The careful application of styling can help break up dense information into more manageable chunks, use emphasis to highlight important concepts, and create visual patterns that aid in navigation and comprehension.")
+	}
+	append("\n\n")
+
+	// Conclusion with mixed styles
+	append("As we continue to evolve in the digital age, ")
+	withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = Color(0xFF1a73e8))) {
+		append("the importance of thoughtful text formatting cannot be overstated. ")
+	}
+	append("From simple documents to complex applications, the way we style and present text plays a crucial role in communication effectiveness. ")
+	withStyle(SpanStyle(fontStyle = FontStyle.Italic)) {
+		append("The challenge lies in balancing aesthetic appeal with functional requirements, ensuring that our text remains both beautiful and usable across all contexts.")
+	}
+
+	// Final styled statement
+	withStyle(
+		SpanStyle(
+			fontWeight = FontWeight.Bold,
+			fontSize = 18.sp,
+			color = Color(0xFF1a73e8),
+			letterSpacing = 2.sp,
+			textDecoration = TextDecoration.Underline
+		)
+	) {
+		append("\n\nThank you for exploring this demonstration of rich text formatting!")
+	}
+}

@@ -9,22 +9,26 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.Constraints
 import com.darkrockstudios.texteditor.CharLineOffset
 import com.darkrockstudios.texteditor.LineWrap
 import com.darkrockstudios.texteditor.TextRange
+import com.darkrockstudios.texteditor.annotatedstring.splitToAnnotatedString
+import com.darkrockstudios.texteditor.annotatedstring.subSequence
+import com.darkrockstudios.texteditor.annotatedstring.toAnnotatedString
 import kotlinx.coroutines.CoroutineScope
 import kotlin.math.min
 
 class TextEditorState(
-	private val scope: CoroutineScope,
+	scope: CoroutineScope,
 	internal val textMeasurer: TextMeasurer,
 ) {
 	private var _version by mutableStateOf(0)
-	private val _textLines = mutableListOf<String>("")
-	val textLines: List<String> get() = _textLines
+	private val _textLines = mutableListOf<AnnotatedString>()
+	val textLines: List<AnnotatedString> get() = _textLines
 
 	var cursorPosition by mutableStateOf(CharLineOffset(0, 0))
 	var isCursorVisible by mutableStateOf(true)
@@ -53,7 +57,14 @@ class TextEditorState(
 
 	fun setInitialText(text: String) {
 		_textLines.clear()
-		_textLines.addAll(text.split("\n"))
+		_textLines.addAll(text.split("\n").map { it.toAnnotatedString() })
+		updateBookKeeping()
+		notifyContentChanged()
+	}
+
+	fun setInitialText(text: AnnotatedString) {
+		_textLines.clear()
+		_textLines.addAll(text.splitToAnnotatedString())
 		updateBookKeeping()
 		notifyContentChanged()
 	}
@@ -77,8 +88,8 @@ class TextEditorState(
 
 	fun insertNewlineAtCursor() {
 		val (line, charIndex) = cursorPosition
-		val newLine = _textLines[line].substring(charIndex)
-		_textLines[line] = _textLines[line].substring(0, charIndex)
+		val newLine = _textLines[line].subSequence(charIndex)
+		_textLines[line] = _textLines[line].subSequence(0, charIndex)
 		_textLines.add(line + 1, newLine)
 		updateBookKeeping()
 		notifyContentChanged()
@@ -89,7 +100,9 @@ class TextEditorState(
 		val (line, charIndex) = cursorPosition
 		if (charIndex > 0) {
 			_textLines[line] =
-				_textLines[line].substring(0, charIndex - 1) + _textLines[line].substring(charIndex)
+				_textLines[line].subSequence(0, charIndex - 1) + _textLines[line].subSequence(
+					charIndex
+				)
 			updateBookKeeping()
 			notifyContentChanged()
 			updateCursorPosition(CharLineOffset(line, charIndex - 1))
@@ -107,7 +120,10 @@ class TextEditorState(
 		val (line, charIndex) = cursorPosition
 		if (charIndex < _textLines[line].length) {
 			_textLines[line] =
-				_textLines[line].substring(0, charIndex) + _textLines[line].substring(charIndex + 1)
+				_textLines[line].subSequence(
+					0,
+					charIndex
+				) + _textLines[line].subSequence(charIndex + 1)
 			updateBookKeeping()
 			notifyContentChanged()
 		} else if (line < _textLines.size - 1) {
@@ -121,34 +137,42 @@ class TextEditorState(
 	fun insertCharacterAtCursor(char: Char) {
 		val (line, charIndex) = cursorPosition
 		_textLines[line] =
-			_textLines[line].substring(0, charIndex) + char + _textLines[line].substring(charIndex)
-		updateBookKeeping()
-		notifyContentChanged()
-		updateCursorPosition(CharLineOffset(line, charIndex + 1))
-	}
-
-	fun insertStringAtCursor(string: String) {
-		val (line, charIndex) = cursorPosition
-		_textLines[line] =
-			_textLines[line].substring(
+			_textLines[line].subSequence(
 				0,
 				charIndex
-			) + string + _textLines[line].substring(charIndex)
+			) + AnnotatedString("$char") + _textLines[line].subSequence(
+				startIndex = charIndex
+			)
 		updateBookKeeping()
 		notifyContentChanged()
 		updateCursorPosition(CharLineOffset(line, charIndex + 1))
 	}
 
-	fun replace(range: TextRange, newText: String) {
+	fun insertStringAtCursor(string: String) = insertStringAtCursor(string.toAnnotatedString())
+	fun insertStringAtCursor(string: AnnotatedString) {
+		val (line, charIndex) = cursorPosition
+		val thisLine = _textLines[line]
+		_textLines[line] =
+			thisLine.subSequence(
+				0,
+				charIndex
+			) + string + thisLine.subSequence(startIndex = charIndex, endIndex = thisLine.length)
+		updateBookKeeping()
+		notifyContentChanged()
+		updateCursorPosition(CharLineOffset(line, charIndex + 1))
+	}
+
+	fun replace(range: TextRange, newText: String) = replace(range, newText.toAnnotatedString())
+	fun replace(range: TextRange, newText: AnnotatedString) {
 		val newLines = newText.split('\n')
 
 		when {
 			// Single line replacement
 			range.isSingleLine() -> {
 				val line = _textLines[range.start.line]
-				_textLines[range.start.line] = line.substring(0, range.start.char) +
+				_textLines[range.start.line] = line.subSequence(0, range.start.char) +
 						newText +
-						line.substring(range.end.char)
+						line.subSequence(range.end.char)
 				updateBookKeeping()
 				notifyContentChanged()
 
@@ -227,7 +251,10 @@ class TextEditorState(
 		}
 	}
 
-	internal fun replaceLine(index: Int, text: String) {
+	internal fun replaceLine(index: Int, text: String) =
+		replaceLine(index, text.toAnnotatedString())
+
+	internal fun replaceLine(index: Int, text: AnnotatedString) {
 		_textLines[index] = text
 		updateBookKeeping()
 	}
@@ -239,7 +266,8 @@ class TextEditorState(
 		updateBookKeeping()
 	}
 
-	internal fun insertLine(index: Int, text: String) {
+	internal fun insertLine(index: Int, text: String) = insertLine(index, text.toAnnotatedString())
+	internal fun insertLine(index: Int, text: AnnotatedString) {
 		_textLines.add(index, text)
 		updateBookKeeping()
 	}

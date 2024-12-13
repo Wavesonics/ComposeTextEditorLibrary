@@ -5,6 +5,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.text.AnnotatedString
 import com.darkrockstudios.texteditor.CharLineOffset
 import com.darkrockstudios.texteditor.LineWrap
 import kotlinx.coroutines.CoroutineScope
@@ -12,7 +13,7 @@ import kotlinx.coroutines.launch
 
 class TextEditorScrollManager(
 	private val scope: CoroutineScope,
-	private val getLines: () -> List<String>,
+	private val getLines: () -> List<AnnotatedString>,
 	private val getLineOffsets: () -> List<LineWrap>,
 	private val getViewportSize: () -> Size,
 	private val getCursorPosition: () -> CharLineOffset,

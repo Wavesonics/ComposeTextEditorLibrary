@@ -21,7 +21,8 @@ fun App() {
         val state: TextEditorState = rememberTextEditorState()
         LaunchedEffect(Unit) {
             //val text = "test ssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss\nxxxxxxxxxxxxxxxxxx\nHello cat\n".repeat(5)
-            state.setInitialText(alice_wounder_land)
+            //state.setInitialText(alice_wounder_land)
+            state.setInitialText(createRichTextDemo())
 
             state.selector.updateSelection(CharLineOffset(0, 10), CharLineOffset(0, 20))
         }
