@@ -11,6 +11,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextMeasurer
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.Constraints
 import com.darkrockstudios.texteditor.CharLineOffset
@@ -136,30 +137,34 @@ class TextEditorState(
 
 	fun insertCharacterAtCursor(char: Char) {
 		val (line, charIndex) = cursorPosition
-		_textLines[line] =
-			_textLines[line].subSequence(
-				0,
-				charIndex
-			) + AnnotatedString("$char") + _textLines[line].subSequence(
-				startIndex = charIndex
-			)
+		val currentLine = textLines[line]
+
+		// Create new AnnotatedString for the single character
+		val charString = AnnotatedString(char.toString())
+
+		// Merge the new character with existing styles
+		val newLine = mergeSpanStylesForInsertion(currentLine, charIndex, charString)
+
+		// Update the line
+		_textLines[line] = newLine
 		updateBookKeeping()
 		notifyContentChanged()
 		updateCursorPosition(CharLineOffset(line, charIndex + 1))
 	}
 
 	fun insertStringAtCursor(string: String) = insertStringAtCursor(string.toAnnotatedString())
-	fun insertStringAtCursor(string: AnnotatedString) {
+	fun insertStringAtCursor(text: AnnotatedString) {
 		val (line, charIndex) = cursorPosition
-		val thisLine = _textLines[line]
-		_textLines[line] =
-			thisLine.subSequence(
-				0,
-				charIndex
-			) + string + thisLine.subSequence(startIndex = charIndex, endIndex = thisLine.length)
+		val currentLine = textLines[line]
+
+		// Merge the new text with existing styles
+		val newLine = mergeSpanStylesForInsertion(currentLine, charIndex, text)
+
+		// Update the line
+		_textLines[line] = newLine
 		updateBookKeeping()
 		notifyContentChanged()
-		updateCursorPosition(CharLineOffset(line, charIndex + 1))
+		updateCursorPosition(CharLineOffset(line, charIndex + text.length))
 	}
 
 	fun replace(range: TextRange, newText: String) = replace(range, newText.toAnnotatedString())
@@ -347,6 +352,78 @@ class TextEditorState(
 		totalChars += offset.char
 
 		return totalChars
+	}
+
+	private fun mergeSpanStylesForInsertion(
+		original: AnnotatedString,
+		insertionIndex: Int,
+		newText: AnnotatedString
+	): AnnotatedString = buildAnnotatedString {
+		// First, append all text
+		append(original.subSequence(0, insertionIndex))
+		append(newText)
+		append(original.subSequence(insertionIndex))
+
+		// Get spans that end at our insertion point
+		val spansEndingAtInsertion = original.spanStyles.filter {
+			it.start < insertionIndex && it.end == insertionIndex
+		}
+
+		// Get spans that start at our insertion point
+		val spansStartingAtInsertion = original.spanStyles.filter {
+			it.start == insertionIndex
+		}
+
+		// Handle existing spans before insertion point
+		original.spanStyles.forEach { span ->
+			when {
+				// Span ends before insertion - keep as is
+				span.end <= insertionIndex -> {
+					addStyle(span.item, span.start, span.end)
+				}
+
+				// Span starts after insertion - shift by inserted length
+				span.start >= insertionIndex -> {
+					addStyle(
+						span.item,
+						span.start + newText.length,
+						span.end + newText.length
+					)
+				}
+
+				// Span crosses insertion point - extend to cover new text
+				span.start < insertionIndex && span.end > insertionIndex -> {
+					addStyle(
+						span.item,
+						span.start,
+						span.end + newText.length
+					)
+				}
+			}
+		}
+
+		// If we have spans ending at insertion and starting at insertion with the same style,
+		// merge them to include the new text
+		spansEndingAtInsertion.forEach { endingSpan ->
+			spansStartingAtInsertion.forEach { startingSpan ->
+				if (endingSpan.item == startingSpan.item) {
+					addStyle(
+						endingSpan.item,
+						endingSpan.start,
+						startingSpan.end + newText.length
+					)
+				}
+			}
+		}
+
+		// Add any spans from the new text, shifted by insertion position
+		newText.spanStyles.forEach { span ->
+			addStyle(
+				span.item,
+				span.start + insertionIndex,
+				span.end + insertionIndex
+			)
+		}
 	}
 
 
