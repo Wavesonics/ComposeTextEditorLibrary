@@ -60,9 +60,18 @@ internal fun Modifier.textEditorKeyboardInputHandler(
 						} else {
 							state.insertStringAtCursor(text)
 						}
-						state.moveCursorRight(text.length)
 					}
 					state.selector.clearSelection()
+					true
+				}
+
+				keyEvent.isCtrlPressed && keyEvent.key == Key.Z -> {
+					state.undo()
+					true
+				}
+
+				keyEvent.isCtrlPressed && keyEvent.key == Key.Y -> {
+					state.redo()
 					true
 				}
 
@@ -184,6 +193,7 @@ internal fun Modifier.textEditorKeyboardInputHandler(
 							state.selector.deleteSelection()
 						}
 						state.insertCharacterAtCursor(char)
+						state.selector.clearSelection()
 						true
 					} else {
 						false
@@ -231,16 +241,20 @@ private fun updateSelectionForCursorMovement(
 		// Extend/modify existing selection
 		else -> {
 			// If we were at the start of the selection, keep the end fixed
-			if (initialPosition == currentSelection.start) {
-				state.selector.updateSelection(state.cursorPosition, currentSelection.end)
-			}
-			// If we were at the end of the selection, keep the start fixed
-			else if (initialPosition == currentSelection.end) {
-				state.selector.updateSelection(currentSelection.start, state.cursorPosition)
-			}
-			// If cursor was outside selection, create new selection
-			else {
-				state.selector.updateSelection(initialPosition, state.cursorPosition)
+			when (initialPosition) {
+				currentSelection.start -> {
+					state.selector.updateSelection(state.cursorPosition, currentSelection.end)
+				}
+
+				// If we were at the end of the selection, keep the start fixed
+				currentSelection.end -> {
+					state.selector.updateSelection(currentSelection.start, state.cursorPosition)
+				}
+
+				// If cursor was outside selection, create new selection
+				else -> {
+					state.selector.updateSelection(initialPosition, state.cursorPosition)
+				}
 			}
 		}
 	}

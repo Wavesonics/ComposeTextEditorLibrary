@@ -20,6 +20,8 @@ import com.darkrockstudios.texteditor.TextRange
 import com.darkrockstudios.texteditor.annotatedstring.splitToAnnotatedString
 import com.darkrockstudios.texteditor.annotatedstring.subSequence
 import com.darkrockstudios.texteditor.annotatedstring.toAnnotatedString
+import com.darkrockstudios.texteditor.richstyle.RichSpan
+import com.darkrockstudios.texteditor.richstyle.RichSpanStyle
 import kotlinx.coroutines.CoroutineScope
 import kotlin.math.min
 
@@ -28,7 +30,7 @@ class TextEditorState(
 	internal val textMeasurer: TextMeasurer,
 ) {
 	private var _version by mutableStateOf(0)
-	private val _textLines = mutableListOf<AnnotatedString>()
+	internal val _textLines = mutableListOf<AnnotatedString>()
 	val textLines: List<AnnotatedString> get() = _textLines
 
 	var cursorPosition by mutableStateOf(CharLineOffset(0, 0))
@@ -48,11 +50,14 @@ class TextEditorState(
 	)
 
 	val selector = TextEditorSelectionManager(this)
+	private val editManager = TextEditManager(this)
+	val richSpanManager = RichSpanManager(this)
 
 	val scrollState get() = scrollManager.scrollState
 	val totalContentHeight get() = scrollManager.totalContentHeight
 
-	internal fun notifyContentChanged() {
+	internal fun notifyContentChanged(operation: TextEditOperation? = null) {
+		operation?.let { richSpanManager.updateSpans(it) }
 		_version++
 	}
 
@@ -88,69 +93,93 @@ class TextEditorState(
 	}
 
 	fun insertNewlineAtCursor() {
-		val (line, charIndex) = cursorPosition
-		val newLine = _textLines[line].subSequence(charIndex)
-		_textLines[line] = _textLines[line].subSequence(0, charIndex)
-		_textLines.add(line + 1, newLine)
-		updateBookKeeping()
-		notifyContentChanged()
-		updateCursorPosition(CharLineOffset(line + 1, 0))
+		val operation = TextEditOperation.Insert(
+			position = cursorPosition,
+			text = AnnotatedString("\n"),
+			cursorBefore = cursorPosition,
+			cursorAfter = CharLineOffset(cursorPosition.line + 1, 0)
+		)
+		editManager.applyOperation(operation)
 	}
 
+
 	fun backspaceAtCursor() {
-		val (line, charIndex) = cursorPosition
-		if (charIndex > 0) {
-			_textLines[line] =
-				_textLines[line].subSequence(0, charIndex - 1) + _textLines[line].subSequence(
-					charIndex
-				)
-			updateBookKeeping()
-			notifyContentChanged()
-			updateCursorPosition(CharLineOffset(line, charIndex - 1))
-		} else if (line > 0) {
-			val previousLineLength = _textLines[line - 1].length
-			_textLines[line - 1] += _textLines[line]
-			_textLines.removeAt(line)
-			updateBookKeeping()
-			notifyContentChanged()
-			updateCursorPosition(CharLineOffset(line - 1, previousLineLength))
+		if (cursorPosition.char > 0) {
+			val deleteRange = TextRange(
+				CharLineOffset(cursorPosition.line, cursorPosition.char - 1),
+				cursorPosition
+			)
+			val deletedText = textLines[cursorPosition.line]
+				.subSequence(deleteRange.start.char, deleteRange.end.char)
+
+			val operation = TextEditOperation.Delete(
+				range = deleteRange,
+				deletedText = deletedText,
+				cursorBefore = cursorPosition,
+				cursorAfter = CharLineOffset(cursorPosition.line, cursorPosition.char - 1)
+			)
+			editManager.applyOperation(operation)
+		} else if (cursorPosition.line > 0) {
+			val previousLineLength = textLines[cursorPosition.line - 1].length
+			val deleteRange = TextRange(
+				CharLineOffset(cursorPosition.line - 1, previousLineLength),
+				cursorPosition
+			)
+			val deletedText = AnnotatedString("\n")
+
+			val operation = TextEditOperation.Delete(
+				range = deleteRange,
+				deletedText = deletedText,
+				cursorBefore = cursorPosition,
+				cursorAfter = CharLineOffset(cursorPosition.line - 1, previousLineLength)
+			)
+			editManager.applyOperation(operation)
 		}
 	}
 
 	fun deleteAtCursor() {
-		val (line, charIndex) = cursorPosition
-		if (charIndex < _textLines[line].length) {
-			_textLines[line] =
-				_textLines[line].subSequence(
-					0,
-					charIndex
-				) + _textLines[line].subSequence(charIndex + 1)
-			updateBookKeeping()
-			notifyContentChanged()
-		} else if (line < _textLines.size - 1) {
-			_textLines[line] += _textLines[line + 1]
-			_textLines.removeAt(line + 1)
-			updateBookKeeping()
-			notifyContentChanged()
+		if (cursorPosition.char < textLines[cursorPosition.line].length) {
+			val deleteRange = TextRange(
+				cursorPosition,
+				CharLineOffset(cursorPosition.line, cursorPosition.char + 1)
+			)
+			val deletedText = textLines[cursorPosition.line]
+				.subSequence(deleteRange.start.char, deleteRange.end.char)
+
+			val operation = TextEditOperation.Delete(
+				range = deleteRange,
+				deletedText = deletedText,
+				cursorBefore = cursorPosition,
+				cursorAfter = cursorPosition
+			)
+			editManager.applyOperation(operation)
+		} else if (cursorPosition.line < textLines.size - 1) {
+			val deleteRange = TextRange(
+				cursorPosition,
+				CharLineOffset(cursorPosition.line + 1, 0)
+			)
+			val deletedText = AnnotatedString("\n")
+
+			val operation = TextEditOperation.Delete(
+				range = deleteRange,
+				deletedText = deletedText,
+				cursorBefore = cursorPosition,
+				cursorAfter = cursorPosition
+			)
+			editManager.applyOperation(operation)
 		}
 	}
 
 	fun insertCharacterAtCursor(char: Char) {
-		val (line, charIndex) = cursorPosition
-		val currentLine = textLines[line]
-
-		// Create new AnnotatedString for the single character
-		val charString = AnnotatedString(char.toString())
-
-		// Merge the new character with existing styles
-		val newLine = mergeSpanStylesForInsertion(currentLine, charIndex, charString)
-
-		// Update the line
-		_textLines[line] = newLine
-		updateBookKeeping()
-		notifyContentChanged()
-		updateCursorPosition(CharLineOffset(line, charIndex + 1))
+		val operation = TextEditOperation.Insert(
+			position = cursorPosition,
+			text = AnnotatedString(char.toString()),
+			cursorBefore = cursorPosition,
+			cursorAfter = CharLineOffset(cursorPosition.line, cursorPosition.char + 1)
+		)
+		editManager.applyOperation(operation)
 	}
+
 
 	fun insertStringAtCursor(string: String) = insertStringAtCursor(string.toAnnotatedString())
 	fun insertStringAtCursor(text: AnnotatedString) {
@@ -169,91 +198,76 @@ class TextEditorState(
 
 	fun replace(range: TextRange, newText: String) = replace(range, newText.toAnnotatedString())
 	fun replace(range: TextRange, newText: AnnotatedString) {
-		val newLines = newText.split('\n')
+		val oldText = buildAnnotatedString {
+			if (range.start.line == range.end.line) {
+				// Single line replacement - preserve spans from the replaced section
+				val line = textLines[range.start.line]
+				val replacedSection = line.subSequence(range.start.char, range.end.char)
+				append(replacedSection)
 
-		when {
-			// Single line replacement
-			range.isSingleLine() -> {
-				val line = _textLines[range.start.line]
-				_textLines[range.start.line] = line.subSequence(0, range.start.char) +
-						newText +
-						line.subSequence(range.end.char)
-				updateBookKeeping()
-				notifyContentChanged()
+				// Copy all span styles from the replaced section
+				replacedSection.spanStyles.forEach { span ->
+					addStyle(span.item, span.start - range.start.char, span.end - range.start.char)
+				}
+			} else {
+				// Multi-line replacement
+				// First line - preserve spans
+				val firstLine = textLines[range.start.line]
+				val firstSection = firstLine.subSequence(range.start.char)
+				append(firstSection)
+				firstSection.spanStyles.forEach { span ->
+					addStyle(span.item, span.start - range.start.char, span.end - range.start.char)
+				}
+				append("\n")
 
-				// Calculate new cursor position
-				when {
-					newLines.size > 1 -> {
-						// Multi-line replacement text
-						val lastLine = range.start.line + newLines.size - 1
-						updateCursorPosition(CharLineOffset(lastLine, newLines.last().length))
-					}
-
-					else -> {
-						// Single line replacement text
-						updateCursorPosition(
-							CharLineOffset(
-								range.start.line,
-								range.start.char + newText.length
-							)
+				// Middle lines - preserve spans
+				for (line in (range.start.line + 1) until range.end.line) {
+					val fullLine = textLines[line]
+					append(fullLine)
+					// Adjust span positions for the accumulated text
+					val lineStartOffset = length - fullLine.length
+					fullLine.spanStyles.forEach { span ->
+						addStyle(
+							span.item,
+							span.start + lineStartOffset,
+							span.end + lineStartOffset
 						)
 					}
-				}
-			}
-
-			// Multi-line replacement
-			else -> {
-				// Handle first line
-				val firstLine = _textLines[range.start.line]
-				val startText = firstLine.substring(0, range.start.char)
-
-				// Handle last line
-				val lastLine = _textLines[range.end.line]
-				val endText = lastLine.substring(range.end.char)
-
-				// Remove all lines in the range
-				removeLines(range.start.line, range.end.line - range.start.line + 1)
-
-				when (newLines.size) {
-					0 -> {
-						// Empty replacement
-						insertLine(range.start.line, startText + endText)
-						updateCursorPosition(CharLineOffset(range.start.line, startText.length))
-					}
-
-					1 -> {
-						// Single line replacement
-						insertLine(range.start.line, startText + newLines[0] + endText)
-						updateCursorPosition(
-							CharLineOffset(
-								range.start.line,
-								startText.length + newLines[0].length
-							)
-						)
-					}
-
-					else -> {
-						// Multi-line replacement
-						// First line
-						insertLine(range.start.line, startText + newLines[0])
-
-						// Middle lines
-						for (i in 1 until newLines.size - 1) {
-							insertLine(range.start.line + i, newLines[i])
-						}
-
-						// Last line
-						val lastIndex = range.start.line + newLines.size - 1
-						insertLine(lastIndex, newLines.last() + endText)
-
-						updateCursorPosition(CharLineOffset(lastIndex, newLines.last().length))
-					}
+					append("\n")
 				}
 
-				updateBookKeeping()
-				notifyContentChanged()
+				// Last line - preserve spans
+				val lastLine = textLines[range.end.line]
+				val lastSection = lastLine.subSequence(0, range.end.char)
+				val lastLineOffset = length
+				append(lastSection)
+				lastSection.spanStyles.forEach { span ->
+					addStyle(span.item, span.start + lastLineOffset, span.end + lastLineOffset)
+				}
 			}
 		}
+
+		val operation = TextEditOperation.Replace(
+			range = range,
+			newText = newText,
+			oldText = oldText,
+			cursorBefore = cursorPosition,
+			cursorAfter = when {
+				newText.contains('\n') -> {
+					val lines = newText.split('\n')
+					CharLineOffset(
+						range.start.line + lines.size - 1,
+						lines.last().length
+					)
+				}
+
+				else -> CharLineOffset(
+					range.start.line,
+					range.start.char + newText.length
+				)
+			}
+		)
+		editManager.applyOperation(operation)
 	}
 
 	internal fun replaceLine(index: Int, text: String) =
@@ -275,6 +289,14 @@ class TextEditorState(
 	internal fun insertLine(index: Int, text: AnnotatedString) {
 		_textLines.add(index, text)
 		updateBookKeeping()
+	}
+
+	fun undo() {
+		editManager.undo()
+	}
+
+	fun redo() {
+		editManager.redo()
 	}
 
 	// Helper functions for cursor movement
@@ -354,6 +376,30 @@ class TextEditorState(
 		return totalChars
 	}
 
+	fun CharLineOffset.toCharacterIndex(): Int {
+		var totalChars = 0
+		for (lineIndex in 0 until line) {
+			totalChars += textLines[lineIndex].length + 1  // +1 for newline
+		}
+		return totalChars + char
+	}
+
+	// Convert character index to CharLineOffset
+	fun Int.toCharLineOffset(): CharLineOffset {
+		var remainingChars = this
+		for (lineIndex in textLines.indices) {
+			val lineLength = textLines[lineIndex].length + 1  // +1 for newline
+			if (remainingChars < lineLength) {
+				return CharLineOffset(lineIndex, remainingChars)
+			}
+			remainingChars -= lineLength
+		}
+		return CharLineOffset(
+			textLines.lastIndex,
+			textLines.last().length
+		)
+	}
+
 	private fun mergeSpanStylesForInsertion(
 		original: AnnotatedString,
 		insertionIndex: Int,
@@ -426,10 +472,9 @@ class TextEditorState(
 		}
 	}
 
-
-	private fun updateBookKeeping() {
+	internal fun updateBookKeeping() {
 		val offsets = mutableListOf<LineWrap>()
-		var yOffset = 0f  // Track absolute Y position from top of entire content
+		var yOffset = 0f
 
 		textLines.forEachIndexed { lineIndex, line ->
 			val textLayoutResult = textMeasurer.measure(
@@ -441,7 +486,6 @@ class TextEditorState(
 				)
 			)
 
-			// Process each virtual line (word wrap creates multiple virtual lines)
 			for (virtualLineIndex in 0 until textLayoutResult.multiParagraph.lineCount) {
 				val lineWrapsAt = if (virtualLineIndex == 0) {
 					0
@@ -449,14 +493,23 @@ class TextEditorState(
 					textLayoutResult.getLineEnd(virtualLineIndex - 1, visibleEnd = true) + 1
 				}
 
-				offsets.add(
-					LineWrap(
-						line = lineIndex,
-						wrapStartsAtIndex = lineWrapsAt,
-						offset = Offset(0f, yOffset),
-						textLayoutResult = textLayoutResult
-					)
+				// Calculate rich spans for this line wrap
+				val lineWrap = LineWrap(
+					line = lineIndex,
+					wrapStartsAtIndex = lineWrapsAt,
+					offset = Offset(0f, yOffset),
+					textLayoutResult = textLayoutResult
 				)
+
+				val enhancedWrap = LineWrap(
+					line = lineIndex,
+					wrapStartsAtIndex = lineWrapsAt,
+					offset = Offset(0f, yOffset),
+					textLayoutResult = textLayoutResult,
+					richSpans = richSpanManager.getSpansForLineWrap(lineWrap)
+				)
+
+				offsets.add(enhancedWrap)
 
 				yOffset += textLayoutResult.multiParagraph.getLineHeight(virtualLineIndex)
 			}
@@ -464,6 +517,16 @@ class TextEditorState(
 
 		lineOffsets = offsets
 		scrollManager.updateContentHeight(yOffset.toInt())
+	}
+
+	fun addRichSpan(start: Int, end: Int, style: RichSpanStyle) {
+		richSpanManager.addSpan(start.toCharLineOffset(), end.toCharLineOffset(), style)
+		updateBookKeeping()
+	}
+
+	fun removeRichSpan(span: RichSpan) {
+		richSpanManager.removeSpan(span)
+		updateBookKeeping()
 	}
 }
 

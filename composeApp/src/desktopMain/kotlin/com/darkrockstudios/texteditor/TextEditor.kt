@@ -97,6 +97,7 @@ fun TextEditor(
 
 								lastLine = virtualLine.line
 							}
+							drawRichSpans(virtualLine)
 						}
 
 						drawSelection(state)
