@@ -99,7 +99,7 @@ fun TextEditor(
 							}
 						}
 
-						drawSelection(state.textMeasurer, state)
+						drawSelection(state)
 
 						if (state.isFocused && state.isCursorVisible) {
 							drawCursor(state.textMeasurer, state)

@@ -377,6 +377,7 @@ class TextEditorState(
 						line = lineIndex,
 						wrapStartsAtIndex = lineWrapsAt,
 						offset = Offset(0f, yOffset),
+						textLayoutResult = textLayoutResult
 					)
 				)
 

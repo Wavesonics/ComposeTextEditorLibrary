@@ -4,76 +4,69 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.text.TextMeasurer
-import androidx.compose.ui.unit.Constraints
 import com.darkrockstudios.texteditor.state.TextEditorState
 
 internal fun DrawScope.drawSelection(
-	textMeasurer: TextMeasurer,
 	state: TextEditorState,
 ) {
 	state.selector.selection?.let { selection ->
-		for (lineIndex in state.textLines.indices) {
-			val line = state.textLines[lineIndex]
-			val textLayoutResult = textMeasurer.measure(
-				line,
-				constraints = Constraints(
-					maxWidth = maxOf(1, size.width.toInt()),
-					minHeight = 0,
-					maxHeight = Constraints.Infinity
-				)
-			)
+		// Get only the wrapped lines within the selection range
+		val relevantLines = state.lineOffsets.filter { wrap ->
+			wrap.line in selection.start.line..selection.end.line
+		}
 
-			// Find the wrapped lines for this actual line
-			val lineWraps = state.lineOffsets.filter { it.line == lineIndex }
+		relevantLines.forEach { wrap ->
+			val multiParagraph = wrap.textLayoutResult.multiParagraph
+			val virtualLineIndex = multiParagraph.getLineForOffset(wrap.wrapStartsAtIndex)
 
-			for (wrap in lineWraps) {
-				val adjustedY = wrap.offset.y
+			// Get the actual start and end positions for this virtual line
+			val lineStart = multiParagraph.getLineStart(virtualLineIndex)
+			val lineEnd = multiParagraph.getLineEnd(virtualLineIndex, visibleEnd = true)
 
-				// Only process if this wrapped line is visible
-				if (adjustedY + textLayoutResult.size.height >= 0 && adjustedY <= size.height) {
-					// Calculate selection bounds for this wrapped line
-					val nextWrapStartIndex = lineWraps
-						.firstOrNull { it.wrapStartsAtIndex > wrap.wrapStartsAtIndex }
-						?.wrapStartsAtIndex
-						?: line.length
-
-					val selectionStart = when {
-						lineIndex < selection.start.line -> null
-						lineIndex > selection.end.line -> null
-						lineIndex == selection.start.line &&
-								selection.start.char > nextWrapStartIndex -> null
-						lineIndex == selection.start.line ->
-							maxOf(selection.start.char, wrap.wrapStartsAtIndex)
-						else -> wrap.wrapStartsAtIndex
-					}
-
-					val selectionEnd = when {
-						lineIndex < selection.start.line -> null
-						lineIndex > selection.end.line -> null
-						lineIndex == selection.end.line &&
-								selection.end.char <= wrap.wrapStartsAtIndex -> null
-						lineIndex == selection.end.line ->
-							minOf(selection.end.char, nextWrapStartIndex)
-						else -> nextWrapStartIndex
-					}
-
-					// Draw selection highlight if we have valid bounds
-					if (selectionStart != null && selectionEnd != null && selectionEnd > selectionStart) {
-						val startX = textLayoutResult.multiParagraph.getHorizontalPosition(selectionStart, true)
-						val endX = textLayoutResult.multiParagraph.getHorizontalPosition(selectionEnd, true)
-						val lineHeight = textLayoutResult.multiParagraph.getLineHeight(0)
-
-						drawRect(
-							color = Color(0x400000FF),
-							topLeft = Offset(startX, adjustedY),
-							size = Size(
-								width = endX - startX,
-								height = lineHeight
-							)
+			val (selectionStart, selectionEnd) = when (wrap.line) {
+				selection.start.line -> {
+					if (selection.start.char > lineEnd) {
+						null to null
+					} else {
+						val start = maxOf(lineStart, selection.start.char)
+						val end = minOf(
+							lineEnd,
+							if (wrap.line == selection.end.line) selection.end.char else lineEnd
 						)
+						start to end
 					}
 				}
+
+				selection.end.line -> {
+					if (selection.end.char <= lineStart) {
+						null to null
+					} else {
+						val start = maxOf(lineStart, wrap.wrapStartsAtIndex)
+						val end = minOf(lineEnd, selection.end.char)
+						start to end
+					}
+				}
+
+				else -> {
+					// For lines in between start and end, select the entire virtual line
+					lineStart to lineEnd
+				}
+			}
+
+			// Draw the selection if we have valid bounds
+			if (selectionStart != null && selectionEnd != null && selectionEnd > selectionStart) {
+				val startX = multiParagraph.getHorizontalPosition(selectionStart, true)
+				val endX = multiParagraph.getHorizontalPosition(selectionEnd, true)
+				val lineHeight = multiParagraph.getLineHeight(virtualLineIndex)
+
+				drawRect(
+					color = Color(0x400000FF),
+					topLeft = Offset(startX, wrap.offset.y),
+					size = Size(
+						width = endX - startX,
+						height = lineHeight
+					)
+				)
 			}
 		}
 	}
