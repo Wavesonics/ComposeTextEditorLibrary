@@ -183,90 +183,56 @@ class TextEditorState(
 
 	fun insertStringAtCursor(string: String) = insertStringAtCursor(string.toAnnotatedString())
 	fun insertStringAtCursor(text: AnnotatedString) {
-		val (line, charIndex) = cursorPosition
-		val currentLine = textLines[line]
-
-		// Merge the new text with existing styles
-		val newLine = mergeSpanStylesForInsertion(currentLine, charIndex, text)
-
-		// Update the line
-		_textLines[line] = newLine
-		updateBookKeeping()
-		notifyContentChanged()
-		updateCursorPosition(CharLineOffset(line, charIndex + text.length))
+		// Convert to an Insert operation and let TextEditManager handle it
+		val operation = TextEditOperation.Insert(
+			position = cursorPosition,
+			text = text,
+			cursorBefore = cursorPosition,
+			cursorAfter = CharLineOffset(cursorPosition.line, cursorPosition.char + text.length)
+		)
+		editManager.applyOperation(operation)
 	}
 
 	fun replace(range: TextRange, newText: String) = replace(range, newText.toAnnotatedString())
 	fun replace(range: TextRange, newText: AnnotatedString) {
-		val oldText = buildAnnotatedString {
-			if (range.start.line == range.end.line) {
-				// Single line replacement - preserve spans from the replaced section
-				val line = textLines[range.start.line]
-				val replacedSection = line.subSequence(range.start.char, range.end.char)
-				append(replacedSection)
-
-				// Copy all span styles from the replaced section
-				replacedSection.spanStyles.forEach { span ->
-					addStyle(span.item, span.start - range.start.char, span.end - range.start.char)
-				}
-			} else {
-				// Multi-line replacement
-				// First line - preserve spans
-				val firstLine = textLines[range.start.line]
-				val firstSection = firstLine.subSequence(range.start.char)
-				append(firstSection)
-				firstSection.spanStyles.forEach { span ->
-					addStyle(span.item, span.start - range.start.char, span.end - range.start.char)
-				}
-				append("\n")
-
-				// Middle lines - preserve spans
-				for (line in (range.start.line + 1) until range.end.line) {
-					val fullLine = textLines[line]
-					append(fullLine)
-					// Adjust span positions for the accumulated text
-					val lineStartOffset = length - fullLine.length
-					fullLine.spanStyles.forEach { span ->
-						addStyle(
-							span.item,
-							span.start + lineStartOffset,
-							span.end + lineStartOffset
-						)
-					}
-					append("\n")
-				}
-
-				// Last line - preserve spans
-				val lastLine = textLines[range.end.line]
-				val lastSection = lastLine.subSequence(0, range.end.char)
-				val lastLineOffset = length
-				append(lastSection)
-				lastSection.spanStyles.forEach { span ->
-					addStyle(span.item, span.start + lastLineOffset, span.end + lastLineOffset)
-				}
-			}
-		}
-
+		// Create Replace operation and let TextEditManager handle it
 		val operation = TextEditOperation.Replace(
 			range = range,
 			newText = newText,
-			oldText = oldText,
+			oldText = buildAnnotatedString {
+				if (range.isSingleLine()) {
+					// Single line - get text and spans from the range
+					val line = textLines[range.start.line]
+					append(line.subSequence(range.start.char, range.end.char))
+				} else {
+					// Multi-line - preserve text and spans across lines
+					append(textLines[range.start.line].subSequence(range.start.char))
+					append("\n")
+
+					for (line in (range.start.line + 1) until range.end.line) {
+						append(textLines[line])
+						append("\n")
+					}
+
+					append(textLines[range.end.line].subSequence(0, range.end.char))
+				}
+			},
 			cursorBefore = cursorPosition,
 			cursorAfter = when {
 				newText.contains('\n') -> {
 					val lines = newText.split('\n')
 					CharLineOffset(
 						range.start.line + lines.size - 1,
-						lines.last().length
+						if (lines.size > 1) lines.last().length else range.start.char + newText.length
 					)
 				}
-
 				else -> CharLineOffset(
 					range.start.line,
 					range.start.char + newText.length
 				)
 			}
 		)
+
 		editManager.applyOperation(operation)
 	}
 
@@ -400,100 +366,51 @@ class TextEditorState(
 		)
 	}
 
-	private fun mergeSpanStylesForInsertion(
-		original: AnnotatedString,
-		insertionIndex: Int,
-		newText: AnnotatedString
-	): AnnotatedString = buildAnnotatedString {
-		// First, append all text
-		append(original.subSequence(0, insertionIndex))
-		append(newText)
-		append(original.subSequence(insertionIndex))
-
-		// Get spans that end at our insertion point
-		val spansEndingAtInsertion = original.spanStyles.filter {
-			it.start < insertionIndex && it.end == insertionIndex
-		}
-
-		// Get spans that start at our insertion point
-		val spansStartingAtInsertion = original.spanStyles.filter {
-			it.start == insertionIndex
-		}
-
-		// Handle existing spans before insertion point
-		original.spanStyles.forEach { span ->
-			when {
-				// Span ends before insertion - keep as is
-				span.end <= insertionIndex -> {
-					addStyle(span.item, span.start, span.end)
-				}
-
-				// Span starts after insertion - shift by inserted length
-				span.start >= insertionIndex -> {
-					addStyle(
-						span.item,
-						span.start + newText.length,
-						span.end + newText.length
-					)
-				}
-
-				// Span crosses insertion point - extend to cover new text
-				span.start < insertionIndex && span.end > insertionIndex -> {
-					addStyle(
-						span.item,
-						span.start,
-						span.end + newText.length
-					)
-				}
-			}
-		}
-
-		// If we have spans ending at insertion and starting at insertion with the same style,
-		// merge them to include the new text
-		spansEndingAtInsertion.forEach { endingSpan ->
-			spansStartingAtInsertion.forEach { startingSpan ->
-				if (endingSpan.item == startingSpan.item) {
-					addStyle(
-						endingSpan.item,
-						endingSpan.start,
-						startingSpan.end + newText.length
-					)
-				}
-			}
-		}
-
-		// Add any spans from the new text, shifted by insertion position
-		newText.spanStyles.forEach { span ->
-			addStyle(
-				span.item,
-				span.start + insertionIndex,
-				span.end + insertionIndex
-			)
-		}
-	}
-
-	internal fun updateBookKeeping() {
+	internal fun updateBookKeeping(affectedLines: IntRange? = null) {
 		val offsets = mutableListOf<LineWrap>()
 		var yOffset = 0f
 
 		textLines.forEachIndexed { lineIndex, line ->
-			val textLayoutResult = textMeasurer.measure(
-				line,
-				constraints = Constraints(
-					maxWidth = maxOf(1, viewportSize.width.toInt()),
-					minHeight = 0,
-					maxHeight = Constraints.Infinity
-				)
-			)
 
-			for (virtualLineIndex in 0 until textLayoutResult.multiParagraph.lineCount) {
+			val shouldRemeasure = affectedLines == null ||
+					lineIndex in affectedLines ||
+					lineIndex > affectedLines.last
+
+			val textLayoutResult = if (shouldRemeasure) {
+				textMeasurer.measure(
+					line,
+					constraints = Constraints(
+						maxWidth = maxOf(1, viewportSize.width.toInt()),
+						minHeight = 0,
+						maxHeight = Constraints.Infinity
+					)
+				)
+			} else {
+				val existing = lineOffsets.find { it.line == lineIndex }?.textLayoutResult
+				if (existing != null) {
+					existing
+				} else {
+					textMeasurer.measure(
+						line,
+						constraints = Constraints(
+							maxWidth = maxOf(1, viewportSize.width.toInt()),
+							minHeight = 0,
+							maxHeight = Constraints.Infinity
+						)
+					)
+				}
+			}
+
+			val virtualLineCount = textLayoutResult.multiParagraph.lineCount
+
+			for (virtualLineIndex in 0 until virtualLineCount) {
+
 				val lineWrapsAt = if (virtualLineIndex == 0) {
 					0
 				} else {
 					textLayoutResult.getLineEnd(virtualLineIndex - 1, visibleEnd = true) + 1
 				}
 
-				// Calculate rich spans for this line wrap
 				val lineWrap = LineWrap(
 					line = lineIndex,
 					wrapStartsAtIndex = lineWrapsAt,
@@ -501,16 +418,16 @@ class TextEditorState(
 					textLayoutResult = textLayoutResult
 				)
 
-				val enhancedWrap = LineWrap(
-					line = lineIndex,
-					wrapStartsAtIndex = lineWrapsAt,
-					offset = Offset(0f, yOffset),
-					textLayoutResult = textLayoutResult,
-					richSpans = richSpanManager.getSpansForLineWrap(lineWrap)
-				)
+				val richSpans = if (shouldRemeasure) {
+					richSpanManager.getSpansForLineWrap(lineWrap)
+				} else {
+					lineOffsets.find {
+						it.line == lineIndex &&
+								it.wrapStartsAtIndex == lineWrapsAt
+					}?.richSpans ?: emptyList()
+				}
 
-				offsets.add(enhancedWrap)
-
+				offsets.add(lineWrap.copy(richSpans = richSpans))
 				yOffset += textLayoutResult.multiParagraph.getLineHeight(virtualLineIndex)
 			}
 		}

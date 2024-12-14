@@ -2,14 +2,12 @@ package com.darkrockstudios.texteditor.cursor
 
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.text.TextMeasurer
 import com.darkrockstudios.texteditor.state.TextEditorState
 
 internal fun DrawScope.drawCursor(
-	textMeasurer: TextMeasurer,
 	state: TextEditorState,
 ) {
-	val metrics = state.calculateCursorPosition(textMeasurer, size.width)
+	val metrics = state.calculateCursorPosition()
 
 	// Only draw cursor if it's in the visible area
 	if (metrics.position.y + metrics.height >= 0 && metrics.position.y <= size.height) {

@@ -1,30 +1,18 @@
 package com.darkrockstudios.texteditor.cursor
 
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.text.TextMeasurer
-import androidx.compose.ui.unit.Constraints
 import com.darkrockstudios.texteditor.CharLineOffset
 import com.darkrockstudios.texteditor.LineWrap
 import com.darkrockstudios.texteditor.state.TextEditorState
 
-fun TextEditorState.calculateCursorPosition(
-	textMeasurer: TextMeasurer,
-	canvasWidth: Float,
-): CursorMetrics {
-	val (line, charIndex) = cursorPosition
-	val layout = textMeasurer.measure(
-		textLines[line],
-		constraints = Constraints(
-			maxWidth = maxOf(1, canvasWidth.toInt()),
-			minHeight = 0,
-			maxHeight = Constraints.Infinity
-		)
-	)
+fun TextEditorState.calculateCursorPosition(): CursorMetrics {
+	val (_, charIndex) = cursorPosition
 
 	val currentWrappedLineIndex = lineOffsets.getWrappedLineIndex(cursorPosition)
 	val currentWrappedLine = lineOffsets[currentWrappedLineIndex]
 	val startOfLineOffset = lineOffsets.first { it.line == currentWrappedLine.line }.offset
 
+	val layout = currentWrappedLine.textLayoutResult
 	val currentLine = layout.multiParagraph.getLineForOffset(charIndex)
 	val cursorX = layout.multiParagraph.getHorizontalPosition(charIndex, true)
 	val cursorY = startOfLineOffset.y + layout.multiParagraph.getLineTop(currentLine)

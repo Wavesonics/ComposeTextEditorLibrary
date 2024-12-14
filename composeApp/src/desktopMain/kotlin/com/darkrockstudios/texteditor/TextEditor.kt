@@ -97,13 +97,14 @@ fun TextEditor(
 
 								lastLine = virtualLine.line
 							}
+
 							drawRichSpans(virtualLine)
 						}
 
 						drawSelection(state)
 
 						if (state.isFocused && state.isCursorVisible) {
-							drawCursor(state.textMeasurer, state)
+							drawCursor(state)
 						}
 					} catch (e: IllegalArgumentException) {
 						// TODO obviously have to fix this at some point.
