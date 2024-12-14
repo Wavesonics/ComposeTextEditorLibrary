@@ -4,6 +4,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import com.darkrockstudios.texteditor.CharLineOffset
+import com.darkrockstudios.texteditor.TextRange
 import com.darkrockstudios.texteditor.annotatedstring.toAnnotatedString
 import com.darkrockstudios.texteditor.toRange
 
@@ -114,6 +115,111 @@ class TextEditManager(private val state: TextEditorState) {
 		)
 
 		// Add processed spans to the result
+		processedSpans.forEach { span ->
+			addStyle(span.item, span.start, span.end)
+		}
+	}
+
+	private fun handleMultiLineReplace(
+		state: TextEditorState,
+		range: TextRange,
+		newText: AnnotatedString,
+	): AnnotatedString = buildAnnotatedString {
+		// First, get all the text content we'll end up with
+		val firstLinePrefix = state.textLines[range.start.line].text.substring(0, range.start.char)
+		val lastLineSuffix = if (range.end.line < state.textLines.size) {
+			state.textLines[range.end.line].text.substring(range.end.char)
+		} else ""
+
+		// Build our final text content
+		append(firstLinePrefix)
+		append(newText.text)
+		append(lastLineSuffix)
+
+		// Collect spans from all affected lines
+		val allSpans = mutableListOf<AnnotatedString.Range<SpanStyle>>()
+
+		// Add spans from first line, adjusting if needed
+		val firstLine = state.textLines[range.start.line]
+		firstLine.spanStyles.forEach { span ->
+			when {
+				// Span ends before the replacement, keep as is
+				span.end <= range.start.char -> {
+					allSpans.add(span)
+				}
+				// Span starts before replacement but extends into it - truncate at replacement start
+				span.start < range.start.char -> {
+					allSpans.add(
+						AnnotatedString.Range(
+							span.item,
+							span.start,
+							range.start.char
+						)
+					)
+				}
+				// Span starts within replacement - skip it
+			}
+		}
+
+		// Add spans from the inserted text
+		newText.spanStyles.forEach { span ->
+			allSpans.add(
+				AnnotatedString.Range(
+					span.item,
+					span.start + range.start.char,
+					span.end + range.start.char
+				)
+			)
+		}
+
+		// Add spans from last line, adjusting positions
+		if (range.end.line < state.textLines.size) {
+			val lastLine = state.textLines[range.end.line]
+			val newBaseOffset = firstLinePrefix.length + newText.length
+
+			lastLine.spanStyles.forEach { span ->
+				when {
+					// Span starts after the replacement, adjust position fully
+					span.start >= range.end.char -> {
+						allSpans.add(
+							AnnotatedString.Range(
+								span.item,
+								span.start - range.end.char + newBaseOffset,
+								span.end - range.end.char + newBaseOffset
+							)
+						)
+					}
+					// Span starts before end of replacement but extends beyond - preserve the part after
+					span.end > range.end.char -> {
+						allSpans.add(
+							AnnotatedString.Range(
+								span.item,
+								newBaseOffset,  // Start at the insertion point
+								span.end - range.end.char + newBaseOffset
+							)
+						)
+					}
+					// Span is entirely within replacement - skip it
+				}
+			}
+		}
+
+		// Process all spans through SpanManager to handle any overlaps/merging
+		val spanManager = SpanManager()
+		val processedSpans = spanManager.processSpans(
+			originalText = buildAnnotatedString {
+				// Build the same text content explicitly
+				append(firstLinePrefix)
+				append(newText.text)
+				append(lastLineSuffix)
+
+				allSpans.forEach { span ->
+					addStyle(span.item, span.start, span.end)
+				}
+			}
+		)
+
+		// Apply the processed spans
 		processedSpans.forEach { span ->
 			addStyle(span.item, span.start, span.end)
 		}
@@ -231,23 +337,21 @@ class TextEditManager(private val state: TextEditorState) {
 						)
 					}
 					else -> {
-						// For multi-line replacements, use delete + insert
-						val deleteOp = TextEditOperation.Delete(
-							range = operation.range,
-							deletedText = operation.oldText,
-							cursorBefore = operation.cursorBefore,
-							cursorAfter = operation.range.start
+						// Handle multi-line replacement
+						val newContent = handleMultiLineReplace(
+							state,
+							operation.range,
+							operation.newText,
 						)
-						applyOperation(deleteOp)
 
-						val insertOp = TextEditOperation.Insert(
-							position = operation.range.start,
-							text = operation.newText,
-							cursorBefore = operation.range.start,
-							cursorAfter = operation.cursorAfter
+						// Remove all affected lines
+						state.removeLines(
+							operation.range.start.line,
+							operation.range.end.line - operation.range.start.line + 1
 						)
-						applyOperation(insertOp)
-						return
+
+						// Insert the new content at the start line
+						state.insertLine(operation.range.start.line, newContent)
 					}
 				}
 			}
