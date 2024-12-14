@@ -56,6 +56,8 @@ class TextEditorState(
 	val scrollState get() = scrollManager.scrollState
 	val totalContentHeight get() = scrollManager.totalContentHeight
 
+	val editOperations = editManager.editOperations
+
 	internal fun notifyContentChanged(operation: TextEditOperation? = null) {
 		operation?.let { richSpanManager.updateSpans(it) }
 		_version++

@@ -31,7 +31,7 @@ sealed class TextEditOperation {
 	) : TextEditOperation()
 }
 
-fun TextEditOperation.transformOffset(
+internal fun TextEditOperation.transformOffset(
 	offset: CharLineOffset,
 	state: TextEditorState
 ): CharLineOffset {
@@ -84,7 +84,7 @@ fun TextEditOperation.transformOffset(
 	}
 }
 
-fun TextEditOperation.transformRange(range: TextRange, state: TextEditorState): TextRange {
+internal fun TextEditOperation.transformRange(range: TextRange, state: TextEditorState): TextRange {
 	return TextRange(
 		transformOffset(range.start, state),
 		transformOffset(range.end, state)

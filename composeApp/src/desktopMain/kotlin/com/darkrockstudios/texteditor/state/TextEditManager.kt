@@ -7,10 +7,19 @@ import com.darkrockstudios.texteditor.CharLineOffset
 import com.darkrockstudios.texteditor.TextRange
 import com.darkrockstudios.texteditor.annotatedstring.toAnnotatedString
 import com.darkrockstudios.texteditor.toRange
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
 
 class TextEditManager(private val state: TextEditorState) {
 	private val spanManager = SpanManager()
 	private val history = TextEditHistory()
+
+	private val _editOperations = MutableSharedFlow<TextEditOperation>(
+		extraBufferCapacity = 1,
+		onBufferOverflow = BufferOverflow.DROP_OLDEST
+	)
+	val editOperations: SharedFlow<TextEditOperation> = _editOperations
 
 	private fun buildAnnotatedStringWithSpans(
 		block: AnnotatedString.Builder.(addSpan: (Any, Int, Int) -> Unit) -> Unit
@@ -29,7 +38,7 @@ class TextEditManager(private val state: TextEditorState) {
 
 				if (overlapping.isNotEmpty()) {
 					// Remove overlapping ranges
-					ranges.removeAll(overlapping)
+					ranges.removeAll(overlapping.toSet())
 
 					// Create one merged range
 					val newStart = minOf(start, overlapping.minOf { it.first })
@@ -226,7 +235,6 @@ class TextEditManager(private val state: TextEditorState) {
 	}
 
 	fun applyOperation(operation: TextEditOperation, addToHistory: Boolean = true) {
-		println("Applying Operation: $operation")
 		when (operation) {
 			is TextEditOperation.Insert -> {
 				if (operation.text.contains('\n')) {
@@ -364,6 +372,8 @@ class TextEditManager(private val state: TextEditorState) {
 			history.recordEdit(operation)
 		}
 		state.notifyContentChanged(operation)
+
+		_editOperations.tryEmit(operation)
 	}
 
 	fun undo() {
