@@ -158,3 +158,76 @@ fun TextEditorState.moveToPreviousWord() {
 private fun isWordChar(char: Char): Boolean {
 	return char.isLetterOrDigit() || char == '_'
 }
+
+internal fun TextEditorState.moveCursorPageUp() {
+	// Get current viewport boundaries
+	val viewportTop = scrollState.value
+	val viewportHeight = scrollManager.viewportHeight
+
+	// Calculate target scroll position
+	val targetScroll = maxOf(0, viewportTop - viewportHeight)
+
+	// Find the wrapped line at the target position
+	val targetLine = lineOffsets.firstOrNull { wrap ->
+		wrap.offset.y >= targetScroll
+	} ?: lineOffsets.firstOrNull()
+
+	if (targetLine != null) {
+		// Try to maintain the same horizontal position
+		val currentWrappedLine = getWrappedLine(cursorPosition)
+		val localCharIndex = cursorPosition.char - currentWrappedLine.wrapStartsAtIndex
+
+		val newCharIndex = minOf(
+			textLines[targetLine.line].length,
+			targetLine.wrapStartsAtIndex + localCharIndex
+		)
+
+		// Update cursor position
+		updateCursorPosition(
+			CharLineOffset(
+				line = targetLine.line,
+				char = newCharIndex
+			)
+		)
+
+		// Update scroll position
+		scrollManager.scrollToPosition(targetScroll, animated = true)
+	}
+}
+
+internal fun TextEditorState.moveCursorPageDown() {
+	// Get current viewport boundaries
+	val viewportTop = scrollState.value
+	val viewportHeight = scrollManager.viewportHeight
+	val maxScroll = maxOf(0, scrollManager.totalContentHeight - viewportHeight)
+
+	// Calculate target scroll position
+	val targetScroll = minOf(maxScroll, viewportTop + viewportHeight)
+
+	// Find the wrapped line at the target position
+	val targetLine = lineOffsets.firstOrNull { wrap ->
+		wrap.offset.y >= targetScroll
+	} ?: lineOffsets.lastOrNull()
+
+	if (targetLine != null) {
+		// Try to maintain the same horizontal position
+		val currentWrappedLine = getWrappedLine(cursorPosition)
+		val localCharIndex = cursorPosition.char - currentWrappedLine.wrapStartsAtIndex
+
+		val newCharIndex = minOf(
+			textLines[targetLine.line].length,
+			targetLine.wrapStartsAtIndex + localCharIndex
+		)
+
+		// Update cursor position
+		updateCursorPosition(
+			CharLineOffset(
+				line = targetLine.line,
+				char = newCharIndex
+			)
+		)
+
+		// Update scroll position
+		scrollManager.scrollToPosition(targetScroll, animated = true)
+	}
+}

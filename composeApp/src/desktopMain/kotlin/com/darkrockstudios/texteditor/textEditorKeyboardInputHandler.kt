@@ -15,6 +15,8 @@ import androidx.compose.ui.text.AnnotatedString
 import com.darkrockstudios.texteditor.state.TextEditorState
 import com.darkrockstudios.texteditor.state.moveCursorDown
 import com.darkrockstudios.texteditor.state.moveCursorLeft
+import com.darkrockstudios.texteditor.state.moveCursorPageDown
+import com.darkrockstudios.texteditor.state.moveCursorPageUp
 import com.darkrockstudios.texteditor.state.moveCursorRight
 import com.darkrockstudios.texteditor.state.moveCursorToLineEnd
 import com.darkrockstudios.texteditor.state.moveCursorToLineStart
@@ -182,6 +184,30 @@ internal fun Modifier.textEditorKeyboardInputHandler(
 					} else {
 						state.selector.clearSelection()
 						state.moveCursorToLineEnd()
+					}
+					true
+				}
+
+				keyEvent.key == Key.PageUp -> {
+					if (keyEvent.isShiftPressed) {
+						val initialPosition = state.cursorPosition
+						state.moveCursorPageUp()
+						updateSelectionForCursorMovement(state, initialPosition)
+					} else {
+						state.selector.clearSelection()
+						state.moveCursorPageUp()
+					}
+					true
+				}
+
+				keyEvent.key == Key.PageDown -> {
+					if (keyEvent.isShiftPressed) {
+						val initialPosition = state.cursorPosition
+						state.moveCursorPageDown()
+						updateSelectionForCursorMovement(state, initialPosition)
+					} else {
+						state.selector.clearSelection()
+						state.moveCursorPageDown()
 					}
 					true
 				}
