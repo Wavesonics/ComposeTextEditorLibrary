@@ -445,6 +445,18 @@ class TextEditorState(
 		richSpanManager.removeSpan(span)
 		updateBookKeeping()
 	}
+
+	fun findSpanAtPosition(position: CharLineOffset): RichSpan? {
+		// Find the line wrap that contains our position
+		val lineWrap = lineOffsets.firstOrNull { wrap ->
+			wrap.line == position.line && position.char >= wrap.wrapStartsAtIndex
+		} ?: return null
+
+		// Check each span in the line wrap
+		return lineWrap.richSpans.firstOrNull { span ->
+			span.containsPosition(position)
+		}
+	}
 }
 
 @Composable
@@ -458,4 +470,10 @@ fun rememberTextEditorState(): TextEditorState {
 			textMeasurer = textMeasurer,
 		)
 	}
+}
+
+enum class SpanClickType {
+	TAP,
+	PRIMARY_CLICK,
+	SECONDARY_CLICK,
 }

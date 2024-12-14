@@ -13,6 +13,7 @@ import com.darkrockstudios.texteditor.CharLineOffset
 import com.darkrockstudios.texteditor.TextEditor
 import com.darkrockstudios.texteditor.richstyle.HighlightSpanStyle
 import com.darkrockstudios.texteditor.richstyle.SpellCheckStyle
+import com.darkrockstudios.texteditor.state.SpanClickType
 import com.darkrockstudios.texteditor.state.TextEditorState
 import com.darkrockstudios.texteditor.state.rememberTextEditorState
 import org.jetbrains.compose.ui.tooling.preview.Preview
@@ -40,7 +41,22 @@ fun App() {
             )
             TextEditor(
                 state = state,
-                modifier = Modifier.padding(16.dp).fillMaxSize()
+                modifier = Modifier.padding(16.dp).fillMaxSize(),
+                onSpanClick = { span, clickType ->
+                    when (clickType) {
+                        SpanClickType.TAP -> {
+                            println("Touch tap on span: $span")
+                        }
+
+                        SpanClickType.PRIMARY_CLICK -> {
+                            println("Left click on span: $span")
+                        }
+
+                        SpanClickType.SECONDARY_CLICK -> {
+                            println("Right click on span: $span")
+                        }
+                    }
+                }
             )
         }
     }

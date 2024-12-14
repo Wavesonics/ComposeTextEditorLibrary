@@ -29,6 +29,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.toSize
 import androidx.compose.ui.util.fastForEach
 import com.darkrockstudios.texteditor.cursor.drawCursor
+import com.darkrockstudios.texteditor.richstyle.RichSpan
+import com.darkrockstudios.texteditor.state.SpanClickType
 import com.darkrockstudios.texteditor.state.TextEditorState
 import com.darkrockstudios.texteditor.state.rememberTextEditorState
 import kotlinx.coroutines.delay
@@ -36,7 +38,8 @@ import kotlinx.coroutines.delay
 @Composable
 fun TextEditor(
 	state: TextEditorState = rememberTextEditorState(),
-	modifier: Modifier = Modifier
+	modifier: Modifier = Modifier,
+	onSpanClick: ((RichSpan, SpanClickType) -> Unit)? = null,
 ) {
 	val focusRequester = remember { FocusRequester() }
 	val interactionSource = remember { MutableInteractionSource() }
@@ -81,7 +84,7 @@ fun TextEditor(
 					modifier = Modifier
 						.fillMaxWidth()
 						.height(state.totalContentHeight.dp)
-						.textEditorPointerInputHandling(state)
+						.textEditorPointerInputHandling(state, onSpanClick)
 				) {
 					try {
 						var lastLine = -1

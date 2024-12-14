@@ -1,17 +1,81 @@
 package com.darkrockstudios.texteditor
 
+import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.PointerInputScope
+import androidx.compose.ui.input.pointer.PointerType
+import androidx.compose.ui.input.pointer.isPrimaryPressed
+import androidx.compose.ui.input.pointer.isSecondaryPressed
 import androidx.compose.ui.input.pointer.pointerInput
+import com.darkrockstudios.texteditor.richstyle.RichSpan
+import com.darkrockstudios.texteditor.state.SpanClickType
 import com.darkrockstudios.texteditor.state.TextEditorState
 
 internal fun Modifier.textEditorPointerInputHandling(
 	state: TextEditorState,
+	onSpanClick: ((RichSpan, SpanClickType) -> Unit)? = null,
 ): Modifier {
 	return this.pointerInput(Unit) {
+		awaitEachGesture {
+			var didHandlePress = false
+
+			while (true) {
+				val event = awaitPointerEvent()
+
+				when (event.type) {
+					PointerEventType.Press -> {
+						val eventChange = event.changes.first()
+						val position = eventChange.position
+
+						when (eventChange.type) {
+							PointerType.Touch -> {
+								handleSpanInteraction(
+									state,
+									position,
+									SpanClickType.TAP,
+									onSpanClick
+								)
+								didHandlePress = true
+							}
+
+							PointerType.Mouse -> {
+								if (event.buttons.isPrimaryPressed) {
+									handleSpanInteraction(
+										state,
+										position,
+										SpanClickType.PRIMARY_CLICK,
+										onSpanClick
+									)
+									didHandlePress = true
+								} else if (event.buttons.isSecondaryPressed) {
+									handleSpanInteraction(
+										state,
+										position,
+										SpanClickType.SECONDARY_CLICK,
+										onSpanClick
+									)
+									didHandlePress = true
+								}
+							}
+
+							else -> { /* Ignore other pointer types */
+							}
+						}
+					}
+
+					PointerEventType.Release -> {
+						if (didHandlePress) {
+							break
+						}
+					}
+				}
+			}
+		}
+	}.pointerInput(Unit) {
 		detectTapsImperatively(
 			onTap = { offset: Offset ->
 				val position = state.getOffsetAtPosition(offset)
@@ -179,6 +243,26 @@ suspend fun PointerInputScope.detectTapsImperatively(
 					lastTapPosition = downPosition
 				}
 			}
+		}
+	}
+}
+
+private fun handleSpanInteraction(
+	state: TextEditorState,
+	offset: Offset,
+	clickType: SpanClickType,
+	onSpanClick: ((RichSpan, SpanClickType) -> Unit)?
+) {
+	val position = state.getOffsetAtPosition(offset)
+	val clickedSpan = state.findSpanAtPosition(position)
+
+	if (clickedSpan != null) {
+		onSpanClick?.invoke(clickedSpan, clickType)
+	} else {
+		// Only update cursor on primary clicks or taps
+		if (clickType == SpanClickType.PRIMARY_CLICK || clickType == SpanClickType.TAP) {
+			state.updateCursorPosition(position)
+			state.selector.clearSelection()
 		}
 	}
 }

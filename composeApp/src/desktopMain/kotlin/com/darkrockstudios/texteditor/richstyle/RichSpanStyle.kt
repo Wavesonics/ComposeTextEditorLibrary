@@ -44,4 +44,16 @@ data class RichSpan(
 			else -> true // Middle lines are fully covered
 		}
 	}
+
+	fun containsPosition(position: CharLineOffset): Boolean {
+		return when {
+			position.line < start.line || position.line > end.line -> false
+			position.line == start.line && position.line == end.line ->
+				position.char >= start.char && position.char < end.char
+
+			position.line == start.line -> position.char >= start.char
+			position.line == end.line -> position.char < end.char
+			else -> true
+		}
+	}
 }
