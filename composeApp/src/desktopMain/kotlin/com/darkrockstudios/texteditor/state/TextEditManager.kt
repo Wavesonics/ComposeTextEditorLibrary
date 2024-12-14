@@ -225,7 +225,7 @@ class TextEditManager(private val state: TextEditorState) {
 		}
 	}
 
-	fun applyOperation(operation: TextEditOperation) {
+	fun applyOperation(operation: TextEditOperation, addToHistory: Boolean = true) {
 		println("Applying Operation: $operation")
 		when (operation) {
 			is TextEditOperation.Insert -> {
@@ -360,7 +360,9 @@ class TextEditManager(private val state: TextEditorState) {
 
 		state.updateCursorPosition(operation.cursorAfter)
 		state.updateBookKeeping()
-		history.recordEdit(operation)
+		if (addToHistory) {
+			history.recordEdit(operation)
+		}
 		state.notifyContentChanged(operation)
 	}
 
@@ -380,7 +382,8 @@ class TextEditManager(private val state: TextEditorState) {
 							deletedText = operation.text,
 							cursorBefore = operation.cursorAfter,
 							cursorAfter = operation.cursorBefore
-						)
+						),
+						addToHistory = false
 					)
 				}
 				is TextEditOperation.Delete -> {
@@ -390,7 +393,8 @@ class TextEditManager(private val state: TextEditorState) {
 							text = operation.deletedText,
 							cursorBefore = operation.cursorAfter,
 							cursorAfter = operation.cursorBefore
-						)
+						),
+						addToHistory = false
 					)
 				}
 				is TextEditOperation.Replace -> {
@@ -401,7 +405,8 @@ class TextEditManager(private val state: TextEditorState) {
 							newText = operation.oldText,
 							cursorBefore = operation.cursorAfter,
 							cursorAfter = operation.cursorBefore
-						)
+						),
+						addToHistory = false
 					)
 				}
 			}
@@ -410,7 +415,7 @@ class TextEditManager(private val state: TextEditorState) {
 
 	fun redo() {
 		history.redo()?.let { operation ->
-			applyOperation(operation)
+			applyOperation(operation, addToHistory = false)
 		}
 	}
 }
