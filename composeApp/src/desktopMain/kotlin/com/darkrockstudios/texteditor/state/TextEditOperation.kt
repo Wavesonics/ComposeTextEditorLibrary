@@ -48,26 +48,32 @@ fun TextEditOperation.transformOffset(
 		}
 
 		is TextEditOperation.Delete -> {
+			// For Delete operations, we need to be careful about accessing the end position
+			// as it might no longer exist in the document
 			val deleteStart = range.start.toCharacterIndex(state)
-			val deleteEnd = range.end.toCharacterIndex(state)
+			// Instead of accessing the end position directly, calculate it based on the deleted text
+			val deleteLength = deletedText.length
+			val deleteEnd = deleteStart + deleteLength
+
 			when {
 				absoluteOffset < deleteStart -> offset
 				absoluteOffset > deleteEnd ->
-					(absoluteOffset - (deleteEnd - deleteStart)).toCharLineOffset(state)
-
+					(absoluteOffset - deleteLength).toCharLineOffset(state)
 				else -> range.start
 			}
 		}
 
 		is TextEditOperation.Replace -> {
 			val replaceStart = range.start.toCharacterIndex(state)
-			val replaceEnd = range.end.toCharacterIndex(state)
-			val lengthDelta = newText.length - (replaceEnd - replaceStart)
+			// Similarly here, calculate the end based on the old text length
+			val replaceLength = oldText.length
+			val replaceEnd = replaceStart + replaceLength
+			val lengthDelta = newText.length - replaceLength
+
 			when {
 				absoluteOffset < replaceStart -> offset
 				absoluteOffset > replaceEnd ->
 					(absoluteOffset + lengthDelta).toCharLineOffset(state)
-
 				else -> {
 					val relativePos = (absoluteOffset - replaceStart)
 						.coerceAtMost(newText.length)
