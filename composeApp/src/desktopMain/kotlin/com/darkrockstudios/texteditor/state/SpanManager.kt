@@ -32,17 +32,10 @@ class SpanManager {
 		deletionStart: Int = -1,
 		deletionEnd: Int = -1
 	): List<AnnotatedString.Range<SpanStyle>> {
-		println("\nSpanManager processing:")
-		println("Initial spans: ${originalText.spanStyles.size}")
-		if (originalText.spanStyles.isNotEmpty()) {
-			println("Sample span: ${originalText.spanStyles.first()}")
-		}
-
 		// First, deduplicate identical spans
 		val uniqueSpans = originalText.spanStyles.distinctBy { span ->
 			Triple(span.start, span.end, span.item)
 		}
-		println("After deduplication: ${uniqueSpans.size} spans")
 
 		// Convert spans to mutable form
 		val spans = uniqueSpans.map { span ->
@@ -51,7 +44,6 @@ class SpanManager {
 
 		// Add spans from inserted text if applicable
 		if (insertedText != null && insertionPoint >= 0) {
-			println("Processing insertion at $insertionPoint with ${insertedText.spanStyles.size} spans")
 			val uniqueInsertedSpans = insertedText.spanStyles.distinctBy { span ->
 				Triple(
 					span.start + insertionPoint,
@@ -66,41 +58,24 @@ class SpanManager {
 					span.end + insertionPoint
 				)
 			})
-			println("After adding insertion spans: ${spans.size} spans")
 		}
 
 		// Handle deletion if applicable
 		if (deletionStart >= 0 && deletionEnd >= 0) {
-			println("Processing deletion from $deletionStart to $deletionEnd")
-			val beforeCount = spans.size
 			handleDeletion(spans, deletionStart, deletionEnd)
-			println("After deletion: ${spans.size} spans (removed ${beforeCount - spans.size})")
 		}
 
 		// Handle insertion if applicable
 		if (insertedText != null && insertionPoint >= 0) {
-			println("Adjusting spans for insertion length: ${insertedText.length}")
 			handleInsertion(spans, insertionPoint, insertedText.length)
 		}
 
 		// Merge overlapping and adjacent spans
-		val beforeMerge = spans.size
 		val mergedSpans = mergeSpans(spans)
-		println("After merging: ${mergedSpans.size} spans (merged ${beforeMerge - mergedSpans.size})")
-
-		if (mergedSpans.isNotEmpty()) {
-			println("Sample merged spans (first 3):")
-			mergedSpans.take(3).forEach { span ->
-				println("  $span")
-			}
-		}
 
 		// Convert back to AnnotatedString.Range format
 		return mergedSpans.map { span ->
 			AnnotatedString.Range(span.style, span.start, span.end)
-		}.also {
-			println("Final span count: ${it.size}")
-			println("SpanManager processing complete\n")
 		}
 	}
 
@@ -149,7 +124,6 @@ class SpanManager {
 				}
 			}
 		}
-		println("Deletion details: removed $removed spans, modified $modified spans")
 	}
 
 	private fun handleInsertion(spans: MutableList<SpanInfo>, point: Int, length: Int) {
@@ -173,7 +147,6 @@ class SpanManager {
 				}
 			}
 		}
-		println("Insertion details: modified $modified spans")
 	}
 
 	private fun mergeSpans(spans: List<SpanInfo>): List<SpanInfo> {
@@ -197,7 +170,6 @@ class SpanManager {
 		}
 		result.add(current)
 
-		println("Merge details: performed $mergeCount merges")
 		return result
 	}
 }

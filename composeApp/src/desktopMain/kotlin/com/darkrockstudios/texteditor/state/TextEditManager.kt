@@ -226,6 +226,7 @@ class TextEditManager(private val state: TextEditorState) {
 	}
 
 	fun applyOperation(operation: TextEditOperation) {
+		println("Applying Operation: $operation")
 		when (operation) {
 			is TextEditOperation.Insert -> {
 				if (operation.text.contains('\n')) {
