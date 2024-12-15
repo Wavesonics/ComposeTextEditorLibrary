@@ -3,8 +3,6 @@ package com.darkrockstudios.texteditor.state
 import androidx.compose.ui.text.AnnotatedString
 import com.darkrockstudios.texteditor.CharLineOffset
 import com.darkrockstudios.texteditor.TextRange
-import com.darkrockstudios.texteditor.toCharLineOffset
-import com.darkrockstudios.texteditor.toCharacterIndex
 
 sealed class TextEditOperation {
 	abstract val cursorBefore: CharLineOffset
@@ -25,24 +23,34 @@ sealed class TextEditOperation {
 			offset: CharLineOffset,
 			state: TextEditorState
 		): CharLineOffset {
-			// Edit happened after this Offset, not affected
-			return if (offset.line < position.line ||
+			// Before insertion point - no change
+			if (offset.line < position.line ||
 				(offset.line == position.line && offset.char < position.char)
 			) {
-				offset
+				return offset
 			}
-			// Earlier line
-			else if (offset.line > position.line) {
+
+			// After insertion on later lines
+			if (offset.line > position.line) {
 				val lineShift = text.count { it == '\n' }
-				offset.copy(line = offset.line + lineShift)
+				return offset.copy(line = offset.line + lineShift)
 			}
-			// Same line, and before the offset
-			else if (offset.line == position.line && offset.char <= position.char) {
-				val lineShift = text.count { it == '\n' }
-				CharLineOffset(offset.line + lineShift, offset.char + text.length)
-			} else {
-				offset
+
+			// On same line after insertion point
+			if (offset.line == position.line && offset.char >= position.char) {
+				if (text.contains('\n')) {
+					val lineShift = text.count { it == '\n' }
+					val lastLineLength = text.text.substringAfterLast('\n').length
+					return CharLineOffset(
+						offset.line + lineShift,
+						offset.char - position.char + lastLineLength
+					)
+				} else {
+					return offset.copy(char = offset.char + text.length)
+				}
 			}
+
+			return offset
 		}
 	}
 
@@ -56,22 +64,34 @@ sealed class TextEditOperation {
 			offset: CharLineOffset,
 			state: TextEditorState
 		): CharLineOffset {
-			// Convert to absolute indices for easier math
-			val absoluteOffset = offset.toCharacterIndex(state)
-			// For Delete operations, we need to be careful about accessing the end position
-			// as it might no longer exist in the document
-			val deleteStart = range.start.toCharacterIndex(state)
-			// Instead of accessing the end position directly, calculate it based on the deleted text
-			val deleteLength = deletedText.length
-			val deleteEnd = deleteStart + deleteLength
-
-			return when {
-				absoluteOffset < deleteStart -> offset
-				absoluteOffset > deleteEnd ->
-					(absoluteOffset - deleteLength).toCharLineOffset(state)
-
-				else -> range.start
+			// If before the deletion range entirely
+			if (offset.line < range.start.line) {
+				return offset
 			}
+
+			// If after the deletion range entirely, adjust line number
+			if (offset.line > range.end.line) {
+				val linesDelta = range.end.line - range.start.line
+				return offset.copy(line = offset.line - linesDelta)
+			}
+
+			// If on the start line but before deletion point
+			if (offset.line == range.start.line && offset.char < range.start.char) {
+				return offset
+			}
+
+			// If on the same line after deletion point
+			if (offset.line == range.start.line && offset.char > range.end.char) {
+				val charDelta = range.end.char - range.start.char
+				return offset.copy(char = offset.char - charDelta)
+			}
+
+			// If within the deletion range
+			if (offset.line >= range.start.line && offset.line <= range.end.line) {
+				return range.start
+			}
+
+			return offset
 		}
 	}
 
@@ -86,25 +106,29 @@ sealed class TextEditOperation {
 			offset: CharLineOffset,
 			state: TextEditorState
 		): CharLineOffset {
-			// Convert to absolute indices for easier math
-			val absoluteOffset = offset.toCharacterIndex(state)
-			val replaceStart = range.start.toCharacterIndex(state)
-			// Similarly here, calculate the end based on the old text length
-			val replaceLength = oldText.length
-			val replaceEnd = replaceStart + replaceLength
-			val lengthDelta = newText.length - replaceLength
-
-			return when {
-				absoluteOffset < replaceStart -> offset
-				absoluteOffset > replaceEnd ->
-					(absoluteOffset + lengthDelta).toCharLineOffset(state)
-
-				else -> {
-					val relativePos = (absoluteOffset - replaceStart)
-						.coerceAtMost(newText.length)
-					(replaceStart + relativePos).toCharLineOffset(state)
-				}
+			// If offset is on a different line, keep it unchanged
+			if (offset.line < range.start.line || offset.line > range.end.line) {
+				return offset
 			}
+
+			// If on start line but before replacement
+			if (offset.line == range.start.line && offset.char < range.start.char) {
+				return offset
+			}
+
+			// If on end line but after replacement
+			if (offset.line == range.end.line && offset.char > range.end.char) {
+				val lengthDelta = newText.length - oldText.length
+				return offset.copy(char = offset.char + lengthDelta)
+			}
+
+			// If within the replacement range
+			if (offset.line == range.start.line) {
+				val relativePos = offset.char - range.start.char
+				return offset.copy(char = range.start.char + relativePos)
+			}
+
+			return offset
 		}
 	}
 }
