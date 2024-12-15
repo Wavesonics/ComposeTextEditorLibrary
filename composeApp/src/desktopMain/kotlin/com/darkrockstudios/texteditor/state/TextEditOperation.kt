@@ -29,6 +29,13 @@ sealed class TextEditOperation {
 		override val cursorBefore: CharLineOffset,
 		override val cursorAfter: CharLineOffset
 	) : TextEditOperation()
+
+	data class LineSplit(
+		val position: CharLineOffset,
+		val splitText: AnnotatedString,
+		override val cursorBefore: CharLineOffset,
+		override val cursorAfter: CharLineOffset
+	) : TextEditOperation()
 }
 
 internal fun TextEditOperation.transformOffset(
@@ -79,6 +86,28 @@ internal fun TextEditOperation.transformOffset(
 						.coerceAtMost(newText.length)
 					(replaceStart + relativePos).toCharLineOffset(state)
 				}
+			}
+		}
+		is TextEditOperation.LineSplit -> {
+			when {
+				// If on a line before the split, position is unchanged
+				offset.line < position.line -> offset
+
+				// If on the same line as split, but before split point
+				offset.line == position.line && offset.char <= position.char -> offset
+
+				// If on the same line as split, but after split point
+				// Move to next line and adjust character position
+				offset.line == position.line -> CharLineOffset(
+					line = offset.line + 1,
+					char = offset.char - position.char
+				)
+
+				// If on a line after the split, increment the line number
+				else -> CharLineOffset(
+					line = offset.line + 1,
+					char = offset.char
+				)
 			}
 		}
 	}

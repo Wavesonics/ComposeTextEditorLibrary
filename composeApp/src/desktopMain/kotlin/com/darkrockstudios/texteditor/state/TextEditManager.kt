@@ -5,6 +5,7 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import com.darkrockstudios.texteditor.CharLineOffset
 import com.darkrockstudios.texteditor.TextRange
+import com.darkrockstudios.texteditor.annotatedstring.subSequence
 import com.darkrockstudios.texteditor.annotatedstring.toAnnotatedString
 import com.darkrockstudios.texteditor.toRange
 import kotlinx.coroutines.channels.BufferOverflow
@@ -364,6 +365,14 @@ class TextEditManager(private val state: TextEditorState) {
 					}
 				}
 			}
+
+			is TextEditOperation.LineSplit -> {
+				val beforeCursor = operation.splitText.subSequence(0, operation.position.char)
+				val afterCursor = operation.splitText.subSequence(operation.position.char)
+
+				state._textLines[operation.position.line] = beforeCursor
+				state._textLines.add(operation.position.line + 1, afterCursor)
+			}
 		}
 
 		state.updateCursorPosition(operation.cursorAfter)
@@ -418,6 +427,16 @@ class TextEditManager(private val state: TextEditorState) {
 						),
 						addToHistory = false
 					)
+				}
+
+				is TextEditOperation.LineSplit -> {
+					// Remove the inserted line
+					state._textLines.removeAt(operation.position.line + 1)
+					// Restore the original line
+					state._textLines[operation.position.line] = operation.splitText
+					state.updateCursorPosition(operation.cursorBefore)
+					state.updateBookKeeping()
+					state.notifyContentChanged()
 				}
 			}
 		}

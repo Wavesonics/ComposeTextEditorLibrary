@@ -95,15 +95,15 @@ class TextEditorState(
 	}
 
 	fun insertNewlineAtCursor() {
-		val operation = TextEditOperation.Insert(
+		val currentLine = _textLines[cursorPosition.line]
+		val operation = TextEditOperation.LineSplit(
 			position = cursorPosition,
-			text = AnnotatedString("\n"),
+			splitText = currentLine,
 			cursorBefore = cursorPosition,
 			cursorAfter = CharLineOffset(cursorPosition.line + 1, 0)
 		)
 		editManager.applyOperation(operation)
 	}
-
 
 	fun backspaceAtCursor() {
 		if (cursorPosition.char > 0) {

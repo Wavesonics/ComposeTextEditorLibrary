@@ -28,7 +28,6 @@ class RichSpanManager(
 		spans.forEach { span ->
 			when (operation) {
 				is TextEditOperation.Insert -> {
-					// Transform the span's start and end positions
 					val newStart = operation.transformOffset(span.start, state)
 					val newEnd = operation.transformOffset(span.end, state)
 					updatedSpans.add(span.copy(start = newStart, end = newEnd))
@@ -62,6 +61,11 @@ class RichSpanManager(
 					)
 					updateSpans(insertOp)
 					return
+				}
+				is TextEditOperation.LineSplit -> {
+					val newStart = operation.transformOffset(span.start, state)
+					val newEnd = operation.transformOffset(span.end, state)
+					updatedSpans.add(span.copy(start = newStart, end = newEnd))
 				}
 			}
 		}
