@@ -127,7 +127,6 @@ class SpanManager {
 	}
 
 	private fun handleInsertion(spans: MutableList<SpanInfo>, point: Int, length: Int) {
-		var modified = 0
 		spans.forEach { span ->
 			when {
 				// Span ends before insertion - no change needed
@@ -137,13 +136,14 @@ class SpanManager {
 				span.start >= point -> {
 					span.start += length
 					span.end += length
-					modified++
 				}
 
+				// Insertion is at the end of span - don't expand span
+				span.end == point -> {}
+
 				// Insertion is in middle of span - expand span
-				span.start < point && span.end >= point -> {
+				span.start < point && span.end > point -> {
 					span.end += length
-					modified++
 				}
 			}
 		}

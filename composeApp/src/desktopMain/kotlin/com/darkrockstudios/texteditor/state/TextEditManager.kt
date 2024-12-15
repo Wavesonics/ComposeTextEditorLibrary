@@ -65,17 +65,24 @@ class TextEditManager(private val state: TextEditorState) {
 		// First, append all text
 		append(original.text.substring(0, insertionIndex))
 		append(newText)
+		if (insertionIndex < original.length) {
+			append(original.text.substring(insertionIndex))
+		}
 
-		// Process and condense spans
+		// Process and condense spans with proper bounds checking
 		val processedSpans = spanManager.processSpans(
 			originalText = original,
 			insertionPoint = insertionIndex,
 			insertedText = newText
 		)
 
-		// Add processed spans to the result
+		// Add processed spans to the result with bounds validation
 		processedSpans.forEach { span ->
-			addStyle(span.item, span.start, span.end)
+			val safeStart = span.start.coerceIn(0, length)
+			val safeEnd = span.end.coerceIn(safeStart, length)
+			if (safeEnd > safeStart) {
+				addStyle(span.item, safeStart, safeEnd)
+			}
 		}
 	}
 

@@ -373,27 +373,39 @@ class TextEditorState(
 		var yOffset = 0f
 
 		textLines.forEachIndexed { lineIndex, line ->
-
 			val shouldRemeasure = affectedLines == null ||
 					lineIndex in affectedLines ||
 					lineIndex > affectedLines.last
 
 			val textLayoutResult = if (shouldRemeasure) {
-				textMeasurer.measure(
-					line,
-					constraints = Constraints(
-						maxWidth = maxOf(1, viewportSize.width.toInt()),
-						minHeight = 0,
-						maxHeight = Constraints.Infinity
+				try {
+					textMeasurer.measure(
+						text = line,
+						constraints = Constraints(
+							maxWidth = maxOf(1, viewportSize.width.toInt()),
+							minHeight = 0,
+							maxHeight = Constraints.Infinity
+						)
 					)
-				)
+				} catch (e: IllegalArgumentException) {
+					println(e)
+					// If measurement fails, create an empty layout result
+					textMeasurer.measure(
+						text = AnnotatedString(""),
+						constraints = Constraints(
+							maxWidth = maxOf(1, viewportSize.width.toInt()),
+							minHeight = 0,
+							maxHeight = Constraints.Infinity
+						)
+					)
+				}
 			} else {
 				val existing = lineOffsets.find { it.line == lineIndex }?.textLayoutResult
 				if (existing != null) {
 					existing
 				} else {
 					textMeasurer.measure(
-						line,
+						text = line,
 						constraints = Constraints(
 							maxWidth = maxOf(1, viewportSize.width.toInt()),
 							minHeight = 0,
@@ -406,11 +418,12 @@ class TextEditorState(
 			val virtualLineCount = textLayoutResult.multiParagraph.lineCount
 
 			for (virtualLineIndex in 0 until virtualLineCount) {
-
 				val lineWrapsAt = if (virtualLineIndex == 0) {
 					0
 				} else {
-					textLayoutResult.getLineEnd(virtualLineIndex - 1, visibleEnd = true) + 1
+					val prevEnd =
+						textLayoutResult.getLineEnd(virtualLineIndex - 1, visibleEnd = true)
+					(prevEnd + 1).coerceIn(0, line.length)
 				}
 
 				val lineWrap = LineWrap(
