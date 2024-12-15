@@ -56,6 +56,7 @@ class TextEditManager(private val state: TextEditorState) {
 			block(::addSpanIfNew)
 		}
 	}
+
 	private fun mergeSpanStyles(
 		original: AnnotatedString,
 		insertionIndex: Int,
@@ -64,7 +65,6 @@ class TextEditManager(private val state: TextEditorState) {
 		// First, append all text
 		append(original.text.substring(0, insertionIndex))
 		append(newText)
-		append(original.text.substring(insertionIndex))
 
 		// Process and condense spans
 		val processedSpans = spanManager.processSpans(
@@ -128,6 +128,69 @@ class TextEditManager(private val state: TextEditorState) {
 			addStyle(span.item, span.start, span.end)
 		}
 	}
+
+	private fun handleMultiLineInsert(operation: TextEditOperation.Insert) {
+		val insertLines = operation.text.text.split('\n')
+		val currentLine = state._textLines[operation.position.line]
+		val currentLineText = currentLine.text
+
+		// Split current line content
+		val prefixEndIndex = operation.position.char
+		val prefix = currentLineText.substring(0, prefixEndIndex)
+		val suffix = currentLineText.substring(prefixEndIndex)
+
+		// Create first line combining prefix with first inserted line
+		val firstLineText = buildAnnotatedString {
+			append(prefix)
+			append(insertLines.first())
+
+			// Add spans that belong to the prefix
+			currentLine.spanStyles.forEach { span ->
+				if (span.start < prefixEndIndex) {
+					// If span ends beyond prefix, truncate it
+					val spanEnd = minOf(span.end, prefixEndIndex)
+					addStyle(span.item, span.start, spanEnd)
+				}
+			}
+		}
+		state._textLines[operation.position.line] = mergeSpanStyles(
+			firstLineText,
+			prefix.length,
+			insertLines.first().toAnnotatedString()
+		)
+
+		// Insert middle lines (if any)
+		for (i in 1 until insertLines.lastIndex) {
+			state.insertLine(
+				operation.position.line + i,
+				insertLines[i].toAnnotatedString()
+			)
+		}
+
+		// Handle last line with remainder if there are multiple lines
+		if (insertLines.size > 1) {
+			val lastInsertedLine = insertLines.last()
+			val lastLine = buildAnnotatedString {
+				append(lastInsertedLine)
+				append(suffix)
+
+				// Add spans that belong to the suffix, adjusting their positions
+				currentLine.spanStyles.forEach { span ->
+					if (span.end > prefixEndIndex) {
+						val adjustedStart = maxOf(span.start - prefixEndIndex, 0) + lastInsertedLine.length
+						val adjustedEnd = span.end - prefixEndIndex + lastInsertedLine.length
+						addStyle(span.item, adjustedStart, adjustedEnd)
+					}
+				}
+			}
+
+			state.insertLine(
+				operation.position.line + insertLines.lastIndex,
+				lastLine
+			)
+		}
+	}
+
 
 	private fun handleMultiLineReplace(
 		state: TextEditorState,
@@ -238,33 +301,7 @@ class TextEditManager(private val state: TextEditorState) {
 		when (operation) {
 			is TextEditOperation.Insert -> {
 				if (operation.text.contains('\n')) {
-					// Handle multiline insert
-					val lines = operation.text.split('\n')
-					val currentLine = state._textLines[operation.position.line]
-
-					// Apply span merging to first line
-					state._textLines[operation.position.line] = mergeSpanStyles(
-						currentLine,
-						operation.position.char,
-						lines.first().toAnnotatedString()
-					)
-
-					// Insert middle lines
-					for (i in 1 until lines.size - 1) {
-						state.insertLine(operation.position.line + i, lines[i])
-					}
-
-					// Apply span merging to last line with remaining content
-					if (lines.size > 1) {
-						val lastLineText = buildAnnotatedString {
-							append(lines.last())
-							append(currentLine.text.substring(operation.position.char))
-						}
-						state.insertLine(
-							operation.position.line + lines.size - 1,
-							lastLineText
-						)
-					}
+					handleMultiLineInsert(operation)
 				} else {
 					// Single line insert with span merging
 					val line = state._textLines[operation.position.line]
