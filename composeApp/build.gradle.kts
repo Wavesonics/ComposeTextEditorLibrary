@@ -36,6 +36,7 @@ kotlin {
                 implementation("org.jetbrains.kotlin:kotlin-test-junit")
                 implementation("io.mockk:mockk:1.13.8")
                 implementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
+                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-test-jvm:1.7.3")
             }
         }
     }
