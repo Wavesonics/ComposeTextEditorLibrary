@@ -20,7 +20,8 @@ class SpellCheckStyle(
 		val endX = layoutResult.getHorizontalPosition(textRange.end, usePrimaryDirection = true)
 
 		// Position the wave at the bottom of the text
-		val lineHeight = layoutResult.multiParagraph.getLineHeight(0)
+		val lineIndex = layoutResult.getLineForOffset(textRange.start)
+		val lineHeight = layoutResult.multiParagraph.getLineHeight(lineIndex)
 		val baselineY = lineHeight - 2f // Slightly above the bottom
 
 		val path = Path().apply {
@@ -34,7 +35,7 @@ class SpellCheckStyle(
 				val targetX = (x + halfWave).coerceAtMost(endX)
 				val targetY = baselineY + (if (up) -amplitude else amplitude)
 
-				quadraticBezierTo(
+				quadraticTo(
 					x1 = x + (targetX - x) / 2,
 					y1 = targetY,
 					x2 = targetX,
