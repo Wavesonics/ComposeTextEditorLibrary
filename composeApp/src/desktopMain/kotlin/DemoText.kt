@@ -146,6 +146,10 @@ had happened lately, that Alice had begun to think that very few
 things indeed were really impossible.
 """
 
+fun createRichTextDemo2(): AnnotatedString = buildAnnotatedString {
+	append("12345678901234567890")
+}
+
 fun createRichTextDemo(): AnnotatedString = buildAnnotatedString {
 	// Title
 	withStyle(SpanStyle(fontSize = 24.sp, color = Color(0xFF1a73e8))) {

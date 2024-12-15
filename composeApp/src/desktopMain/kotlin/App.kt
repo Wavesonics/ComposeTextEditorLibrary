@@ -31,6 +31,8 @@ fun App() {
             state.selector.updateSelection(CharLineOffset(0, 10), CharLineOffset(0, 20))
             state.addRichSpan(6, 11, HighlightSpanStyle(Color(0x40FF0000)))
             state.addRichSpan(15, 30, SpellCheckStyle())
+//            state.setInitialText(createRichTextDemo2())
+//            state.addRichSpan(5, 10, HighlightSpanStyle(Color(0x40FF0000)))
 
             state.editOperations.collect { operation ->
                 println("Applying Operation: $operation")

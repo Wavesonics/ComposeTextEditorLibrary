@@ -58,8 +58,7 @@ class TextEditorState(
 
 	val editOperations = editManager.editOperations
 
-	internal fun notifyContentChanged(operation: TextEditOperation? = null) {
-		operation?.let { richSpanManager.updateSpans(it) }
+	internal fun notifyContentChanged() {
 		_version++
 	}
 
@@ -437,8 +436,7 @@ class TextEditorState(
 					richSpanManager.getSpansForLineWrap(lineWrap)
 				} else {
 					lineOffsets.find {
-						it.line == lineIndex &&
-								it.wrapStartsAtIndex == lineWrapsAt
+						it.line == lineIndex && it.wrapStartsAtIndex == lineWrapsAt
 					}?.richSpans ?: emptyList()
 				}
 

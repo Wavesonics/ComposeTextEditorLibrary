@@ -3,6 +3,8 @@ package com.darkrockstudios.texteditor.state
 import androidx.compose.ui.text.AnnotatedString
 import com.darkrockstudios.texteditor.CharLineOffset
 import com.darkrockstudios.texteditor.TextRange
+import com.darkrockstudios.texteditor.toCharLineOffset
+import com.darkrockstudios.texteditor.toCharacterIndex
 
 sealed class TextEditOperation {
 	abstract val cursorBefore: CharLineOffset
@@ -89,13 +91,4 @@ internal fun TextEditOperation.transformRange(range: TextRange, state: TextEdito
 		transformOffset(range.start, state),
 		transformOffset(range.end, state)
 	)
-}
-
-// Helper extension functions for converting between CharLineOffset and character index
-private fun CharLineOffset.toCharacterIndex(state: TextEditorState): Int {
-	return state.getCharacterIndex(this)
-}
-
-private fun Int.toCharLineOffset(state: TextEditorState): CharLineOffset {
-	return state.getOffsetAtCharacter(this)
 }

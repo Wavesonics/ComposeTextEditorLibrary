@@ -82,45 +82,43 @@ class SpanManager {
 	private fun handleDeletion(spans: MutableList<SpanInfo>, start: Int, end: Int) {
 		val deletionLength = end - start
 		val iterator = spans.iterator()
-		var removed = 0
-		var modified = 0
 
 		while (iterator.hasNext()) {
 			val span = iterator.next()
 			when {
 				// Span ends before deletion - no change needed
-				span.end < start -> continue
+				span.end <= start -> {}
 
 				// Span starts after deletion - shift left
-				span.start > end -> {
+				span.start >= end -> {
 					span.start -= deletionLength
 					span.end -= deletionLength
-					modified++
 				}
 
-				// Span completely within deletion - remove it
-				span.start >= start && span.end <= end -> {
-					iterator.remove()
-					removed++
-				}
-
-				// Deletion removes middle of span - shrink span
+				// Deletion is entirely within span - contract span
 				span.start < start && span.end > end -> {
 					span.end -= deletionLength
-					modified++
 				}
 
-				// Deletion removes end of span - truncate end
+				// Deletion overlaps start of span - adjust start
+				span.start >= start && span.start < end -> {
+					if (span.end > end) {
+						span.start = start
+						span.end -= deletionLength
+					} else {
+						// Span is completely within deletion - remove it
+						iterator.remove()
+					}
+				}
+
+				// Deletion overlaps end of span - adjust end
 				span.start < start && span.end <= end -> {
 					span.end = start
-					modified++
 				}
 
-				// Deletion removes start of span - adjust start
-				span.start >= start && span.end > end -> {
-					span.start = start
-					span.end -= deletionLength
-					modified++
+				// Any other case means the span is invalid or empty - remove it
+				else -> {
+					iterator.remove()
 				}
 			}
 		}

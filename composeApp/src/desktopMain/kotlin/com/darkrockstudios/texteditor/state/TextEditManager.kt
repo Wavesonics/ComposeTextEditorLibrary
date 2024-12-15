@@ -411,11 +411,12 @@ class TextEditManager(private val state: TextEditorState) {
 		}
 
 		state.updateCursorPosition(operation.cursorAfter)
+		state.richSpanManager.updateSpans(operation)
 		state.updateBookKeeping()
 		if (addToHistory) {
 			history.recordEdit(operation)
 		}
-		state.notifyContentChanged(operation)
+		state.notifyContentChanged()
 
 		_editOperations.tryEmit(operation)
 	}
