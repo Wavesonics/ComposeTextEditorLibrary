@@ -15,15 +15,15 @@ class HighlightSpanStyle(
 		layoutResult: TextLayoutResult,
 		textRange: TextRange
 	) {
-		// Since we're working with a single virtual line, we only need line 0
+		val lineIndex = layoutResult.getLineForOffset(textRange.start)
+		val lineHeight = layoutResult.multiParagraph.getLineHeight(lineIndex)
+
 		val startX = layoutResult.getHorizontalPosition(textRange.start, usePrimaryDirection = true)
 		val endX = layoutResult.getHorizontalPosition(textRange.end, usePrimaryDirection = true)
 
-		val lineHeight = layoutResult.multiParagraph.getLineHeight(0)
-
 		drawRect(
 			color = color,
-			topLeft = Offset(startX, 0f),  // y is 0 because we're translated to line position
+			topLeft = Offset(startX, 0f),
 			size = Size(endX - startX, lineHeight)
 		)
 	}
