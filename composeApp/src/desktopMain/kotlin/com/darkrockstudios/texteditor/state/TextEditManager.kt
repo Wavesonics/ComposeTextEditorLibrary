@@ -142,7 +142,7 @@ class TextEditManager(private val state: TextEditorState) {
 		val currentLineText = currentLine.text
 
 		// Split current line content
-		val prefixEndIndex = operation.position.char
+		val prefixEndIndex = operation.position.char.coerceIn(0, currentLineText.length)
 		val prefix = currentLineText.substring(0, prefixEndIndex)
 		val suffix = currentLineText.substring(prefixEndIndex)
 
@@ -197,7 +197,6 @@ class TextEditManager(private val state: TextEditorState) {
 			)
 		}
 	}
-
 
 	private fun handleMultiLineReplace(
 		state: TextEditorState,
