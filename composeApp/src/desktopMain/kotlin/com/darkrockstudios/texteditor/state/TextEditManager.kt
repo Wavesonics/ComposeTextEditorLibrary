@@ -6,7 +6,6 @@ import androidx.compose.ui.text.buildAnnotatedString
 import com.darkrockstudios.texteditor.CharLineOffset
 import com.darkrockstudios.texteditor.TextRange
 import com.darkrockstudios.texteditor.annotatedstring.toAnnotatedString
-import com.darkrockstudios.texteditor.toRange
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -424,21 +423,52 @@ class TextEditManager(private val state: TextEditorState) {
 		history.undo()?.let { operation ->
 			when (operation) {
 				is TextEditOperation.Insert -> {
-					val range = operation.position.toRange(
-						CharLineOffset(
-							operation.position.line,
-							operation.position.char + operation.text.length
+					if (operation.text.text == "\n") {
+						// Special handling for newline
+						val deleteRange = TextRange(
+							operation.position,
+							CharLineOffset(
+								operation.position.line + 1,
+								0
+							)
 						)
-					)
-					applyOperation(
-						TextEditOperation.Delete(
-							range = range,
-							deletedText = operation.text,
-							cursorBefore = operation.cursorAfter,
-							cursorAfter = operation.cursorBefore
-						),
-						addToHistory = false
-					)
+						applyOperation(
+							TextEditOperation.Delete(
+								range = deleteRange,
+								deletedText = operation.text,
+								cursorBefore = operation.cursorAfter,
+								cursorAfter = operation.cursorBefore
+							),
+							addToHistory = false
+						)
+					} else {
+						// Normal text deletion
+						val endPosition = if (operation.text.contains('\n')) {
+							// Handle multi-line text by calculating the correct end position
+							val lines = operation.text.text.split('\n')
+							val lastLineLength = lines.last().length
+							CharLineOffset(
+								operation.position.line + lines.size - 1,
+								if (lines.size == 1) operation.position.char + lastLineLength else lastLineLength
+							)
+						} else {
+							CharLineOffset(
+								operation.position.line,
+								operation.position.char + operation.text.length
+							)
+						}
+
+						val range = TextRange(operation.position, endPosition)
+						applyOperation(
+							TextEditOperation.Delete(
+								range = range,
+								deletedText = operation.text,
+								cursorBefore = operation.cursorAfter,
+								cursorAfter = operation.cursorBefore
+							),
+							addToHistory = false
+						)
+					}
 				}
 				is TextEditOperation.Delete -> {
 					applyOperation(
