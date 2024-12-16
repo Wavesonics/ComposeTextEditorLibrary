@@ -35,12 +35,37 @@ class RichSpanManager(
 				}
 
 				is TextEditOperation.Delete -> {
-					// Transform the span's start and end positions
-					val newStart = operation.transformOffset(span.start, state)
-					val newEnd = operation.transformOffset(span.end, state)
-					// Only add if the span still exists
-					if (newStart != newEnd) {
-						updatedSpans.add(span.copy(start = newStart, end = newEnd))
+					// Special handling for newline deletion(s)
+					if (operation.deletedText.text.contains('\n')) {
+						val lineCount = operation.deletedText.text.count { it == '\n' }
+						// For spans before the deletion point, keep them unchanged
+						if (span.end.line < operation.range.start.line) {
+							updatedSpans.add(span)
+						}
+						// For spans after the deletion point, adjust their line numbers
+						else if (span.start.line > operation.range.start.line) {
+							val newStart = CharLineOffset(
+								span.start.line - lineCount,
+								span.start.char + operation.range.start.char
+							)
+							val newEnd = CharLineOffset(
+								span.end.line - lineCount,
+								span.end.char + operation.range.start.char
+							)
+							updatedSpans.add(span.copy(start = newStart, end = newEnd))
+						}
+						// For spans on the same line as the deletion, preserve them with adjusted positions
+						else if (span.start.line == operation.range.start.line) {
+							updatedSpans.add(span)
+						}
+					} else {
+						// Regular deletion handling
+						val newStart = operation.transformOffset(span.start, state)
+						val newEnd = operation.transformOffset(span.end, state)
+						// Only add if the span still exists
+						if (newStart != newEnd) {
+							updatedSpans.add(span.copy(start = newStart, end = newEnd))
+						}
 					}
 				}
 

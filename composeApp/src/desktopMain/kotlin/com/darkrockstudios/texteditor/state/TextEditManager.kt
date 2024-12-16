@@ -424,7 +424,12 @@ class TextEditManager(private val state: TextEditorState) {
 			when (operation) {
 				is TextEditOperation.Insert -> {
 					if (operation.text.text == "\n") {
-						// Special handling for newline
+						// For newline undo, we need to capture spans from both lines before deletion
+						val firstLine = state.textLines[operation.position.line]
+						val secondLine = state.textLines[operation.position.line + 1]
+						val firstLineSpans = firstLine.spanStyles
+						val secondLineSpans = secondLine.spanStyles
+
 						val deleteRange = TextRange(
 							operation.position,
 							CharLineOffset(
@@ -432,19 +437,47 @@ class TextEditManager(private val state: TextEditorState) {
 								0
 							)
 						)
-						applyOperation(
-							TextEditOperation.Delete(
-								range = deleteRange,
-								deletedText = operation.text,
-								cursorBefore = operation.cursorAfter,
-								cursorAfter = operation.cursorBefore
-							),
-							addToHistory = false
+
+						// Create a delete operation that preserves spans
+						val deleteOp = TextEditOperation.Delete(
+							range = deleteRange,
+							deletedText = operation.text,
+							cursorBefore = operation.cursorAfter,
+							cursorAfter = operation.cursorBefore
 						)
+
+						// Apply the delete operation
+						applyOperation(deleteOp, addToHistory = false)
+
+						// After deletion, we need to merge the spans from both lines
+						val mergedLine = state.textLines[operation.position.line]
+						val adjustedSpans = buildAnnotatedString {
+							append(mergedLine.text)
+
+							// Add spans from first line (no adjustment needed)
+							firstLineSpans.forEach { span ->
+								if (span.end <= operation.position.char) {
+									addStyle(span.item, span.start, span.end)
+								}
+							}
+
+							// Add spans from second line (adjust positions)
+							secondLineSpans.forEach { span ->
+								val newStart = span.start + operation.position.char
+								val newEnd = span.end + operation.position.char
+								addStyle(span.item, newStart, newEnd)
+							}
+						}
+
+						// Update the line with merged spans
+						state.replaceLine(operation.position.line, adjustedSpans)
+
+						// Make sure to update rich spans
+						state.updateBookKeeping()
+						state.notifyContentChanged()
 					} else {
-						// Normal text deletion
+						// Handle regular text deletion as before
 						val endPosition = if (operation.text.contains('\n')) {
-							// Handle multi-line text by calculating the correct end position
 							val lines = operation.text.text.split('\n')
 							val lastLineLength = lines.last().length
 							CharLineOffset(
