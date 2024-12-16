@@ -6,11 +6,14 @@ import com.darkrockstudios.texteditor.state.TextEditorState
 
 internal fun DrawScope.drawRichSpans(lineWrap: LineWrap, state: TextEditorState) {
 	val textLayoutResult = lineWrap.textLayoutResult
+	// Determine if this is a wrapped line by checking if it's not the first virtual line
+	val isWrappedLine = lineWrap.virtualLineIndex > 0
 
 	lineWrap.richSpans.forEach { richSpan ->
 		// Get the range of text visible in this wrap
 		val wrapVisibleStart = textLayoutResult.getLineStart(lineWrap.virtualLineIndex)
-		val wrapVisibleEnd = textLayoutResult.getLineEnd(lineWrap.virtualLineIndex)
+		val wrapVisibleEnd =
+			textLayoutResult.getLineEnd(lineWrap.virtualLineIndex, visibleEnd = true)
 
 		// Calculate where in the original line this wrapped segment starts and ends
 		val lineStart = CharLineOffset(line = lineWrap.line, char = lineWrap.wrapStartsAtIndex)
@@ -29,20 +32,23 @@ internal fun DrawScope.drawRichSpans(lineWrap: LineWrap, state: TextEditorState)
 			spanEndAbsChar >= lineStart.toCharacterIndex(state)
 		) {
 
+			// Calculate position adjustment based on whether this is a wrapped line
+			val positionAdjustment = if (isWrappedLine) 1 else 0
+
 			// Calculate the local range within this wrapped segment
 			val localStart = if (spanStartAbsChar <= lineStartAbsChar) {
-				wrapVisibleStart
+				wrapVisibleStart + positionAdjustment
 			} else {
-				(spanStartAbsChar - lineStartAbsChar) + wrapVisibleStart
+				(spanStartAbsChar - lineStartAbsChar) + wrapVisibleStart + positionAdjustment
 			}
 
 			val localEnd = if (spanEndAbsChar >= lineEnd.toCharacterIndex(state)) {
-				wrapVisibleEnd
+				wrapVisibleEnd + positionAdjustment
 			} else {
-				((spanEndAbsChar - lineStartAbsChar) + wrapVisibleStart).coerceAtMost(wrapVisibleEnd)
+				((spanEndAbsChar - lineStartAbsChar) + wrapVisibleStart + positionAdjustment)
+					.coerceAtMost(wrapVisibleEnd + positionAdjustment)
 			}
 
-			// Ensure we include the last character by using a range that goes to the visible end
 			val localRange = androidx.compose.ui.text.TextRange(
 				start = localStart,
 				end = localEnd
