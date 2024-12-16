@@ -17,11 +17,10 @@ internal fun DrawScope.drawSelection(
 
 		relevantLines.forEach { wrap ->
 			val multiParagraph = wrap.textLayoutResult.multiParagraph
-			val virtualLineIndex = multiParagraph.getLineForOffset(wrap.wrapStartsAtIndex)
 
 			// Get the actual start and end positions for this virtual line
-			val lineStart = multiParagraph.getLineStart(virtualLineIndex)
-			val lineEnd = multiParagraph.getLineEnd(virtualLineIndex, visibleEnd = true)
+			val lineStart = multiParagraph.getLineStart(wrap.virtualLineIndex)
+			val lineEnd = multiParagraph.getLineEnd(wrap.virtualLineIndex, visibleEnd = true)
 
 			val (selectionStart, selectionEnd) = when (wrap.line) {
 				selection.start.line -> {
@@ -56,8 +55,18 @@ internal fun DrawScope.drawSelection(
 			// Draw the selection if we have valid bounds
 			if (selectionStart != null && selectionEnd != null && selectionEnd > selectionStart) {
 				val startX = multiParagraph.getHorizontalPosition(selectionStart, true)
-				val endX = multiParagraph.getHorizontalPosition(selectionEnd, true)
-				val lineHeight = multiParagraph.getLineHeight(virtualLineIndex)
+
+				val lineEndOffset = wrap.textLayoutResult.getLineEnd(wrap.virtualLineIndex, false)
+				val endX = if (selectionEnd >= lineEndOffset) {
+					wrap.textLayoutResult.getLineRight(wrap.virtualLineIndex)
+				} else {
+					wrap.textLayoutResult.getHorizontalPosition(
+						selectionEnd,
+						usePrimaryDirection = true
+					)
+				}
+
+				val lineHeight = multiParagraph.getLineHeight(wrap.virtualLineIndex)
 
 				drawRect(
 					color = Color(0x400000FF),
