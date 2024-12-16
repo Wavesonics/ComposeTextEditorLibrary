@@ -17,41 +17,82 @@ class SpellCheckStyle(
 		lineIndex: Int,
 		textRange: TextRange
 	) {
-		val startX = layoutResult.getHorizontalPosition(textRange.start, usePrimaryDirection = true)
-		val endX = layoutResult.getHorizontalPosition(textRange.end, usePrimaryDirection = true)
-
-		// Position the wave at the bottom of the text
-		val lineIndex = layoutResult.getLineForOffset(textRange.start)
 		val lineHeight = layoutResult.multiParagraph.getLineHeight(lineIndex)
 		val baselineY = lineHeight - 2f // Slightly above the bottom
 
-		val path = Path().apply {
-			moveTo(startX, baselineY)
-
-			// Create a wavy line by repeatedly adding sine wave segments
-			var x = startX
-			var up = true
-			while (x < endX) {
-				val halfWave = waveLength / 2
-				val targetX = (x + halfWave).coerceAtMost(endX)
-				val targetY = baselineY + (if (up) -amplitude else amplitude)
-
-				quadraticTo(
-					x1 = x + (targetX - x) / 2,
-					y1 = targetY,
-					x2 = targetX,
-					y2 = baselineY
-				)
-
-				x = targetX
-				up = !up
+		val lineStartOffset = layoutResult.getLineStart(lineIndex) + 1
+		val startX = if (textRange.start <= lineStartOffset) {
+			layoutResult.getLineLeft(lineIndex)
+		} else {
+			try {
+				layoutResult.getHorizontalPosition(textRange.start, usePrimaryDirection = true)
+			} catch (e: Exception) {
+				error(e)
 			}
 		}
 
-		drawPath(
-			path = path,
-			color = color,
-			style = Stroke(width = 1f)
+		val lineEndOffset = layoutResult.getLineEnd(lineIndex, false)
+		val endX = if (textRange.end >= lineEndOffset) {
+			layoutResult.getLineRight(lineIndex)
+		} else {
+			layoutResult.getHorizontalPosition(textRange.end, usePrimaryDirection = true)
+		}
+
+		// Only draw if we have a valid width
+		if (endX > startX) {
+			val path = Path().apply {
+				moveTo(startX, baselineY)
+
+				// Calculate how many complete waves we can fit
+				val width = endX - startX
+				val numWaves = (width / waveLength).toInt()
+				val remainingWidth = width % waveLength
+
+				var x = startX
+				var up = true
+
+				// Draw complete waves
+				repeat(numWaves) {
+					drawWaveSegment(x, baselineY, waveLength, up)
+					x += waveLength
+					up = !up
+				}
+
+				// Draw remaining partial wave if needed
+				if (remainingWidth > 0) {
+					drawWaveSegment(x, baselineY, remainingWidth, up)
+				}
+			}
+
+			drawPath(
+				path = path,
+				color = color,
+				style = Stroke(width = 1f)
+			)
+		}
+	}
+
+	private fun Path.drawWaveSegment(startX: Float, baselineY: Float, width: Float, up: Boolean) {
+		val halfWave = width / 2
+		val midY = baselineY + (if (up) -amplitude else amplitude)
+		val endX = startX + width
+
+		// First half of wave
+		quadraticTo(
+			x1 = startX + halfWave / 2,
+			y1 = midY,
+			x2 = startX + halfWave,
+			y2 = baselineY
 		)
+
+		// Second half of wave (if there's enough space)
+		if (width > halfWave) {
+			quadraticTo(
+				x1 = startX + halfWave + (width - halfWave) / 2,
+				y1 = baselineY + (if (!up) -amplitude else amplitude),
+				x2 = endX,
+				y2 = baselineY
+			)
+		}
 	}
 }
