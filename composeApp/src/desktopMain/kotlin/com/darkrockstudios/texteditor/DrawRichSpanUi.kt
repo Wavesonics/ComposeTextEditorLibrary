@@ -8,17 +8,17 @@ internal fun DrawScope.drawRichSpans(lineWrap: LineWrap, state: TextEditorState)
 	val textLayoutResult = lineWrap.textLayoutResult
 	val isWrappedLine = lineWrap.offset.y > 0
 
-	println("\n\n------ Drawing RichSpans for LineWrap: ${lineWrap.line} ${lineWrap.wrapStartsAtIndex}")
-	println("wrapStartsAtIndex: ${lineWrap.wrapStartsAtIndex}")
-	println("vline Length: ${lineWrap.virtualLength}")
-	println("vline index: ${lineWrap.virtualLineIndex}")
-	println("isWrappedLine: $isWrappedLine")
+//	println("\n\n------ Drawing RichSpans for LineWrap: ${lineWrap.line} ${lineWrap.wrapStartsAtIndex}")
+//	println("wrapStartsAtIndex: ${lineWrap.wrapStartsAtIndex}")
+//	println("vline Length: ${lineWrap.virtualLength}")
+//	println("vline index: ${lineWrap.virtualLineIndex}")
+//	println("isWrappedLine: $isWrappedLine")
 
 	lineWrap.richSpans.forEach { richSpan ->
-		println("------ Drawing ${richSpan.style.javaClass.simpleName}")
-		println("Physical Span Start: ${richSpan.start}")
-		println("Physical Span End: ${richSpan.end}")
-		println("Line Offset: ${lineWrap.offset}")
+//		println("------ Drawing ${richSpan.style.javaClass.simpleName}")
+//		println("Physical Span Start: ${richSpan.start}")
+//		println("Physical Span End: ${richSpan.end}")
+//		println("Line Offset: ${lineWrap.offset}")
 
 		val lineStart = CharLineOffset(line = lineWrap.line, char = lineWrap.wrapStartsAtIndex)
 		val lineEnd = CharLineOffset(
