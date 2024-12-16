@@ -27,7 +27,12 @@ class HighlightSpanStyle(
 			println("get line left")
 			layoutResult.getLineLeft(lineIndex)
 		} else {
-			layoutResult.getHorizontalPosition(textRange.start, usePrimaryDirection = true)
+			println("get horizontal pos")
+			try {
+				layoutResult.getHorizontalPosition(textRange.start, usePrimaryDirection = true)
+			} catch (e: Exception) {
+				error(e)
+			}
 		}
 
 		val lineEndOffset = layoutResult.getLineEnd(lineIndex, false)
@@ -55,7 +60,7 @@ class HighlightSpanStyle(
 
 		drawRect(
 			color = color,
-			topLeft = Offset(x = startX, y = lineTop),
+			topLeft = Offset(x = startX, y = 0f),
 			size = Size(width = endX - startX, height = lineHeight)
 		)
 	}
