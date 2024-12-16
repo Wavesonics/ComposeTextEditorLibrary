@@ -1,47 +1,34 @@
 package com.darkrockstudios.texteditor
 
 import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.drawscope.translate
 
 internal fun DrawScope.drawRichSpans(lineWrap: LineWrap) {
 	val textLayoutResult = lineWrap.textLayoutResult
+	val isWrappedLine = lineWrap.offset.y > 0
 
-	// Get the actual text range for this wrapped line segment
-	val wrapStart = lineWrap.wrapStartsAtIndex
-	val wrapEnd = if (textLayoutResult.lineCount > 0) {
-		textLayoutResult.getLineEnd(0, visibleEnd = true)
-	} else {
-		wrapStart
-	}
+	println("\n\n------ Drawing RichSpans for LineWrap: ${lineWrap.line} ${lineWrap.wrapStartsAtIndex}")
+	println("wrapStartsAtIndex: ${lineWrap.wrapStartsAtIndex}")
+	println("vline Length: ${lineWrap.virtualLength}")
+	println("vline index: ${lineWrap.virtualLineIndex}")
+	println("isWrappedLine: $isWrappedLine")
 
 	lineWrap.richSpans.forEach { richSpan ->
-		// Calculate the intersection of the span with this wrapped line segment
-		val spanStart = when {
-			richSpan.start.line == lineWrap.line -> maxOf(wrapStart, richSpan.start.char)
-			else -> wrapStart
-		}
+		println("------ Drawing ${richSpan.style.javaClass.simpleName}")
+		println("Physical Span Start: ${richSpan.start}")
+		println("Physical Span End: ${richSpan.end}")
+		println("Line Offset: ${lineWrap.offset}")
 
-		val spanEnd = when {
-			richSpan.end.line == lineWrap.line -> minOf(wrapEnd, richSpan.end.char)
-			else -> wrapEnd
-		}
+		val localSpanRange = androidx.compose.ui.text.TextRange(
+			start = richSpan.start.char.coerceAtLeast(lineWrap.wrapStartsAtIndex),
+			end = richSpan.end.char.coerceAtMost(lineWrap.wrapStartsAtIndex + lineWrap.virtualLength)
+		)
 
-		if (spanStart < spanEnd) {
-			// Create a text range relative to this wrapped segment
-			val localSpanRange = androidx.compose.ui.text.TextRange(
-				start = spanStart - wrapStart,
-				end = spanEnd - wrapStart
+		with(richSpan.style) {
+			drawCustomStyle(
+				layoutResult = textLayoutResult,
+				lineIndex = lineWrap.virtualLineIndex,
+				textRange = localSpanRange
 			)
-
-			// Apply the style with proper translation
-			with(richSpan.style) {
-				translate(lineWrap.offset.x, lineWrap.offset.y) {
-					drawCustomStyle(
-						layoutResult = textLayoutResult,
-						textRange = localSpanRange
-					)
-				}
-			}
 		}
 	}
 }

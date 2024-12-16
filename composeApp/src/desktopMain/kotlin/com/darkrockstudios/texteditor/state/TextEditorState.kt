@@ -227,6 +227,7 @@ class TextEditorState(
 						if (lines.size > 1) lines.last().length else range.start.char + newText.length
 					)
 				}
+
 				else -> CharLineOffset(
 					range.start.line,
 					range.start.char + newText.length
@@ -374,7 +375,7 @@ class TextEditorState(
 		textLines.forEachIndexed { lineIndex, line ->
 			val shouldRemeasure = affectedLines == null ||
 					lineIndex in affectedLines ||
-					lineIndex > affectedLines.last
+					lineIndex > (affectedLines.lastOrNull() ?: -1)
 
 			val textLayoutResult = if (shouldRemeasure) {
 				try {
@@ -425,9 +426,16 @@ class TextEditorState(
 					(prevEnd + 1).coerceIn(0, line.length)
 				}
 
+				val lineLength =
+					textLayoutResult.getLineEnd(virtualLineIndex) - textLayoutResult.getLineStart(
+						virtualLineIndex
+					)
+
 				val lineWrap = LineWrap(
 					line = lineIndex,
 					wrapStartsAtIndex = lineWrapsAt,
+					virtualLength = lineLength,
+					virtualLineIndex = virtualLineIndex,
 					offset = Offset(0f, yOffset),
 					textLayoutResult = textLayoutResult
 				)

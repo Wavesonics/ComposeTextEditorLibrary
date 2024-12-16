@@ -18,6 +18,7 @@ class RichSpanIntersectionTest {
 	private fun createLineWrap(
 		line: Int,
 		wrapStartsAtIndex: Int,
+		virtualLength: Int,
 		lineEnd: Int,
 		lineCount: Int = 1
 	): LineWrap {
@@ -28,9 +29,11 @@ class RichSpanIntersectionTest {
 		return LineWrap(
 			line = line,
 			wrapStartsAtIndex = wrapStartsAtIndex,
+			virtualLength = virtualLength,
 			offset = Offset(0f, 0f),
 			textLayoutResult = mockTextLayoutResult,
-			richSpans = emptyList()
+			richSpans = emptyList(),
+			virtualLineIndex = virtualLineIndex
 		)
 	}
 

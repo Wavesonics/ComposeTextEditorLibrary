@@ -9,6 +9,7 @@ import com.darkrockstudios.texteditor.LineWrap
 interface RichSpanStyle {
 	fun DrawScope.drawCustomStyle(
 		layoutResult: TextLayoutResult,
+		lineIndex: Int,
 		textRange: TextRange
 	)
 }
@@ -25,9 +26,9 @@ data class RichSpan(
 		}
 
 		// Get the effective range for this virtual line segment
-		val lineStart = lineWrap.wrapStartsAtIndex
+		val lineStart = lineWrap.textLayoutResult.getLineStart(lineWrap.virtualLineIndex)
 		val lineEnd = if (lineWrap.textLayoutResult.lineCount > 0) {
-			lineWrap.textLayoutResult.getLineEnd(0, visibleEnd = true)
+			lineWrap.textLayoutResult.getLineEnd(lineWrap.virtualLineIndex)
 		} else {
 			lineStart
 		}

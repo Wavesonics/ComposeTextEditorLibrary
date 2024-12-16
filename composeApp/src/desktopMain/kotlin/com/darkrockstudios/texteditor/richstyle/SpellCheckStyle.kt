@@ -14,6 +14,7 @@ class SpellCheckStyle(
 ) : RichSpanStyle {
 	override fun DrawScope.drawCustomStyle(
 		layoutResult: TextLayoutResult,
+		lineIndex: Int,
 		textRange: TextRange
 	) {
 		val startX = layoutResult.getHorizontalPosition(textRange.start, usePrimaryDirection = true)

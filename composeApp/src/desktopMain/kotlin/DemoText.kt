@@ -147,7 +147,7 @@ things indeed were really impossible.
 """
 
 fun createRichTextDemo2(): AnnotatedString = buildAnnotatedString {
-	append("12345678901234567890")
+	append("1234567890123456789112345678921234567893")
 }
 
 fun createRichTextDemo(): AnnotatedString = buildAnnotatedString {
