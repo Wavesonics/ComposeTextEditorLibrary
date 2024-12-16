@@ -89,7 +89,7 @@ fun TextEditor(
 					try {
 						var lastLine = -1
 						state.lineOffsets.fastForEach { virtualLine ->
-							if (lastLine != virtualLine.line) {
+							if (lastLine != virtualLine.line && state.textLines.size > virtualLine.line) {
 								val line = state.textLines[virtualLine.line]
 
 								drawText(

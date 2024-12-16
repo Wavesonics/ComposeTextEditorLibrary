@@ -89,7 +89,11 @@ class TextEditorState(
 	}
 
 	fun updateCursorPosition(position: CharLineOffset) {
-		cursorPosition = position
+		val maxLine = (_textLines.size - 1).coerceAtLeast(0)
+		val line = position.line.coerceIn(0, maxLine)
+		val char = position.char.coerceIn(0, _textLines.getOrNull(line)?.length ?: 0)
+
+		cursorPosition = CharLineOffset(line, char)
 		scrollManager.ensureCursorVisible()
 	}
 
@@ -247,9 +251,24 @@ class TextEditorState(
 	}
 
 	internal fun removeLines(startIndex: Int, count: Int) {
-		repeat(count) {
-			_textLines.removeAt(startIndex)
+		// If there are no lines, or we're trying to remove more lines than exist, abort
+		if (_textLines.isEmpty() || startIndex >= _textLines.size) {
+			return
 		}
+
+		// Ensure we don't remove more lines than available
+		val safeCount = minOf(count, _textLines.size - startIndex)
+
+		// Always keep at least one empty line
+		if (_textLines.size <= safeCount) {
+			_textLines.clear()
+			_textLines.add(AnnotatedString(""))
+		} else {
+			repeat(safeCount) {
+				_textLines.removeAt(startIndex)
+			}
+		}
+
 		updateBookKeeping()
 	}
 

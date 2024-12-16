@@ -22,6 +22,14 @@ class SpanManager {
 		fun merge(other: SpanInfo): SpanInfo =
 			SpanInfo(style, minOf(start, other.start), maxOf(end, other.end))
 
+		fun coerceIn(range: IntRange): SpanInfo? {
+			val newStart = start.coerceIn(range)
+			val newEnd = end.coerceIn(range)
+			return if (newStart < newEnd) {
+				SpanInfo(style, newStart, newEnd)
+			} else null
+		}
+
 		override fun toString(): String = "Span($start-$end: $style)"
 	}
 
@@ -32,6 +40,17 @@ class SpanManager {
 		deletionStart: Int = -1,
 		deletionEnd: Int = -1
 	): List<AnnotatedString.Range<SpanStyle>> {
+		// Calculate the final text length after operations
+		val finalLength = when {
+			insertedText != null && insertionPoint >= 0 ->
+				originalText.length + insertedText.length
+
+			deletionStart >= 0 && deletionEnd >= 0 ->
+				originalText.length - (deletionEnd - deletionStart)
+
+			else -> originalText.length
+		}
+
 		// First, deduplicate identical spans
 		val uniqueSpans = originalText.spanStyles.distinctBy { span ->
 			Triple(span.start, span.end, span.item)
@@ -73,10 +92,12 @@ class SpanManager {
 		// Merge overlapping and adjacent spans
 		val mergedSpans = mergeSpans(spans)
 
-		// Convert back to AnnotatedString.Range format
-		return mergedSpans.map { span ->
-			AnnotatedString.Range(span.style, span.start, span.end)
-		}
+		// Ensure all spans are within bounds and convert back to AnnotatedString.Range format
+		return mergedSpans
+			.mapNotNull { span -> span.coerceIn(0..finalLength) }
+			.map { span ->
+				AnnotatedString.Range(span.style, span.start, span.end)
+			}
 	}
 
 	private fun handleDeletion(spans: MutableList<SpanInfo>, start: Int, end: Int) {
@@ -91,13 +112,16 @@ class SpanManager {
 
 				// Span starts after deletion - shift left
 				span.start >= end -> {
-					span.start -= deletionLength
-					span.end -= deletionLength
+					span.start = (span.start - deletionLength).coerceAtLeast(0)
+					span.end = (span.end - deletionLength).coerceAtLeast(0)
+					if (span.start >= span.end) {
+						iterator.remove()
+					}
 				}
 
 				// Deletion is entirely within span - contract span
 				span.start < start && span.end > end -> {
-					span.end -= deletionLength
+					span.end = span.end - deletionLength
 				}
 
 				// Deletion overlaps start of span - adjust start
@@ -114,6 +138,9 @@ class SpanManager {
 				// Deletion overlaps end of span - adjust end
 				span.start < start && span.end <= end -> {
 					span.end = start
+					if (span.start >= span.end) {
+						iterator.remove()
+					}
 				}
 
 				// Any other case means the span is invalid or empty - remove it

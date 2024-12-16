@@ -114,18 +114,24 @@ class TextEditManager(private val state: TextEditorState) {
 		end: Int,
 		newText: AnnotatedString
 	): AnnotatedString = buildAnnotatedString {
+		// Safely handle text portions with bounds checking
+		val safeStart = start.coerceIn(0, line.length)
+		val safeEnd = end.coerceIn(0, line.length)
+
 		// Append text portions
-		append(line.text.substring(0, start))
+		append(line.text.substring(0, safeStart))
 		append(newText)
-		append(line.text.substring(end))
+		if (safeEnd < line.length) {
+			append(line.text.substring(safeEnd))
+		}
 
 		// Process spans using SpanManager
 		val spanManager = SpanManager()
 		val processedSpans = spanManager.processSpans(
 			originalText = line,
-			deletionStart = start,
-			deletionEnd = end,
-			insertionPoint = start,
+			deletionStart = safeStart,
+			deletionEnd = safeEnd,
+			insertionPoint = safeStart,
 			insertedText = newText
 		)
 
@@ -302,6 +308,68 @@ class TextEditManager(private val state: TextEditorState) {
 		}
 	}
 
+	private fun handleMultiLineDelete(operation: TextEditOperation.Delete) {
+		// Add bounds checking for line indices
+		val startLine = operation.range.start.line.coerceIn(0, state._textLines.lastIndex)
+		val endLine = operation.range.end.line.coerceIn(0, state._textLines.lastIndex)
+
+		if (startLine > endLine || state._textLines.isEmpty()) {
+			// If trying to delete from empty state, ensure we maintain one empty line
+			if (state._textLines.isEmpty()) {
+				state._textLines.add(AnnotatedString(""))
+			}
+			return
+		}
+
+		// Store the deleted content for undo
+		val firstLine = state._textLines[startLine]
+		val lastLine = state._textLines[endLine]
+
+		// Safe character bounds
+		val startChar = operation.range.start.char.coerceIn(0, firstLine.text.length)
+		val endChar = operation.range.end.char.coerceIn(0, lastLine.text.length)
+
+		// If deleting everything, maintain one empty line
+		if (startLine == 0 && endLine == state._textLines.lastIndex &&
+			startChar == 0 && endChar == lastLine.text.length
+		) {
+			state._textLines.clear()
+			state._textLines.add(AnnotatedString(""))
+		} else {
+			// Normal multi-line delete with previous implementation...
+			val startText = firstLine.text.substring(0, startChar)
+			val endText = lastLine.text.substring(endChar)
+
+			state.removeLines(startLine, endLine - startLine + 1)
+
+			state.insertLine(
+				startLine,
+				buildAnnotatedStringWithSpans { addSpan ->
+					append(startText)
+					append(endText)
+
+					// Handle spans with same bounds checking as above
+					firstLine.spanStyles.forEach { span ->
+						if (span.end <= startChar) {
+							addSpan(span.item, span.start, span.end)
+						}
+					}
+
+					val startLength = startText.length
+					lastLine.spanStyles.forEach { span ->
+						if (span.start >= endChar) {
+							addSpan(
+								span.item,
+								span.start - endChar + startLength,
+								span.end - endChar + startLength
+							)
+						}
+					}
+				})
+		}
+	}
+
+
 	fun applyOperation(operation: TextEditOperation, addToHistory: Boolean = true) {
 		when (operation) {
 			is TextEditOperation.Insert -> {
@@ -320,58 +388,19 @@ class TextEditManager(private val state: TextEditorState) {
 
 			is TextEditOperation.Delete -> {
 				when {
-					// Single line deletion
 					operation.range.isSingleLine() -> {
 						val line = state._textLines[operation.range.start.line]
+						val safeStart = operation.range.start.char.coerceIn(0, line.text.length)
+						val safeEnd = operation.range.end.char.coerceIn(safeStart, line.text.length)
+
 						state._textLines[operation.range.start.line] = handleDelete(
 							line,
-							operation.range.start.char,
-							operation.range.end.char
+							safeStart,
+							safeEnd
 						)
 					}
-					// Multi-line deletion
 					else -> {
-						// Handle first line
-						val firstLine = state._textLines[operation.range.start.line]
-						val startText = firstLine.text.substring(0, operation.range.start.char)
-
-						// Handle last line
-						val lastLine = state._textLines[operation.range.end.line]
-						val endText = lastLine.text.substring(operation.range.end.char)
-
-						// Remove all lines in the range
-						state.removeLines(
-							operation.range.start.line,
-							operation.range.end.line - operation.range.start.line + 1
-						)
-
-						// Merge the remaining text with proper span handling
-						state.insertLine(
-							operation.range.start.line,
-							buildAnnotatedStringWithSpans { addSpan ->
-								append(startText)
-								append(endText)
-
-								// Handle spans from first line
-								firstLine.spanStyles.forEach { span ->
-									if (span.end <= operation.range.start.char) {
-										addSpan(span.item, span.start, span.end)
-									}
-								}
-
-								// Handle spans from last line
-								val startLength = startText.length
-								lastLine.spanStyles.forEach { span ->
-									if (span.start >= operation.range.end.char) {
-										addSpan(
-											span.item,
-											span.start - operation.range.end.char + startLength,
-											span.end - operation.range.end.char + startLength
-										)
-									}
-								}
-							}
-						)
+						handleMultiLineDelete(operation)
 					}
 				}
 			}
@@ -449,6 +478,11 @@ class TextEditManager(private val state: TextEditorState) {
 					)
 				}
 				is TextEditOperation.Delete -> {
+					// Handle the case where we're undoing a delete-all operation
+					if (state._textLines.size == 1 && state._textLines[0].text.isEmpty()) {
+						state._textLines.clear()
+					}
+
 					applyOperation(
 						TextEditOperation.Insert(
 							position = operation.range.start,
