@@ -114,12 +114,9 @@ class TextEditorState(
 				CharLineOffset(cursorPosition.line, cursorPosition.char - 1),
 				cursorPosition
 			)
-			val deletedText = textLines[cursorPosition.line]
-				.subSequence(deleteRange.start.char, deleteRange.end.char)
 
 			val operation = TextEditOperation.Delete(
 				range = deleteRange,
-				deletedText = deletedText,
 				cursorBefore = cursorPosition,
 				cursorAfter = CharLineOffset(cursorPosition.line, cursorPosition.char - 1)
 			)
@@ -130,11 +127,9 @@ class TextEditorState(
 				CharLineOffset(cursorPosition.line - 1, previousLineLength),
 				cursorPosition
 			)
-			val deletedText = AnnotatedString("\n")
 
 			val operation = TextEditOperation.Delete(
 				range = deleteRange,
-				deletedText = deletedText,
 				cursorBefore = cursorPosition,
 				cursorAfter = CharLineOffset(cursorPosition.line - 1, previousLineLength)
 			)
@@ -148,12 +143,9 @@ class TextEditorState(
 				cursorPosition,
 				CharLineOffset(cursorPosition.line, cursorPosition.char + 1)
 			)
-			val deletedText = textLines[cursorPosition.line]
-				.subSequence(deleteRange.start.char, deleteRange.end.char)
 
 			val operation = TextEditOperation.Delete(
 				range = deleteRange,
-				deletedText = deletedText,
 				cursorBefore = cursorPosition,
 				cursorAfter = cursorPosition
 			)
@@ -167,7 +159,6 @@ class TextEditorState(
 
 			val operation = TextEditOperation.Delete(
 				range = deleteRange,
-				deletedText = deletedText,
 				cursorBefore = cursorPosition,
 				cursorAfter = cursorPosition
 			)
@@ -188,12 +179,20 @@ class TextEditorState(
 
 	fun insertStringAtCursor(string: String) = insertStringAtCursor(string.toAnnotatedString())
 	fun insertStringAtCursor(text: AnnotatedString) {
-		// Convert to an Insert operation and let TextEditManager handle it
 		val operation = TextEditOperation.Insert(
 			position = cursorPosition,
 			text = text,
 			cursorBefore = cursorPosition,
 			cursorAfter = CharLineOffset(cursorPosition.line, cursorPosition.char + text.length)
+		)
+		editManager.applyOperation(operation)
+	}
+
+	fun delete(range: TextRange) {
+		val operation = TextEditOperation.Delete(
+			range = range,
+			cursorBefore = cursorPosition,
+			cursorAfter = range.start
 		)
 		editManager.applyOperation(operation)
 	}
@@ -476,6 +475,16 @@ class TextEditorState(
 		scrollManager.updateContentHeight(yOffset.toInt())
 	}
 
+	fun applyStyleSpan(start: Int, end: Int, style: RichSpanStyle) {
+		richSpanManager.addSpan(start.toCharLineOffset(), end.toCharLineOffset(), style)
+		updateBookKeeping()
+	}
+
+	fun removeStyleSpan(span: RichSpan) {
+		richSpanManager.removeSpan(span)
+		updateBookKeeping()
+	}
+
 	fun addRichSpan(start: Int, end: Int, style: RichSpanStyle) {
 		richSpanManager.addSpan(start.toCharLineOffset(), end.toCharLineOffset(), style)
 		updateBookKeeping()
@@ -496,6 +505,65 @@ class TextEditorState(
 		return lineWrap.richSpans.firstOrNull { span ->
 			span.containsPosition(position)
 		}
+	}
+
+	fun captureMetadata(range: TextRange): OperationMetadata {
+		val deletedContent = when {
+			range.isSingleLine() -> {
+				println("Capturing single line delete:")
+				println("Line content: ${textLines[range.start.line]}")
+				println("Start char: ${range.start.char}")
+				println("End char: ${range.end.char}")
+				val content =
+					textLines[range.start.line].subSequence(range.start.char, range.end.char)
+				println("Captured content: $content")
+				content
+			}
+
+			else -> {
+				buildAnnotatedString {
+					// First line - from start to end
+					append(textLines[range.start.line].subSequence(range.start.char))
+					append("\n")
+
+					// Middle lines
+					for (line in (range.start.line + 1) until range.end.line) {
+						append(textLines[line])
+						append("\n")
+					}
+
+					// Last line - up to end char
+					if (range.end.line < textLines.size) {
+						append(textLines[range.end.line].subSequence(0, range.end.char))
+					}
+				}
+			}
+		}
+
+		return OperationMetadata(
+			deletedText = deletedContent,
+			deletedSpans = richSpanManager.getSpansInRange(range),
+			preservedSpans = richSpanManager.getSpansInRange(range).map { span ->
+				PreservedSpan(
+					relativeStart = getRelativePosition(span.start, range.start),
+					relativeEnd = getRelativePosition(span.end, range.start),
+					style = span.style
+				)
+			}
+		)
+	}
+
+	private fun getRelativePosition(
+		pos: CharLineOffset,
+		basePos: CharLineOffset
+	): RelativePosition {
+		val lineDiff = pos.line - basePos.line
+		val char = when {
+			lineDiff == 0 -> pos.char - basePos.char
+			lineDiff > 0 -> pos.char  // On later line, keep char position
+			else -> pos.char          // Should not happen in properly bounded spans
+		}
+		return RelativePosition(lineDiff, char)
 	}
 }
 

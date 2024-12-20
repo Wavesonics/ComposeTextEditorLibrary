@@ -76,7 +76,7 @@ class TextEditorSelectionManager(
 
 	fun deleteSelection() {
 		val selection = selection ?: return
-		state.replace(selection.range, "")
+		state.delete(selection.range)
 		clearSelection()
 	}
 

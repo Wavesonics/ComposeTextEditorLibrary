@@ -20,69 +20,37 @@ class TextEditManager(private val state: TextEditorState) {
 	)
 	val editOperations: SharedFlow<TextEditOperation> = _editOperations
 
-	private fun buildAnnotatedStringWithSpans(
-		block: AnnotatedString.Builder.(addSpan: (Any, Int, Int) -> Unit) -> Unit
-	): AnnotatedString {
-		return buildAnnotatedString {
-			// Track spans by style to detect overlaps
-			val spansByStyle = mutableMapOf<Any, MutableSet<IntRange>>()
-
-			fun addSpanIfNew(item: Any, start: Int, end: Int) {
-				val ranges = spansByStyle.getOrPut(item) { mutableSetOf() }
-
-				// Check for overlaps
-				val overlapping = ranges.filter { range ->
-					start <= range.last + 1 && end >= range.first - 1
-				}
-
-				if (overlapping.isNotEmpty()) {
-					// Remove overlapping ranges
-					ranges.removeAll(overlapping.toSet())
-
-					// Create one merged range
-					val newStart = minOf(start, overlapping.minOf { it.first })
-					val newEnd = maxOf(end, overlapping.maxOf { it.last })
-
-					ranges.add(newStart..newEnd)
-					addStyle(item as SpanStyle, newStart, newEnd)
-				} else {
-					// No overlap - add new range
-					ranges.add(start..end)
-					addStyle(item as SpanStyle, start, end)
-				}
-			}
-
-			block(::addSpanIfNew)
+	fun applyOperation(operation: TextEditOperation, addToHistory: Boolean = true) {
+		val metadata = when (operation) {
+			is TextEditOperation.Insert -> applyInsert(operation)
+			is TextEditOperation.Delete -> applyDelete(addToHistory, operation)
+			is TextEditOperation.Replace -> applyReplace(addToHistory, operation)
 		}
+
+		state.updateCursorPosition(operation.cursorAfter)
+		state.richSpanManager.updateSpans(operation, metadata)
+		state.updateBookKeeping()
+		if (addToHistory) {
+			history.recordEdit(operation, metadata ?: OperationMetadata())
+		}
+		state.notifyContentChanged()
+
+		_editOperations.tryEmit(operation)
 	}
 
-	private fun mergeSpanStyles(
-		original: AnnotatedString,
-		insertionIndex: Int,
-		newText: AnnotatedString
-	): AnnotatedString = buildAnnotatedString {
-		// First, append all text
-		append(original.text.substring(0, insertionIndex))
-		append(newText)
-		if (insertionIndex < original.length) {
-			append(original.text.substring(insertionIndex))
+	private fun applyInsert(operation: TextEditOperation.Insert): OperationMetadata? {
+		if (operation.text.contains('\n')) {
+			handleMultiLineInsert(operation)
+		} else {
+			// Single line insert with span merging
+			val line = state._textLines[operation.position.line]
+			state._textLines[operation.position.line] = mergeSpanStyles(
+				line,
+				operation.position.char,
+				operation.text
+			)
 		}
-
-		// Process and condense spans with proper bounds checking
-		val processedSpans = spanManager.processSpans(
-			originalText = original,
-			insertionPoint = insertionIndex,
-			insertedText = newText
-		)
-
-		// Add processed spans to the result with bounds validation
-		processedSpans.forEach { span ->
-			val safeStart = span.start.coerceIn(0, length)
-			val safeEnd = span.end.coerceIn(safeStart, length)
-			if (safeEnd > safeStart) {
-				addStyle(span.item, safeStart, safeEnd)
-			}
-		}
+		return null
 	}
 
 	private fun handleDelete(
@@ -94,17 +62,30 @@ class TextEditManager(private val state: TextEditorState) {
 		append(line.text.substring(0, start))
 		append(line.text.substring(end))
 
-		// Process spans using SpanManager
-		val spanManager = SpanManager()
-		val processedSpans = spanManager.processSpans(
-			originalText = line,
-			deletionStart = start,
-			deletionEnd = end
-		)
-
-		// Add processed spans to the result
-		processedSpans.forEach { span ->
-			addStyle(span.item, span.start, span.end)
+		// We need to properly handle the spans
+		line.spanStyles.forEach { span ->
+			when {
+				// Span ends before deletion - keep as is
+				span.end <= start -> {
+					addStyle(span.item, span.start, span.end)
+				}
+				// Span starts after deletion - adjust position
+				span.start >= end -> {
+					val newStart = span.start - (end - start)
+					val newEnd = span.end - (end - start)
+					addStyle(span.item, newStart, newEnd)
+				}
+				// Span overlaps deletion start - truncate at deletion
+				span.start < start && span.end > start -> {
+					addStyle(span.item, span.start, start)
+				}
+				// Span overlaps deletion end - adjust start
+				span.start < end && span.end > end -> {
+					val newStart = start
+					val newEnd = span.end - (end - start)
+					addStyle(span.item, newStart, newEnd)
+				}
+			}
 		}
 	}
 
@@ -189,7 +170,8 @@ class TextEditManager(private val state: TextEditorState) {
 				// Add spans that belong to the suffix, adjusting their positions
 				currentLine.spanStyles.forEach { span ->
 					if (span.end > prefixEndIndex) {
-						val adjustedStart = maxOf(span.start - prefixEndIndex, 0) + lastInsertedLine.length
+						val adjustedStart =
+							maxOf(span.start - prefixEndIndex, 0) + lastInsertedLine.length
 						val adjustedEnd = span.end - prefixEndIndex + lastInsertedLine.length
 						addStyle(span.item, adjustedStart, adjustedEnd)
 					}
@@ -201,6 +183,78 @@ class TextEditManager(private val state: TextEditorState) {
 				lastLine
 			)
 		}
+	}
+
+	private fun applyReplace(
+		addToHistory: Boolean,
+		operation: TextEditOperation.Replace
+	): OperationMetadata? {
+		val metadata = if (addToHistory) {
+			state.captureMetadata(operation.range)
+		} else {
+			return null
+		}
+
+		when {
+			operation.range.isSingleLine() -> {
+				val line = state._textLines[operation.range.start.line]
+				state._textLines[operation.range.start.line] = handleReplace(
+					line,
+					operation.range.start.char,
+					operation.range.end.char,
+					operation.newText
+				)
+			}
+
+			else -> {
+				// Handle multi-line replacement
+				val newContent = handleMultiLineReplace(
+					state,
+					operation.range,
+					operation.newText,
+				)
+
+				// Remove all affected lines
+				state.removeLines(
+					operation.range.start.line,
+					operation.range.end.line - operation.range.start.line + 1
+				)
+
+				// Insert the new content at the start line
+				state.insertLine(operation.range.start.line, newContent)
+			}
+		}
+		return metadata
+	}
+
+	private fun applyDelete(
+		addToHistory: Boolean,
+		operation: TextEditOperation.Delete
+	): OperationMetadata? {
+		val metadata = if (addToHistory) {
+			state.captureMetadata(operation.range)
+		} else {
+			null
+		}
+
+		when {
+			operation.range.isSingleLine() -> {
+				val line = state._textLines[operation.range.start.line]
+				val safeStart = operation.range.start.char.coerceIn(0, line.text.length)
+				val safeEnd = operation.range.end.char.coerceIn(safeStart, line.text.length)
+
+				state._textLines[operation.range.start.line] = handleDelete(
+					line,
+					safeStart,
+					safeEnd
+				)
+			}
+
+			else -> {
+				handleMultiLineDelete(operation)
+			}
+		}
+		return metadata
 	}
 
 	private fun handleMultiLineReplace(
@@ -369,149 +423,184 @@ class TextEditManager(private val state: TextEditorState) {
 		}
 	}
 
-
-	fun applyOperation(operation: TextEditOperation, addToHistory: Boolean = true) {
-		when (operation) {
-			is TextEditOperation.Insert -> {
-				if (operation.text.contains('\n')) {
-					handleMultiLineInsert(operation)
-				} else {
-					// Single line insert with span merging
-					val line = state._textLines[operation.position.line]
-					state._textLines[operation.position.line] = mergeSpanStyles(
-						line,
-						operation.position.char,
-						operation.text
-					)
-				}
-			}
-
-			is TextEditOperation.Delete -> {
-				when {
-					operation.range.isSingleLine() -> {
-						val line = state._textLines[operation.range.start.line]
-						val safeStart = operation.range.start.char.coerceIn(0, line.text.length)
-						val safeEnd = operation.range.end.char.coerceIn(safeStart, line.text.length)
-
-						state._textLines[operation.range.start.line] = handleDelete(
-							line,
-							safeStart,
-							safeEnd
-						)
-					}
-					else -> {
-						handleMultiLineDelete(operation)
-					}
-				}
-			}
-
-			is TextEditOperation.Replace -> {
-				when {
-					operation.range.isSingleLine() -> {
-						val line = state._textLines[operation.range.start.line]
-						state._textLines[operation.range.start.line] = handleReplace(
-							line,
-							operation.range.start.char,
-							operation.range.end.char,
-							operation.newText
-						)
-					}
-					else -> {
-						// Handle multi-line replacement
-						val newContent = handleMultiLineReplace(
-							state,
-							operation.range,
-							operation.newText,
-						)
-
-						// Remove all affected lines
-						state.removeLines(
-							operation.range.start.line,
-							operation.range.end.line - operation.range.start.line + 1
-						)
-
-						// Insert the new content at the start line
-						state.insertLine(operation.range.start.line, newContent)
-					}
-				}
+	fun undo() {
+		history.undo()?.let { entry ->
+			when (entry.operation) {
+				is TextEditOperation.Insert -> undoInsert(entry.operation, entry)
+				is TextEditOperation.Delete -> undoDelete(entry, entry.operation)
+				is TextEditOperation.Replace -> undoReplace(entry.operation, entry)
 			}
 		}
-
-		state.updateCursorPosition(operation.cursorAfter)
-		state.richSpanManager.updateSpans(operation)
-		state.updateBookKeeping()
-		if (addToHistory) {
-			history.recordEdit(operation)
-		}
-		state.notifyContentChanged()
-
-		_editOperations.tryEmit(operation)
 	}
 
-	fun undo() {
-		history.undo()?.let { operation ->
-			when (operation) {
-				is TextEditOperation.Insert -> {
-					val endPosition = if (operation.text.contains('\n')) {
-						val lines = operation.text.text.split('\n')
-						val lastLineLength = lines.last().length
-						CharLineOffset(
-							operation.position.line + lines.size - 1,
-							if (lines.size == 1) operation.position.char + lastLineLength else lastLineLength
-						)
-					} else {
-						CharLineOffset(
-							operation.position.line,
-							operation.position.char + operation.text.length
-						)
-					}
+	private fun undoReplace(
+		operation: TextEditOperation.Replace,
+		entry: HistoryEntry
+	) {
+		println("Undoing Replace:")
+		println("Original range: ${operation.range}")
+		println("Restoring text: ${operation.oldText}")
+		println("Metadata: ${entry.metadata}")
 
-					val range = TextRange(operation.position, endPosition)
-					applyOperation(
-						TextEditOperation.Delete(
-							range = range,
-							deletedText = operation.text,
-							cursorBefore = operation.cursorAfter,
-							cursorAfter = operation.cursorBefore
-						),
-						addToHistory = false
-					)
-				}
-				is TextEditOperation.Delete -> {
-					// Handle the case where we're undoing a delete-all operation
-					if (state._textLines.size == 1 && state._textLines[0].text.isEmpty()) {
-						state._textLines.clear()
-					}
+		applyOperation(
+			TextEditOperation.Replace(
+				range = operation.range,
+				oldText = operation.newText,
+				newText = operation.oldText,
+				cursorBefore = entry.operation.cursorAfter,
+				cursorAfter = entry.operation.cursorBefore
+			),
+			addToHistory = false
+		)
 
-					applyOperation(
-						TextEditOperation.Insert(
-							position = operation.range.start,
-							text = operation.deletedText,
-							cursorBefore = operation.cursorAfter,
-							cursorAfter = operation.cursorBefore
-						),
-						addToHistory = false
-					)
-				}
-				is TextEditOperation.Replace -> {
-					applyOperation(
-						TextEditOperation.Replace(
-							range = operation.range,
-							oldText = operation.newText,
-							newText = operation.oldText,
-							cursorBefore = operation.cursorAfter,
-							cursorAfter = operation.cursorBefore
-						),
-						addToHistory = false
-					)
-				}
-			}
+		restorePreservedSpans(
+			entry.metadata.preservedSpans,
+			operation.range.start
+		)
+	}
+
+	private fun undoDelete(
+		entry: HistoryEntry,
+		operation: TextEditOperation.Delete
+	) {
+		entry.metadata.deletedText?.let { deletedText ->
+			val insertOperation = TextEditOperation.Insert(
+				position = operation.range.start,
+				text = deletedText,
+				cursorBefore = entry.operation.cursorAfter,
+				cursorAfter = entry.operation.cursorBefore
+			)
+			applyOperation(insertOperation, addToHistory = false)
+
+			restorePreservedSpans(
+				entry.metadata.preservedSpans,
+				operation.range.start
+			)
 		}
+	}
+
+	private fun undoInsert(
+		operation: TextEditOperation.Insert,
+		entry: HistoryEntry
+	) {
+		val endPosition = if (operation.text.contains('\n')) {
+			val lines = operation.text.text.split('\n')
+			val lastLineLength = lines.last().length
+			CharLineOffset(
+				operation.position.line + lines.size - 1,
+				if (lines.size == 1) operation.position.char + lastLineLength else lastLineLength
+			)
+		} else {
+			CharLineOffset(
+				operation.position.line,
+				operation.position.char + operation.text.length
+			)
+		}
+
+		val range = TextRange(operation.position, endPosition)
+		applyOperation(
+			TextEditOperation.Delete(
+				range = range,
+				cursorBefore = entry.operation.cursorAfter,
+				cursorAfter = entry.operation.cursorBefore,
+			),
+			addToHistory = false
+		)
 	}
 
 	fun redo() {
-		history.redo()?.let { operation ->
-			applyOperation(operation, addToHistory = false)
+		history.redo()?.let { entry ->
+			applyOperation(entry.operation, addToHistory = false)
+		}
+	}
+
+	private fun restorePreservedSpans(
+		preservedSpans: List<PreservedSpan>,
+		insertPosition: CharLineOffset
+	) {
+		preservedSpans.forEach { preserved ->
+			val startPos = CharLineOffset(
+				line = insertPosition.line + preserved.relativeStart.lineDiff,
+				char = if (preserved.relativeStart.lineDiff == 0)
+					insertPosition.char + preserved.relativeStart.char
+				else
+					preserved.relativeStart.char
+			)
+
+			val endPos = CharLineOffset(
+				line = insertPosition.line + preserved.relativeEnd.lineDiff,
+				char = if (preserved.relativeEnd.lineDiff == 0)
+					insertPosition.char + preserved.relativeEnd.char
+				else
+					preserved.relativeEnd.char
+			)
+
+			state.richSpanManager.addSpan(startPos, endPos, preserved.style)
+		}
+	}
+
+	private fun buildAnnotatedStringWithSpans(
+		block: AnnotatedString.Builder.(addSpan: (Any, Int, Int) -> Unit) -> Unit
+	): AnnotatedString {
+		return buildAnnotatedString {
+			// Track spans by style to detect overlaps
+			val spansByStyle = mutableMapOf<Any, MutableSet<IntRange>>()
+
+			fun addSpanIfNew(item: Any, start: Int, end: Int) {
+				val ranges = spansByStyle.getOrPut(item) { mutableSetOf() }
+
+				// Check for overlaps
+				val overlapping = ranges.filter { range ->
+					start <= range.last + 1 && end >= range.first - 1
+				}
+
+				if (overlapping.isNotEmpty()) {
+					// Remove overlapping ranges
+					ranges.removeAll(overlapping.toSet())
+
+					// Create one merged range
+					val newStart = minOf(start, overlapping.minOf { it.first })
+					val newEnd = maxOf(end, overlapping.maxOf { it.last })
+
+					ranges.add(newStart..newEnd)
+					addStyle(item as SpanStyle, newStart, newEnd)
+				} else {
+					// No overlap - add new range
+					ranges.add(start..end)
+					addStyle(item as SpanStyle, start, end)
+				}
+			}
+
+			block(::addSpanIfNew)
+		}
+	}
+
+	private fun mergeSpanStyles(
+		original: AnnotatedString,
+		insertionIndex: Int,
+		newText: AnnotatedString
+	): AnnotatedString = buildAnnotatedString {
+		// First, append all text
+		append(original.text.substring(0, insertionIndex))
+		append(newText)
+		if (insertionIndex < original.length) {
+			append(original.text.substring(insertionIndex))
+		}
+
+		// Process and condense spans with proper bounds checking
+		val processedSpans = spanManager.processSpans(
+			originalText = original,
+			insertionPoint = insertionIndex,
+			insertedText = newText
+		)
+
+		// Add processed spans to the result with bounds validation
+		processedSpans.forEach { span ->
+			val safeStart = span.start.coerceIn(0, length)
+			val safeEnd = span.end.coerceIn(safeStart, length)
+			if (safeEnd > safeStart) {
+				addStyle(span.item, safeStart, safeEnd)
+			}
 		}
 	}
 }

@@ -56,7 +56,6 @@ sealed class TextEditOperation {
 
 	data class Delete(
 		val range: TextRange,
-		val deletedText: AnnotatedString,
 		override val cursorBefore: CharLineOffset,
 		override val cursorAfter: CharLineOffset
 	) : TextEditOperation() {

@@ -2,6 +2,7 @@ package com.darkrockstudios.texteditor.state
 
 import com.darkrockstudios.texteditor.CharLineOffset
 import com.darkrockstudios.texteditor.LineWrap
+import com.darkrockstudios.texteditor.TextRange
 import com.darkrockstudios.texteditor.richstyle.RichSpan
 import com.darkrockstudios.texteditor.richstyle.RichSpanStyle
 
@@ -22,7 +23,7 @@ class RichSpanManager(
 		return spans.filter { it.intersectsWith(lineWrap) }
 	}
 
-	fun updateSpans(operation: TextEditOperation) {
+	fun updateSpans(operation: TextEditOperation, metadata: OperationMetadata?) {
 		val updatedSpans = mutableListOf<RichSpan>()
 
 		spans.forEach { span ->
@@ -83,7 +84,8 @@ class RichSpanManager(
 				}
 
 				is TextEditOperation.Delete -> {
-					if (operation.deletedText.text == "\n") {
+					metadata ?: error("Delete op requires Metadata")
+					if (metadata.deletedText?.text == "\n") {
 						// Special handling for newline deletion
 						val deletionPoint = operation.range.start
 						val nextLineStart = operation.range.end
@@ -130,11 +132,10 @@ class RichSpanManager(
 					// Handle replace as a delete followed by insert
 					val deleteOp = TextEditOperation.Delete(
 						range = operation.range,
-						deletedText = operation.oldText,
 						cursorBefore = operation.cursorBefore,
-						cursorAfter = operation.range.start
+						cursorAfter = operation.range.start,
 					)
-					updateSpans(deleteOp)
+					updateSpans(deleteOp, metadata)
 
 					val insertOp = TextEditOperation.Insert(
 						position = operation.range.start,
@@ -142,7 +143,7 @@ class RichSpanManager(
 						cursorBefore = operation.range.start,
 						cursorAfter = operation.cursorAfter
 					)
-					updateSpans(insertOp)
+					updateSpans(insertOp, metadata)
 					return
 				}
 			}
@@ -150,5 +151,11 @@ class RichSpanManager(
 
 		spans.clear()
 		spans.addAll(updatedSpans)
+	}
+
+	fun getSpansInRange(range: TextRange): List<RichSpan> {
+		return spans.filter { span ->
+			span.start isBeforeOrEqual range.end && span.end isAfterOrEqual range.start
+		}
 	}
 }

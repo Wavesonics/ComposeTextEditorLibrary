@@ -5,6 +5,10 @@ import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -39,6 +43,10 @@ fun App() {
                 println("Applying Operation: $operation")
             }
         }
+        var isBoldActive by remember { mutableStateOf(false) }
+        var isItalicActive by remember { mutableStateOf(false) }
+        var isHighlightActive by remember { mutableStateOf(false) }
+
         Column {
             Text(
                 "Custom Text Editor",
@@ -46,6 +54,25 @@ fun App() {
                 style = MaterialTheme.typography.h3,
                 fontWeight = FontWeight.Bold
             )
+            TextEditorToolbar(
+                onBoldClick = {
+                    isBoldActive = !isBoldActive
+
+                    state.addRichSpan()
+                },
+                onItalicClick = {
+                    isItalicActive = !isItalicActive
+                    // Implement italic styling logic
+                },
+                onHighlightClick = {
+                    isHighlightActive = !isHighlightActive
+                    // Implement highlight styling logic
+                },
+                isBoldActive = isBoldActive,
+                isItalicActive = isItalicActive,
+                isHighlightActive = isHighlightActive
+            )
+
             TextEditor(
                 state = state,
                 modifier = Modifier.padding(16.dp).fillMaxSize(),

@@ -8,30 +8,6 @@ import androidx.compose.ui.text.SpanStyle
  * while maintaining the minimal necessary number of spans.
  */
 class SpanManager {
-	private data class SpanInfo(
-		val style: SpanStyle,
-		var start: Int,
-		var end: Int
-	) {
-		fun overlaps(other: SpanInfo): Boolean =
-			(start <= other.end && end >= other.start) && style == other.style
-
-		fun isAdjacent(other: SpanInfo): Boolean =
-			(end + 1 == other.start || other.end + 1 == start) && style == other.style
-
-		fun merge(other: SpanInfo): SpanInfo =
-			SpanInfo(style, minOf(start, other.start), maxOf(end, other.end))
-
-		fun coerceIn(range: IntRange): SpanInfo? {
-			val newStart = start.coerceIn(range)
-			val newEnd = end.coerceIn(range)
-			return if (newStart < newEnd) {
-				SpanInfo(style, newStart, newEnd)
-			} else null
-		}
-
-		override fun toString(): String = "Span($start-$end: $style)"
-	}
 
 	fun processSpans(
 		originalText: AnnotatedString,
@@ -197,4 +173,29 @@ class SpanManager {
 
 		return result
 	}
+}
+
+private data class SpanInfo(
+	val style: SpanStyle,
+	var start: Int,
+	var end: Int
+) {
+	fun overlaps(other: SpanInfo): Boolean =
+		(start <= other.end && end >= other.start) && style == other.style
+
+	fun isAdjacent(other: SpanInfo): Boolean =
+		(end + 1 == other.start || other.end + 1 == start) && style == other.style
+
+	fun merge(other: SpanInfo): SpanInfo =
+		SpanInfo(style, minOf(start, other.start), maxOf(end, other.end))
+
+	fun coerceIn(range: IntRange): SpanInfo? {
+		val newStart = start.coerceIn(range)
+		val newEnd = end.coerceIn(range)
+		return if (newStart < newEnd) {
+			SpanInfo(style, newStart, newEnd)
+		} else null
+	}
+
+	override fun toString(): String = "Span($start-$end: $style)"
 }
