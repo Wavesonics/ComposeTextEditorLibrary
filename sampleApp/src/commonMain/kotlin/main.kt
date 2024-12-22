@@ -8,9 +8,9 @@ import androidx.compose.ui.window.application
 fun main() = application {
     Window(
         onCloseRequest = ::exitApplication,
-        title = "Custom Text Editor",
+        title = "Compose Text Editor",
         state = remember { WindowState(size = DpSize(width = 512.dp, height = 512.dp)) }
     ) {
-        App()
+	    App()
     }
 }

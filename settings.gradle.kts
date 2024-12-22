@@ -1,4 +1,4 @@
-rootProject.name = "TextTest"
+rootProject.name = "ComposeTextEditorLibrary"
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 
 pluginManagement {
@@ -28,4 +28,5 @@ dependencyResolutionManagement {
     }
 }
 
-include(":composeApp")
+include(":ComposeTextEditor")
+include(":sampleApp")
