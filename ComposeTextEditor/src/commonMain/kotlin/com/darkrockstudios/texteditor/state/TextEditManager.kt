@@ -370,29 +370,24 @@ class TextEditManager(private val state: TextEditorState) {
 		val endLine = operation.range.end.line.coerceIn(0, state._textLines.lastIndex)
 
 		if (startLine > endLine || state._textLines.isEmpty()) {
-			// If trying to delete from empty state, ensure we maintain one empty line
 			if (state._textLines.isEmpty()) {
 				state._textLines.add(AnnotatedString(""))
 			}
 			return
 		}
 
-		// Store the deleted content for undo
 		val firstLine = state._textLines[startLine]
 		val lastLine = state._textLines[endLine]
 
-		// Safe character bounds
 		val startChar = operation.range.start.char.coerceIn(0, firstLine.text.length)
 		val endChar = operation.range.end.char.coerceIn(0, lastLine.text.length)
 
-		// If deleting everything, maintain one empty line
 		if (startLine == 0 && endLine == state._textLines.lastIndex &&
 			startChar == 0 && endChar == lastLine.text.length
 		) {
 			state._textLines.clear()
 			state._textLines.add(AnnotatedString(""))
 		} else {
-			// Normal multi-line delete with previous implementation...
 			val startText = firstLine.text.substring(0, startChar)
 			val endText = lastLine.text.substring(endChar)
 
@@ -404,21 +399,40 @@ class TextEditManager(private val state: TextEditorState) {
 					append(startText)
 					append(endText)
 
-					// Handle spans with same bounds checking as above
+					// Handle spans from the first line
 					firstLine.spanStyles.forEach { span ->
-						if (span.end <= startChar) {
-							addSpan(span.item, span.start, span.end)
+						when {
+							// Span ends before deletion - keep as is
+							span.end <= startChar -> {
+								addSpan(span.item, span.start, span.end)
+							}
+							// Span starts before deletion - extend to the new end
+							span.start < startChar -> {
+								addSpan(span.item, span.start, startChar)
+							}
 						}
 					}
 
+					// Handle spans from the last line
 					val startLength = startText.length
 					lastLine.spanStyles.forEach { span ->
-						if (span.start >= endChar) {
-							addSpan(
-								span.item,
-								span.start - endChar + startLength,
-								span.end - endChar + startLength
-							)
+						when {
+							// Span starts after deletion - shift it back
+							span.start >= endChar -> {
+								addSpan(
+									span.item,
+									span.start - endChar + startLength,
+									span.end - endChar + startLength
+								)
+							}
+							// Span extends past deletion point - preserve the remainder
+							span.end > endChar -> {
+								addSpan(
+									span.item,
+									startLength, // Start at the join point
+									span.end - endChar + startLength
+								)
+							}
 						}
 					}
 				})
