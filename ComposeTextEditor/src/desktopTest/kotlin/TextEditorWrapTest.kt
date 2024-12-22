@@ -194,6 +194,7 @@ class TextEditorWrapTest {
 	private class TestHighlightStyle : RichSpanStyle {
 		override fun DrawScope.drawCustomStyle(
 			layoutResult: TextLayoutResult,
+			lineIndex: Int,
 			textRange: TextRange
 		) {
 			// No-op for testing

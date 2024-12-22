@@ -1,5 +1,6 @@
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.text.TextRange
 import com.darkrockstudios.texteditor.CharLineOffset
 import com.darkrockstudios.texteditor.richstyle.RichSpan
 import com.darkrockstudios.texteditor.richstyle.RichSpanStyle
@@ -120,7 +121,8 @@ class RichSpanTest {
 	private class TestStyle : RichSpanStyle {
 		override fun DrawScope.drawCustomStyle(
 			layoutResult: TextLayoutResult,
-			textRange: androidx.compose.ui.text.TextRange
+			lineIndex: Int,
+			textRange: TextRange
 		) {
 			// Noop
 		}

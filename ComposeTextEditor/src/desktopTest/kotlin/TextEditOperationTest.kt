@@ -136,7 +136,6 @@ class TextEditOperationTest {
 				start = CharLineOffset(1, 5),
 				end = CharLineOffset(1, 10)
 			),
-			deletedText = AnnotatedString("hello"),
 			cursorBefore = CharLineOffset(1, 10),
 			cursorAfter = CharLineOffset(1, 5)
 		)
@@ -152,7 +151,6 @@ class TextEditOperationTest {
 				start = CharLineOffset(1, 5),
 				end = CharLineOffset(1, 10)
 			),
-			deletedText = AnnotatedString("hello"),
 			cursorBefore = CharLineOffset(1, 10),
 			cursorAfter = CharLineOffset(1, 5)
 		)
@@ -168,7 +166,6 @@ class TextEditOperationTest {
 				start = CharLineOffset(1, 5),
 				end = CharLineOffset(1, 10)
 			),
-			deletedText = AnnotatedString("hello"),
 			cursorBefore = CharLineOffset(1, 10),
 			cursorAfter = CharLineOffset(1, 5)
 		)
@@ -184,7 +181,6 @@ class TextEditOperationTest {
 				start = CharLineOffset(1, 5),
 				end = CharLineOffset(2, 3)
 			),
-			deletedText = AnnotatedString("hello\nwor"),
 			cursorBefore = CharLineOffset(2, 3),
 			cursorAfter = CharLineOffset(1, 5)
 		)
@@ -299,7 +295,6 @@ class TextEditOperationTest {
 				start = CharLineOffset(1, 5),
 				end = CharLineOffset(1, 5)
 			),
-			deletedText = AnnotatedString(""),
 			cursorBefore = CharLineOffset(1, 5),
 			cursorAfter = CharLineOffset(1, 5)
 		)
