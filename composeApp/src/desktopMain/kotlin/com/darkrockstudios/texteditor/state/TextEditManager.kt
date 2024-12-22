@@ -6,6 +6,8 @@ import androidx.compose.ui.text.buildAnnotatedString
 import com.darkrockstudios.texteditor.CharLineOffset
 import com.darkrockstudios.texteditor.TextRange
 import com.darkrockstudios.texteditor.annotatedstring.toAnnotatedString
+import com.darkrockstudios.texteditor.toCharacterIndex
+import com.darkrockstudios.texteditor.wrapStartToCharacterIndex
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -602,5 +604,137 @@ class TextEditManager(private val state: TextEditorState) {
 				addStyle(span.item, safeStart, safeEnd)
 			}
 		}
+	}
+
+	fun applySpanStyle(textRange: TextRange, spanStyle: SpanStyle) {
+		// Get the affected line indices
+		val startLineInfo = state.getWrappedLine(textRange.start)
+		val endLineInfo = state.getWrappedLine(textRange.end)
+
+		// Handle single line case
+		if (startLineInfo.line == endLineInfo.line) {
+
+			applySingleLineSpanStyle(
+				lineIndex = startLineInfo.line,
+				start = textRange.start.toCharacterIndex(state) - startLineInfo.wrapStartsAtIndex,
+				end = textRange.end.toCharacterIndex(state) - startLineInfo.wrapStartsAtIndex,
+				spanStyle = spanStyle
+			)
+			return
+		}
+
+		// Handle multi-line case
+		for (lineIndex in startLineInfo.line..endLineInfo.line) {
+			when (lineIndex) {
+				startLineInfo.line -> {
+					// First line: from start to end of line
+					val lineStart =
+						textRange.start.toCharacterIndex(state) - startLineInfo.wrapStartToCharacterIndex(
+							state
+						)
+					val lineEnd = state.getLine(lineIndex).length
+					applySingleLineSpanStyle(lineIndex, lineStart, lineEnd, spanStyle)
+				}
+
+				endLineInfo.line -> {
+					// Last line: from start of line to end
+					val lineEnd =
+						textRange.end.toCharacterIndex(state) - endLineInfo.wrapStartToCharacterIndex(
+							state
+						)
+					applySingleLineSpanStyle(lineIndex, 0, lineEnd, spanStyle)
+				}
+
+				else -> {
+					// Middle lines: entire line
+					val lineLength = state.getLine(lineIndex).length
+					applySingleLineSpanStyle(lineIndex, 0, lineLength, spanStyle)
+				}
+			}
+		}
+	}
+
+	private fun applySingleLineSpanStyle(
+		lineIndex: Int,
+		start: Int,
+		end: Int,
+		spanStyle: SpanStyle
+	) {
+		val line = state.getLine(lineIndex)
+		val existingSpans = line.spanStyles
+
+		// Create new span list
+		val newSpans = mutableListOf<AnnotatedString.Range<SpanStyle>>()
+
+		// Handle existing spans
+		for (existing in existingSpans) {
+			when {
+				// Existing span is completely before new span
+				existing.end <= start -> {
+					newSpans.add(existing)
+				}
+				// Existing span is completely after new span
+				existing.start >= end -> {
+					newSpans.add(existing)
+				}
+				// Spans overlap - merge styles
+				else -> {
+					// Handle the part before overlap
+					if (existing.start < start) {
+						newSpans.add(
+							AnnotatedString.Range(
+								existing.item,
+								existing.start,
+								start
+							)
+						)
+					}
+
+					// Handle the overlapping part
+					val overlapStart = maxOf(existing.start, start)
+					val overlapEnd = minOf(existing.end, end)
+					newSpans.add(
+						AnnotatedString.Range(
+							existing.item.merge(spanStyle),
+							overlapStart,
+							overlapEnd
+						)
+					)
+
+					// Handle the part after overlap
+					if (existing.end > end) {
+						newSpans.add(
+							AnnotatedString.Range(
+								existing.item,
+								end,
+								existing.end
+							)
+						)
+					}
+				}
+			}
+		}
+
+		// Add the new span for any uncovered regions
+		val coveredRanges = newSpans.filter { it.start <= end && it.end >= start }
+		if (coveredRanges.isEmpty()) {
+			newSpans.add(AnnotatedString.Range(spanStyle, start, end))
+		}
+
+		// Sort spans by start position
+		val sortedSpans = newSpans.sortedBy { it.start }
+
+		// Create new AnnotatedString with updated spans
+		val newText = AnnotatedString(
+			text = line.text,
+			spanStyles = sortedSpans
+		)
+
+		// Update the line in state
+		state.updateLine(lineIndex, newText)
+	}
+
+	fun removeStyleSpan(range: TextRange, style: SpanStyle) {
+		TODO("Not yet implemented")
 	}
 }

@@ -11,6 +11,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.darkrockstudios.texteditor.CharLineOffset
@@ -21,6 +23,9 @@ import com.darkrockstudios.texteditor.state.SpanClickType
 import com.darkrockstudios.texteditor.state.TextEditorState
 import com.darkrockstudios.texteditor.state.rememberTextEditorState
 import org.jetbrains.compose.ui.tooling.preview.Preview
+
+val BOLD = SpanStyle(fontWeight = FontWeight.Bold)
+val ITALICS = SpanStyle(fontStyle = FontStyle.Italic)
 
 @Composable
 @Preview
@@ -57,8 +62,9 @@ fun App() {
             TextEditorToolbar(
                 onBoldClick = {
                     isBoldActive = !isBoldActive
-
-                    state.addRichSpan()
+                    state.selector.selection?.let { range ->
+                        state.applyStyleSpan(range.range, BOLD)
+                    }
                 },
                 onItalicClick = {
                     isItalicActive = !isItalicActive

@@ -10,6 +10,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.rememberTextMeasurer
@@ -241,10 +242,10 @@ class TextEditorState(
 		editManager.applyOperation(operation)
 	}
 
-	internal fun replaceLine(index: Int, text: String) =
-		replaceLine(index, text.toAnnotatedString())
+	internal fun updateLine(index: Int, text: String) =
+		updateLine(index, text.toAnnotatedString())
 
-	internal fun replaceLine(index: Int, text: AnnotatedString) {
+	internal fun updateLine(index: Int, text: AnnotatedString) {
 		_textLines[index] = text
 		updateBookKeeping()
 	}
@@ -285,7 +286,6 @@ class TextEditorState(
 		editManager.redo()
 	}
 
-	// Helper functions for cursor movement
 	fun getWrappedLineIndex(position: CharLineOffset): Int {
 		return lineOffsets.indexOfLast { lineOffset ->
 			lineOffset.line == position.line && lineOffset.wrapStartsAtIndex <= position.char
@@ -386,6 +386,28 @@ class TextEditorState(
 		)
 	}
 
+	fun wrapStartToCharacterIndex(lineWrap: LineWrap): Int {
+		// First get the physical line start offset
+		val physicalLineStartOffset = getLineStartOffset(lineWrap.line)
+		// Add the local offset from the LineWrap
+		return physicalLineStartOffset + lineWrap.wrapStartsAtIndex
+	}
+
+	fun getLineStartOffset(lineIndex: Int): Int {
+		require(lineIndex >= 0) { "Line index must be non-negative" }
+		require(lineIndex < textLines.size) { "Line index $lineIndex out of bounds for ${textLines.size} lines" }
+
+		var offset = 0
+		// Sum up lengths of all previous lines
+		for (i in 0 until lineIndex) {
+			offset += textLines[i].length
+			// Add 1 for the newline character at the end of each line
+			// except for the last line if it doesn't end with a newline
+			offset += 1
+		}
+		return offset
+	}
+
 	internal fun updateBookKeeping(affectedLines: IntRange? = null) {
 		val offsets = mutableListOf<LineWrap>()
 		var yOffset = 0f
@@ -475,13 +497,13 @@ class TextEditorState(
 		scrollManager.updateContentHeight(yOffset.toInt())
 	}
 
-	fun applyStyleSpan(start: Int, end: Int, style: RichSpanStyle) {
-		richSpanManager.addSpan(start.toCharLineOffset(), end.toCharLineOffset(), style)
+	fun applyStyleSpan(range: TextRange, style: SpanStyle) {
+		editManager.applySpanStyle(range, style)
 		updateBookKeeping()
 	}
 
-	fun removeStyleSpan(span: RichSpan) {
-		richSpanManager.removeSpan(span)
+	fun removeStyleSpan(range: TextRange, style: SpanStyle) {
+		editManager.removeStyleSpan(range, style)
 		updateBookKeeping()
 	}
 
@@ -565,6 +587,8 @@ class TextEditorState(
 		}
 		return RelativePosition(lineDiff, char)
 	}
+
+	internal fun getLine(lineIndex: Int): AnnotatedString = textLines[lineIndex]
 }
 
 @Composable
