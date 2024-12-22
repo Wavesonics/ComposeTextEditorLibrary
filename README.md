@@ -39,3 +39,4 @@ actually work. It just needs some more time and attention.
 - Platform native text highlighting
 - Write lots of tests
 - I don't know, probably a lot of other things
+- The code is largely prototype quality, would need a lot of spit and polish
