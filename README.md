@@ -1,3 +1,5 @@
+_This is an exploratory project and is not ready for use._
+
 # Compose Text Editor
 
 I've been trying to implement a spell checking text field in Compose, and keep running up against
