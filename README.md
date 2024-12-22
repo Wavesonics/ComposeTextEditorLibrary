@@ -1,11 +1,10 @@
-This is a Kotlin Multiplatform project targeting Desktop.
+# Compose Text Editor
 
-* `/composeApp` is for code that will be shared across your Compose Multiplatform applications.
-  It contains several subfolders:
-  - `commonMain` is for code that’s common for all targets.
-  - Other folders are for Kotlin code that will be compiled for only the platform indicated in the folder name.
-    For example, if you want to use Apple’s CoreCrypto for the iOS part of your Kotlin app,
-    `iosMain` would be the right folder for such calls.
+I've been trying to implement a spell checking text field in Compose, and keep running up against
+the limitations of `BasicTextField`. Pretty much out of options, I decided to see what it might take
+to replace `BasicTextField` with something that solved all of my needs.
 
+tl;dr it's hard, but maybe not as hard as I had thought.
 
-Learn more about [Kotlin Multiplatform](https://www.jetbrains.com/help/kotlin-multiplatform-dev/get-started.html)…
+This is not ready for prime time, but if anyone is interested in collaborating, I think it could
+actually work. It just needs some more time and attention.
