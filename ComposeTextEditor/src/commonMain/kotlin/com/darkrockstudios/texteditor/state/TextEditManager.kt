@@ -6,8 +6,6 @@ import androidx.compose.ui.text.buildAnnotatedString
 import com.darkrockstudios.texteditor.CharLineOffset
 import com.darkrockstudios.texteditor.TextRange
 import com.darkrockstudios.texteditor.annotatedstring.toAnnotatedString
-import com.darkrockstudios.texteditor.toCharacterIndex
-import com.darkrockstudios.texteditor.wrapStartToCharacterIndex
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -27,6 +25,7 @@ class TextEditManager(private val state: TextEditorState) {
 			is TextEditOperation.Insert -> applyInsert(operation)
 			is TextEditOperation.Delete -> applyDelete(addToHistory, operation)
 			is TextEditOperation.Replace -> applyReplace(addToHistory, operation)
+			is TextEditOperation.StyleSpan -> applyStyleOperation(operation)
 		}
 
 		state.updateCursorPosition(operation.cursorAfter)
@@ -439,12 +438,115 @@ class TextEditManager(private val state: TextEditorState) {
 		}
 	}
 
+	private fun applyStyleOperation(operation: TextEditOperation.StyleSpan): OperationMetadata? {
+		if (operation.range.isSingleLine()) {
+			if (operation.isAdd) {
+				applySingleLineSpanStyle(
+					lineIndex = operation.range.start.line,
+					start = operation.range.start.char,
+					end = operation.range.end.char,
+					spanStyle = operation.style
+				)
+			} else {
+				removeSingleLineSpanStyle(
+					lineIndex = operation.range.start.line,
+					start = operation.range.start.char,
+					end = operation.range.end.char,
+					spanStyle = operation.style
+				)
+			}
+		} else {
+			// Handle multi-line case
+			val startLine = operation.range.start.line
+			val endLine = operation.range.end.line
+
+			for (lineIndex in startLine..endLine) {
+				val lineStart = if (lineIndex == startLine) operation.range.start.char else 0
+				val lineEnd = if (lineIndex == endLine)
+					operation.range.end.char
+				else
+					state.getLine(lineIndex).length
+
+				if (operation.isAdd) {
+					applySingleLineSpanStyle(lineIndex, lineStart, lineEnd, operation.style)
+				} else {
+					removeSingleLineSpanStyle(lineIndex, lineStart, lineEnd, operation.style)
+				}
+			}
+		}
+
+		return null
+	}
+
+	private fun removeSingleLineSpanStyle(
+		lineIndex: Int,
+		start: Int,
+		end: Int,
+		spanStyle: SpanStyle
+	) {
+		val line = state.getLine(lineIndex)
+		val existingSpans = line.spanStyles
+
+		// Create new span list
+		val newSpans = mutableListOf<AnnotatedString.Range<SpanStyle>>()
+
+		// Handle existing spans
+		for (existing in existingSpans) {
+			when {
+				// Span is completely before or after the removal range - keep as is
+				existing.end <= start || existing.start >= end -> {
+					newSpans.add(existing)
+				}
+				// Span overlaps with removal range
+				else -> {
+					// If the styles don't match, keep the span
+					if (existing.item != spanStyle) {
+						newSpans.add(existing)
+						continue
+					}
+
+					// Keep portion before removal range
+					if (existing.start < start) {
+						newSpans.add(
+							AnnotatedString.Range(
+								existing.item,
+								existing.start,
+								start
+							)
+						)
+					}
+
+					// Keep portion after removal range
+					if (existing.end > end) {
+						newSpans.add(
+							AnnotatedString.Range(
+								existing.item,
+								end,
+								existing.end
+							)
+						)
+					}
+				}
+			}
+		}
+
+		// Create new AnnotatedString with updated spans
+		val newText = AnnotatedString(
+			text = line.text,
+			spanStyles = newSpans.sortedBy { it.start }
+		)
+
+		// Update the line in state
+		state.updateLine(lineIndex, newText)
+	}
+
 	fun undo() {
 		history.undo()?.let { entry ->
 			when (entry.operation) {
 				is TextEditOperation.Insert -> undoInsert(entry.operation, entry)
 				is TextEditOperation.Delete -> undoDelete(entry, entry.operation)
 				is TextEditOperation.Replace -> undoReplace(entry.operation, entry)
+				is TextEditOperation.StyleSpan -> undoStyleSpan(entry.operation)
 			}
 		}
 	}
@@ -524,6 +626,19 @@ class TextEditManager(private val state: TextEditorState) {
 		)
 	}
 
+	private fun undoStyleSpan(operation: TextEditOperation.StyleSpan) {
+		// Create inverse operation - if it was adding a style, we remove it and vice versa
+		val inverseOperation = TextEditOperation.StyleSpan(
+			range = operation.range,
+			style = operation.style,
+			isAdd = !operation.isAdd,
+			cursorBefore = operation.cursorAfter,
+			cursorAfter = operation.cursorBefore
+		)
+
+		applyOperation(inverseOperation, addToHistory = false)
+	}
+
 	fun redo() {
 		history.redo()?.let { entry ->
 			applyOperation(entry.operation, addToHistory = false)
@@ -551,7 +666,7 @@ class TextEditManager(private val state: TextEditorState) {
 					preserved.relativeEnd.char
 			)
 
-			state.richSpanManager.addSpan(startPos, endPos, preserved.style)
+			state.richSpanManager.addRichSpan(startPos, endPos, preserved.style)
 		}
 	}
 
@@ -620,52 +735,26 @@ class TextEditManager(private val state: TextEditorState) {
 		}
 	}
 
-	fun applySpanStyle(textRange: TextRange, spanStyle: SpanStyle) {
-		// Get the affected line indices
-		val startLineInfo = state.getWrappedLine(textRange.start)
-		val endLineInfo = state.getWrappedLine(textRange.end)
+	fun addSpanStyle(textRange: TextRange, spanStyle: SpanStyle) {
+		val operation = TextEditOperation.StyleSpan(
+			range = textRange,
+			style = spanStyle,
+			isAdd = true,
+			cursorBefore = state.cursorPosition,
+			cursorAfter = state.cursorPosition // Keep cursor in same position
+		)
+		applyOperation(operation)
+	}
 
-		// Handle single line case
-		if (startLineInfo.line == endLineInfo.line) {
-
-			applySingleLineSpanStyle(
-				lineIndex = startLineInfo.line,
-				start = textRange.start.toCharacterIndex(state) - startLineInfo.wrapStartsAtIndex,
-				end = textRange.end.toCharacterIndex(state) - startLineInfo.wrapStartsAtIndex,
-				spanStyle = spanStyle
-			)
-			return
-		}
-
-		// Handle multi-line case
-		for (lineIndex in startLineInfo.line..endLineInfo.line) {
-			when (lineIndex) {
-				startLineInfo.line -> {
-					// First line: from start to end of line
-					val lineStart =
-						textRange.start.toCharacterIndex(state) - startLineInfo.wrapStartToCharacterIndex(
-							state
-						)
-					val lineEnd = state.getLine(lineIndex).length
-					applySingleLineSpanStyle(lineIndex, lineStart, lineEnd, spanStyle)
-				}
-
-				endLineInfo.line -> {
-					// Last line: from start of line to end
-					val lineEnd =
-						textRange.end.toCharacterIndex(state) - endLineInfo.wrapStartToCharacterIndex(
-							state
-						)
-					applySingleLineSpanStyle(lineIndex, 0, lineEnd, spanStyle)
-				}
-
-				else -> {
-					// Middle lines: entire line
-					val lineLength = state.getLine(lineIndex).length
-					applySingleLineSpanStyle(lineIndex, 0, lineLength, spanStyle)
-				}
-			}
-		}
+	fun removeStyleSpan(textRange: TextRange, spanStyle: SpanStyle) {
+		val operation = TextEditOperation.StyleSpan(
+			range = textRange,
+			style = spanStyle,
+			isAdd = false,
+			cursorBefore = state.cursorPosition,
+			cursorAfter = state.cursorPosition // Keep cursor in same position
+		)
+		applyOperation(operation)
 	}
 
 	private fun applySingleLineSpanStyle(
@@ -746,9 +835,5 @@ class TextEditManager(private val state: TextEditorState) {
 
 		// Update the line in state
 		state.updateLine(lineIndex, newText)
-	}
-
-	fun removeStyleSpan(range: TextRange, style: SpanStyle) {
-		TODO("Not yet implemented")
 	}
 }

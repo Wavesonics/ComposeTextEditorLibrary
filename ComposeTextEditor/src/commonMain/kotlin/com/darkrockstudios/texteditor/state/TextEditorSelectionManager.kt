@@ -4,20 +4,43 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.darkrockstudios.texteditor.CharLineOffset
+import com.darkrockstudios.texteditor.TextRange
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
 
 class TextEditorSelectionManager(
 	private val state: TextEditorState
 ) {
-	var selection by mutableStateOf<TextSelection?>(null)
-		private set
+	private var _selection: TextRange? by mutableStateOf(null)
+	val selection: TextRange? get() = _selection
+
+	private val _selectionRangeFlow = MutableSharedFlow<TextRange?>(
+		extraBufferCapacity = 1,
+		onBufferOverflow = BufferOverflow.DROP_OLDEST
+	)
+	val selectionRangeFlow: SharedFlow<TextRange?> = _selectionRangeFlow
+
+	private fun updateSelectionRange(range: TextRange?) {
+		if (range != null && !range.validate()) {
+			// Don't update with invalid ranges
+			return
+		}
+		_selection = range
+		_selectionRangeFlow.tryEmit(range)
+	}
+
+	fun startSelection(position: CharLineOffset) {
+		updateSelectionRange(TextRange(position, position))
+	}
 
 	fun updateSelection(start: CharLineOffset, end: CharLineOffset) {
-		selection = if (start != end) {
+		_selection = if (start != end) {
 			// Ensure start is always before end in the document
 			if (isBeforeInDocument(start, end)) {
-				TextSelection(start, end)
+				TextRange(start, end)
 			} else {
-				TextSelection(end, start)
+				TextRange(end, start)
 			}
 		} else {
 			null
@@ -25,7 +48,7 @@ class TextEditorSelectionManager(
 	}
 
 	fun clearSelection() {
-		selection = null
+		updateSelectionRange(null)
 	}
 
 	fun selectAll() {
@@ -43,41 +66,17 @@ class TextEditorSelectionManager(
 		)
 	}
 
-	fun getSelectedText(): String {
-		val selection = selection ?: return ""
-
-		return buildString {
-			when {
-				// Single line selection
-				selection.isSingleLine() -> {
-					append(state.textLines[selection.start.line].substring(
-						selection.start.char,
-						selection.end.char
-					))
-				}
-				// Multi-line selection
-				else -> {
-					// First line - from selection start to end of line
-					append(state.textLines[selection.start.line].substring(selection.start.char))
-					append('\n')
-
-					// Middle lines - entire lines
-					for (line in (selection.start.line + 1) until selection.end.line) {
-						append(state.textLines[line])
-						append('\n')
-					}
-
-					// Last line - from start of line to selection end
-					append(state.textLines[selection.end.line].substring(0, selection.end.char))
-				}
-			}
-		}
-	}
-
 	fun deleteSelection() {
 		val selection = selection ?: return
-		state.delete(selection.range)
+		state.delete(selection)
 		clearSelection()
+	}
+
+	fun hasSelection(): Boolean = _selection != null
+
+	fun getSelectedText(): String {
+		val range = _selection ?: return ""
+		return state.getTextInRange(range)
 	}
 
 	private fun isBeforeInDocument(a: CharLineOffset, b: CharLineOffset): Boolean {

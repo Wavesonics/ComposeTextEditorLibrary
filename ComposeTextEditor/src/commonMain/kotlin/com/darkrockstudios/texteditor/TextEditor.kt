@@ -4,6 +4,8 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.foundation.border
 import androidx.compose.foundation.focusable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -22,6 +24,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.drawText
@@ -66,6 +69,7 @@ fun TextEditor(
 				.onFocusChanged { focusState ->
 					state.updateFocus(focusState.isFocused)
 				}
+				.requestFocusOnPress(focusRequester)
 				.focusable(enabled = true, interactionSource = interactionSource)
 				.textEditorKeyboardInputHandler(state, clipboardManager)
 				.onSizeChanged { size ->
@@ -133,4 +137,12 @@ fun Modifier.focusBorder(isFocused: Boolean): Modifier {
 		width = 1.dp,
 		color = if (isFocused) Color(0xFFcfd6dc) else Color(0xFFDDDDDD)
 	)
+}
+
+private fun Modifier.requestFocusOnPress(focusRequester: FocusRequester) = pointerInput(Unit) {
+	awaitEachGesture {
+		// Wait for at least one pointer to press down
+		awaitFirstDown(requireUnconsumed = false)
+		focusRequester.requestFocus()
+	}
 }

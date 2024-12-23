@@ -9,13 +9,13 @@ import com.darkrockstudios.texteditor.richstyle.RichSpanStyle
 class RichSpanManager(
 	private val state: TextEditorState
 ) {
-	private val spans = mutableListOf<RichSpan>()
+	private val spans = mutableSetOf<RichSpan>()
 
-	fun addSpan(start: CharLineOffset, end: CharLineOffset, style: RichSpanStyle) {
+	fun addRichSpan(start: CharLineOffset, end: CharLineOffset, style: RichSpanStyle) {
 		spans.add(RichSpan(start, end, style))
 	}
 
-	fun removeSpan(span: RichSpan) {
+	fun removeRichSpan(span: RichSpan) {
 		spans.remove(span)
 	}
 
@@ -24,7 +24,7 @@ class RichSpanManager(
 	}
 
 	fun updateSpans(operation: TextEditOperation, metadata: OperationMetadata?) {
-		val updatedSpans = mutableListOf<RichSpan>()
+		val updatedSpans = mutableSetOf<RichSpan>()
 
 		spans.forEach { span ->
 			when (operation) {
@@ -145,6 +145,11 @@ class RichSpanManager(
 					)
 					updateSpans(insertOp, metadata)
 					return
+				}
+
+				is TextEditOperation.StyleSpan -> {
+					// Noop for StyleSpan
+					updatedSpans.add(span)
 				}
 			}
 		}

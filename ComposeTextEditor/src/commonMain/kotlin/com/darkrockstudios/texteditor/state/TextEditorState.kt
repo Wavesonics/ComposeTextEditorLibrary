@@ -24,6 +24,9 @@ import com.darkrockstudios.texteditor.annotatedstring.toAnnotatedString
 import com.darkrockstudios.texteditor.richstyle.RichSpan
 import com.darkrockstudios.texteditor.richstyle.RichSpanStyle
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlin.math.min
 
 class TextEditorState(
@@ -34,10 +37,25 @@ class TextEditorState(
 	internal val _textLines = mutableListOf<AnnotatedString>()
 	val textLines: List<AnnotatedString> get() = _textLines
 
-	var cursorPosition by mutableStateOf(CharLineOffset(0, 0))
+	private val _cursorPositionFlow = MutableSharedFlow<CharLineOffset>(
+		extraBufferCapacity = 1,
+		onBufferOverflow = BufferOverflow.DROP_OLDEST
+	)
+	val cursorPositionFlow: SharedFlow<CharLineOffset> = _cursorPositionFlow
+
+	private var _cursorPosition by mutableStateOf(CharLineOffset(0, 0))
+	var cursorPosition: CharLineOffset
+		get() = _cursorPosition
+		private set(value) {
+			_cursorPosition = value
+			_cursorPositionFlow.tryEmit(value)
+		}
+
 	var isCursorVisible by mutableStateOf(true)
 	var isFocused by mutableStateOf(false)
 	var lineOffsets by mutableStateOf(emptyList<LineWrap>())
+
+	val selectionRangeFlow: SharedFlow<TextRange?> get() = selector.selectionRangeFlow
 
 	private var viewportSize: Size = Size(1f, 1f)
 
@@ -497,8 +515,8 @@ class TextEditorState(
 		scrollManager.updateContentHeight(yOffset.toInt())
 	}
 
-	fun applyStyleSpan(range: TextRange, style: SpanStyle) {
-		editManager.applySpanStyle(range, style)
+	fun addStyleSpan(range: TextRange, style: SpanStyle) {
+		editManager.addSpanStyle(range, style)
 		updateBookKeeping()
 	}
 
@@ -508,12 +526,12 @@ class TextEditorState(
 	}
 
 	fun addRichSpan(start: Int, end: Int, style: RichSpanStyle) {
-		richSpanManager.addSpan(start.toCharLineOffset(), end.toCharLineOffset(), style)
+		richSpanManager.addRichSpan(start.toCharLineOffset(), end.toCharLineOffset(), style)
 		updateBookKeeping()
 	}
 
 	fun removeRichSpan(span: RichSpan) {
-		richSpanManager.removeSpan(span)
+		richSpanManager.removeRichSpan(span)
 		updateBookKeeping()
 	}
 
@@ -589,6 +607,27 @@ class TextEditorState(
 	}
 
 	internal fun getLine(lineIndex: Int): AnnotatedString = textLines[lineIndex]
+
+	internal fun getTextInRange(range: TextRange): String {
+		return if (range.isSingleLine()) {
+			textLines[range.start.line].text.substring(range.start.char, range.end.char)
+		} else {
+			buildString {
+				// First line
+				append(textLines[range.start.line].text.substring(range.start.char))
+				append('\n')
+
+				// Middle lines
+				for (line in (range.start.line + 1) until range.end.line) {
+					append(textLines[line].text)
+					append('\n')
+				}
+
+				// Last line
+				append(textLines[range.end.line].text.substring(0, range.end.char))
+			}
+		}
+	}
 }
 
 @Composable

@@ -21,6 +21,9 @@ import com.darkrockstudios.texteditor.richstyle.HighlightSpanStyle
 import com.darkrockstudios.texteditor.richstyle.SpellCheckStyle
 import com.darkrockstudios.texteditor.state.SpanClickType
 import com.darkrockstudios.texteditor.state.TextEditorState
+import com.darkrockstudios.texteditor.state.debugRichSpans
+import com.darkrockstudios.texteditor.state.getRichSpansAtPosition
+import com.darkrockstudios.texteditor.state.getSpanStylesAtPosition
 import com.darkrockstudios.texteditor.state.rememberTextEditorState
 import org.jetbrains.compose.ui.tooling.preview.Preview
 
@@ -52,23 +55,46 @@ fun App() {
         var isItalicActive by remember { mutableStateOf(false) }
         var isHighlightActive by remember { mutableStateOf(false) }
 
+        LaunchedEffect(Unit) {
+            state.cursorPositionFlow.collect { position ->
+                val styles = state.getSpanStylesAtPosition(position)
+                val richSpans = state.getRichSpansAtPosition(position)
+                println("Cursor move, styles: ${styles.size} rich: ${richSpans.size}")
+                isBoldActive = styles.contains(BOLD)
+                isItalicActive = styles.contains(ITALICS)
+            }
+        }
+
         Column {
             Text(
-                "Custom Text Editor",
+                "Compose Text Editor",
                 modifier = Modifier.padding(8.dp),
                 style = MaterialTheme.typography.h3,
                 fontWeight = FontWeight.Bold
             )
             TextEditorToolbar(
                 onBoldClick = {
-                    isBoldActive = !isBoldActive
+
                     state.selector.selection?.let { range ->
-                        state.applyStyleSpan(range.range, BOLD)
+                        state.debugRichSpans()
+                        if (isBoldActive) {
+                            state.removeStyleSpan(range, BOLD)
+                        } else {
+                            state.addStyleSpan(range, BOLD)
+                        }
+                        state.debugRichSpans()
                     }
+                    isBoldActive = !isBoldActive
                 },
                 onItalicClick = {
+                    state.selector.selection?.let { range ->
+                        if (isItalicActive) {
+                            state.removeStyleSpan(range, ITALICS)
+                        } else {
+                            state.addStyleSpan(range, ITALICS)
+                        }
+                    }
                     isItalicActive = !isItalicActive
-                    // Implement italic styling logic
                 },
                 onHighlightClick = {
                     isHighlightActive = !isHighlightActive

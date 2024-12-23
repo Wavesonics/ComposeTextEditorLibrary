@@ -58,7 +58,7 @@ internal fun Modifier.textEditorKeyboardInputHandler(
 					clipboardManager.getText()?.text?.let { text ->
 						val curSelection = state.selector.selection
 						if (curSelection != null) {
-							state.replace(curSelection.range, text)
+							state.replace(curSelection, text)
 						} else {
 							state.insertStringAtCursor(text)
 						}
