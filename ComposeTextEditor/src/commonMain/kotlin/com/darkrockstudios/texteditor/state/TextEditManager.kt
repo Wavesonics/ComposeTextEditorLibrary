@@ -129,7 +129,8 @@ class TextEditManager(private val state: TextEditorState) {
 		val currentLine = state._textLines[operation.position.line]
 
 		// Split current line content
-		val prefixEndIndex = operation.position.char.coerceIn(0, currentLine.length)
+		val prefixEndIndex =
+			operation.position.char.coerceIn(0, currentLine.lastIndex.coerceAtLeast(0))
 		val prefix = currentLine.subSequence(0, prefixEndIndex)
 
 		state._textLines[operation.position.line] = mergeSpanStyles(
@@ -149,8 +150,10 @@ class TextEditManager(private val state: TextEditorState) {
 		// Handle last line with remainder if there are multiple lines
 		if (insertLines.size > 1) {
 			val lastInsertedLine = insertLines.last()
-			val suffix =
-				currentLine.subSequence(prefixEndIndex, currentLine.lastIndex.coerceAtLeast(0))
+			val suffix = currentLine.subSequence(
+				startIndex = prefixEndIndex,
+				endIndex = currentLine.lastIndex.coerceAtLeast(0)
+			)
 
 			val newLastLine = mergeSpanStyles(
 				lastInsertedLine,
