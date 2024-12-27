@@ -5,7 +5,7 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import com.darkrockstudios.texteditor.CharLineOffset
 import com.darkrockstudios.texteditor.TextRange
-import com.darkrockstudios.texteditor.annotatedstring.toAnnotatedString
+import com.darkrockstudios.texteditor.annotatedstring.splitToAnnotatedString
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -124,64 +124,40 @@ class TextEditManager(private val state: TextEditorState) {
 	}
 
 	private fun handleMultiLineInsert(operation: TextEditOperation.Insert) {
-		val insertLines = operation.text.text.split('\n')
+		val insertLines = operation.text.splitToAnnotatedString()
 		val currentLine = state._textLines[operation.position.line]
-		val currentLineText = currentLine.text
 
 		// Split current line content
-		val prefixEndIndex = operation.position.char.coerceIn(0, currentLineText.length)
-		val prefix = currentLineText.substring(0, prefixEndIndex)
-		val suffix = currentLineText.substring(prefixEndIndex)
+		val prefixEndIndex = operation.position.char.coerceIn(0, currentLine.length)
+		val prefix = currentLine.subSequence(0, prefixEndIndex)
 
-		// Create first line combining prefix with first inserted line
-		val firstLineText = buildAnnotatedString {
-			append(prefix)
-			append(insertLines.first())
-
-			// Add spans that belong to the prefix
-			currentLine.spanStyles.forEach { span ->
-				if (span.start < prefixEndIndex) {
-					// If span ends beyond prefix, truncate it
-					val spanEnd = minOf(span.end, prefixEndIndex)
-					addStyle(span.item, span.start, spanEnd)
-				}
-			}
-		}
 		state._textLines[operation.position.line] = mergeSpanStyles(
-			firstLineText,
+			prefix,
 			prefix.length,
-			insertLines.first().toAnnotatedString()
+			insertLines.first()
 		)
 
 		// Insert middle lines (if any)
 		for (i in 1 until insertLines.lastIndex) {
 			state.insertLine(
 				operation.position.line + i,
-				insertLines[i].toAnnotatedString()
+				insertLines[i]
 			)
 		}
 
 		// Handle last line with remainder if there are multiple lines
 		if (insertLines.size > 1) {
 			val lastInsertedLine = insertLines.last()
-			val lastLine = buildAnnotatedString {
-				append(lastInsertedLine)
-				append(suffix)
+			val suffix = currentLine.subSequence(prefixEndIndex, currentLine.lastIndex)
 
-				// Add spans that belong to the suffix, adjusting their positions
-				currentLine.spanStyles.forEach { span ->
-					if (span.end > prefixEndIndex) {
-						val adjustedStart =
-							maxOf(span.start - prefixEndIndex, 0) + lastInsertedLine.length
-						val adjustedEnd = span.end - prefixEndIndex + lastInsertedLine.length
-						addStyle(span.item, adjustedStart, adjustedEnd)
-					}
-				}
-			}
-
+			val newLastLine = mergeSpanStyles(
+				lastInsertedLine,
+				lastInsertedLine.length,
+				suffix
+			)
 			state.insertLine(
 				operation.position.line + insertLines.lastIndex,
-				lastLine
+				newLastLine
 			)
 		}
 	}

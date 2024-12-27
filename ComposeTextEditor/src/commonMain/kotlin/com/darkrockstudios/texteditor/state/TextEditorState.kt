@@ -550,14 +550,7 @@ class TextEditorState(
 	fun captureMetadata(range: TextRange): OperationMetadata {
 		val deletedContent = when {
 			range.isSingleLine() -> {
-				println("Capturing single line delete:")
-				println("Line content: ${textLines[range.start.line]}")
-				println("Start char: ${range.start.char}")
-				println("End char: ${range.end.char}")
-				val content =
-					textLines[range.start.line].subSequence(range.start.char, range.end.char)
-				println("Captured content: $content")
-				content
+				textLines[range.start.line].subSequence(range.start.char, range.end.char)
 			}
 
 			else -> {
