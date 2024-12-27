@@ -67,25 +67,46 @@ class TextEditManager(private val state: TextEditorState) {
 		// We need to properly handle the spans
 		line.spanStyles.forEach { span ->
 			when {
-				// Span ends before deletion - keep as is
+				// Case 1: Span ends before deletion - keep as is
 				span.end <= start -> {
 					addStyle(span.item, span.start, span.end)
 				}
-				// Span starts after deletion - adjust position
+
+				// Case 2: Span starts after deletion - adjust position
 				span.start >= end -> {
 					val newStart = span.start - (end - start)
 					val newEnd = span.end - (end - start)
 					addStyle(span.item, newStart, newEnd)
 				}
-				// Span overlaps deletion start - truncate at deletion
-				span.start < start && span.end > start -> {
+
+				// Case 3: Span completely contains the deletion range
+				span.start < start && span.end > end -> {
+					// Keep the span before deletion
 					addStyle(span.item, span.start, start)
-				}
-				// Span overlaps deletion end - adjust start
-				span.start < end && span.end > end -> {
-					val newStart = start
+
+					// Keep the span after deletion, adjusting position
+					val newStart = start  // This will connect with the end of the first part
 					val newEnd = span.end - (end - start)
 					addStyle(span.item, newStart, newEnd)
+				}
+
+				// Case 4: Deletion starts before span and ends inside it
+				span.start >= start && span.start < end && span.end > end -> {
+					// Preserve only the part after deletion
+					val newStart = start  // Move to deletion point
+					val newEnd = span.end - (end - start)
+					addStyle(span.item, newStart, newEnd)
+				}
+
+				// Case 5: Deletion starts inside span and ends after it
+				span.start < start && span.end > start && span.end <= end -> {
+					// Preserve only the part before deletion
+					addStyle(span.item, span.start, start)
+				}
+
+				// Case 6: Span is completely within deletion range - remove it entirely
+				span.start >= start && span.end <= end -> {
+					// Do nothing - span is deleted
 				}
 			}
 		}
