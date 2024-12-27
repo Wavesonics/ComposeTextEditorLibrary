@@ -84,46 +84,47 @@ class RichSpanManager(
 				}
 
 				is TextEditOperation.Delete -> {
-					metadata ?: error("Delete op requires Metadata")
-					if (metadata.deletedText?.text == "\n") {
-						// Special handling for newline deletion
-						val deletionPoint = operation.range.start
-						val nextLineStart = operation.range.end
+					if (metadata != null) {
+						if (metadata.deletedText?.text == "\n") {
+							// Special handling for newline deletion
+							val deletionPoint = operation.range.start
+							val nextLineStart = operation.range.end
 
-						when {
-							// Span is entirely before the deletion point on the first line
-							span.end.line < deletionPoint.line ||
-									(span.end.line == deletionPoint.line && span.end.char <= deletionPoint.char) -> {
-								updatedSpans.add(span)
+							when {
+								// Span is entirely before the deletion point on the first line
+								span.end.line < deletionPoint.line ||
+										(span.end.line == deletionPoint.line && span.end.char <= deletionPoint.char) -> {
+									updatedSpans.add(span)
+								}
+								// Span is entirely on the second line
+								span.start.line == nextLineStart.line -> {
+									val newStart = CharLineOffset(
+										deletionPoint.line,
+										deletionPoint.char + span.start.char
+									)
+									val newEnd = CharLineOffset(
+										deletionPoint.line,
+										deletionPoint.char + span.end.char
+									)
+									updatedSpans.add(span.copy(start = newStart, end = newEnd))
+								}
+								// Span crosses the newline
+								span.start.line == deletionPoint.line &&
+										span.end.line == nextLineStart.line -> {
+									val newEnd = CharLineOffset(
+										deletionPoint.line,
+										deletionPoint.char + span.end.char
+									)
+									updatedSpans.add(span.copy(end = newEnd))
+								}
 							}
-							// Span is entirely on the second line
-							span.start.line == nextLineStart.line -> {
-								val newStart = CharLineOffset(
-									deletionPoint.line,
-									deletionPoint.char + span.start.char
-								)
-								val newEnd = CharLineOffset(
-									deletionPoint.line,
-									deletionPoint.char + span.end.char
-								)
+						} else {
+							// Regular delete operation
+							val newStart = operation.transformOffset(span.start, state)
+							val newEnd = operation.transformOffset(span.end, state)
+							if (newStart != newEnd) {
 								updatedSpans.add(span.copy(start = newStart, end = newEnd))
 							}
-							// Span crosses the newline
-							span.start.line == deletionPoint.line &&
-									span.end.line == nextLineStart.line -> {
-								val newEnd = CharLineOffset(
-									deletionPoint.line,
-									deletionPoint.char + span.end.char
-								)
-								updatedSpans.add(span.copy(end = newEnd))
-							}
-						}
-					} else {
-						// Regular delete operation
-						val newStart = operation.transformOffset(span.start, state)
-						val newEnd = operation.transformOffset(span.end, state)
-						if (newStart != newEnd) {
-							updatedSpans.add(span.copy(start = newStart, end = newEnd))
 						}
 					}
 				}
