@@ -57,6 +57,12 @@ class TextEditorState(
 
 	val selectionRangeFlow: SharedFlow<TextRange?> get() = selector.selectionRangeFlow
 
+	private var _canUndo by mutableStateOf(false)
+	private var _canRedo by mutableStateOf(false)
+
+	val canUndo: Boolean get() = _canUndo
+	val canRedo: Boolean get() = _canRedo
+
 	private var viewportSize: Size = Size(1f, 1f)
 
 	val scrollManager = TextEditorScrollManager(
@@ -513,6 +519,9 @@ class TextEditorState(
 
 		lineOffsets = offsets
 		scrollManager.updateContentHeight(yOffset.toInt())
+
+		_canUndo = editManager.history.hasUndoLevels()
+		_canRedo = editManager.history.hasRedoLevels()
 	}
 
 	fun addStyleSpan(range: TextRange, style: SpanStyle) {

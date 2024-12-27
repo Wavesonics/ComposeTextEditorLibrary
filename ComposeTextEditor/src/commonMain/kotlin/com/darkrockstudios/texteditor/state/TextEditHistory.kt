@@ -9,6 +9,9 @@ class TextEditHistory {
 	private val undoStack = mutableListOf<HistoryEntry>()
 	private val redoStack = mutableListOf<HistoryEntry>()
 
+	fun hasUndoLevels(): Boolean = undoStack.isNotEmpty()
+	fun hasRedoLevels(): Boolean = redoStack.isNotEmpty()
+
 	fun recordEdit(operation: TextEditOperation, metadata: OperationMetadata) {
 		undoStack.add(HistoryEntry(operation, metadata))
 		redoStack.clear() // Clear redo stack when new edit is made

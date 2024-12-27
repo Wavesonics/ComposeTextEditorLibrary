@@ -12,7 +12,7 @@ import kotlinx.coroutines.flow.SharedFlow
 
 class TextEditManager(private val state: TextEditorState) {
 	private val spanManager = SpanManager()
-	private val history = TextEditHistory()
+	internal val history = TextEditHistory()
 
 	private val _editOperations = MutableSharedFlow<TextEditOperation>(
 		extraBufferCapacity = 1,
@@ -30,10 +30,11 @@ class TextEditManager(private val state: TextEditorState) {
 
 		state.updateCursorPosition(operation.cursorAfter)
 		state.richSpanManager.updateSpans(operation, metadata)
-		state.updateBookKeeping()
 		if (addToHistory) {
 			history.recordEdit(operation, metadata ?: OperationMetadata())
 		}
+
+		state.updateBookKeeping()
 		state.notifyContentChanged()
 
 		_editOperations.tryEmit(operation)

@@ -34,6 +34,18 @@ val ITALICS = SpanStyle(fontStyle = FontStyle.Italic)
 fun App() {
     MaterialTheme {
         val state: TextEditorState = rememberTextEditorState()
+        var isBoldActive by remember { mutableStateOf(false) }
+        var isItalicActive by remember { mutableStateOf(false) }
+        var isHighlightActive by remember { mutableStateOf(false) }
+
+        LaunchedEffect(Unit) {
+            state.cursorPositionFlow.collect { position ->
+                val styles = state.getSpanStylesAtPosition(position)
+                isBoldActive = styles.contains(BOLD)
+                isItalicActive = styles.contains(ITALICS)
+            }
+        }
+
         LaunchedEffect(Unit) {
             //val text = "test ssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss\nxxxxxxxxxxxxxxxxxx\nHello cat\n".repeat(5)
             //state.setInitialText(alice_wounder_land)
@@ -48,18 +60,6 @@ fun App() {
 
             state.editOperations.collect { operation ->
                 println("Applying Operation: $operation")
-            }
-        }
-        var isBoldActive by remember { mutableStateOf(false) }
-        var isItalicActive by remember { mutableStateOf(false) }
-        var isHighlightActive by remember { mutableStateOf(false) }
-
-        LaunchedEffect(Unit) {
-            state.cursorPositionFlow.collect { position ->
-                val styles = state.getSpanStylesAtPosition(position)
-                //val richSpans = state.getRichSpansAtPosition(position)
-                isBoldActive = styles.contains(BOLD)
-                isItalicActive = styles.contains(ITALICS)
             }
         }
 
@@ -98,27 +98,25 @@ fun App() {
                     isHighlightActive = !isHighlightActive
                     // Implement highlight styling logic
                 },
+                onUndoClick = state::undo,
+                onRedoClick = state::redo,
                 isBoldActive = isBoldActive,
                 isItalicActive = isItalicActive,
-                isHighlightActive = isHighlightActive
+                isHighlightActive = isHighlightActive,
+                canUndo = state.canUndo,
+                canRedo = state.canRedo,
             )
 
             TextEditor(
                 state = state,
-                modifier = Modifier.padding(16.dp).fillMaxSize(),
+                modifier = Modifier
+                    .padding(16.dp)
+                    .fillMaxSize(),
                 onSpanClick = { span, clickType ->
                     when (clickType) {
-                        SpanClickType.TAP -> {
-                            println("Touch tap on span: $span")
-                        }
-
-                        SpanClickType.PRIMARY_CLICK -> {
-                            println("Left click on span: $span")
-                        }
-
-                        SpanClickType.SECONDARY_CLICK -> {
-                            println("Right click on span: $span")
-                        }
+                        SpanClickType.TAP -> println("Touch tap on span: $span")
+                        SpanClickType.PRIMARY_CLICK -> println("Left click on span: $span")
+                        SpanClickType.SECONDARY_CLICK -> println("Right click on span: $span")
                     }
                 }
             )
