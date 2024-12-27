@@ -4,11 +4,20 @@ plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
+    alias(libs.plugins.android.library)
 }
 
 kotlin {
+    applyDefaultHierarchyTemplate()
     jvm("desktop")
-    
+    androidTarget {
+        compilations.all {
+            kotlinOptions {
+                jvmTarget = libs.versions.jvm.get()
+            }
+        }
+    }
+
     sourceSets {
         val commonMain by getting {
             dependencies {
@@ -33,11 +42,11 @@ kotlin {
 
         val desktopTest by getting {
             dependencies {
-                implementation("org.jetbrains.kotlin:kotlin-test")
-                implementation("org.jetbrains.kotlin:kotlin-test-junit")
-                implementation("io.mockk:mockk:1.13.8")
-                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
-                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-test-jvm:1.7.3")
+                implementation(libs.jetbrains.kotlin.test)
+                implementation(libs.jetbrains.kotlin.test.junit)
+                implementation(libs.mockk)
+                implementation(libs.kotlinx.coroutines.test)
+                implementation(libs.kotlinx.coroutines.test.jvm)
             }
         }
     }
@@ -53,5 +62,17 @@ compose.desktop {
             packageName = "org.example.project"
             packageVersion = "1.0.0"
         }
+    }
+}
+
+android {
+    namespace = "com.darkrockstudios.texteditor"
+    compileSdk = libs.versions.android.compileSdk.get().toInt()
+    defaultConfig {
+        minSdk = libs.versions.android.minSdk.get().toInt()
+    }
+    compileOptions {
+        sourceCompatibility = JavaVersion.toVersion(libs.versions.jvm.get().toInt())
+        targetCompatibility = JavaVersion.toVersion(libs.versions.jvm.get().toInt())
     }
 }
