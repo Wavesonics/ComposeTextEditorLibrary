@@ -21,7 +21,6 @@ import com.darkrockstudios.texteditor.richstyle.HighlightSpanStyle
 import com.darkrockstudios.texteditor.richstyle.SpellCheckStyle
 import com.darkrockstudios.texteditor.state.SpanClickType
 import com.darkrockstudios.texteditor.state.TextEditorState
-import com.darkrockstudios.texteditor.state.debugSpanStyles
 import com.darkrockstudios.texteditor.state.getSpanStylesAtPosition
 import com.darkrockstudios.texteditor.state.getSpanStylesInRange
 import com.darkrockstudios.texteditor.state.rememberTextEditorState
@@ -80,13 +79,13 @@ fun App() {
                 onBoldClick = {
 
                     state.selector.selection?.let { range ->
-                        state.debugSpanStyles(range)
+                        //state.debugSpanStyles(range)
                         if (isBoldActive) {
                             state.removeStyleSpan(range, BOLD)
                         } else {
                             state.addStyleSpan(range, BOLD)
                         }
-                        state.debugSpanStyles(range)
+                        //state.debugSpanStyles(range)
                     }
                     isBoldActive = !isBoldActive
                 },
