@@ -744,35 +744,7 @@ class TextEditManager(private val state: TextEditorState) {
 		val existingSpans = line.spanStyles
 
 		// Create new span list
-		val newSpans = mutableListOf<AnnotatedString.Range<SpanStyle>>()
-
-		// Handle existing spans
-		for (existing in existingSpans) {
-			when {
-				// Existing span is completely before new span
-				existing.end < start -> {
-					newSpans.add(existing)
-				}
-				// Existing span is completely after new span
-				existing.start > end -> {
-					newSpans.add(existing)
-				}
-				// Spans overlap or are adjacent - merge styles
-				else -> {
-					// Merge the overlapping or adjacent span
-					val mergedStyle = existing.item.merge(spanStyle)
-					val mergedStart = minOf(existing.start, start)
-					val mergedEnd = maxOf(existing.end, end)
-					newSpans.add(
-						AnnotatedString.Range(
-							mergedStyle,
-							mergedStart,
-							mergedEnd
-						)
-					)
-				}
-			}
-		}
+		val newSpans = mergeOverlaps(existingSpans, spanStyle, start, end)
 
 		// Sort spans by start position
 		val sortedSpans = newSpans.sortedBy { it.start }
@@ -785,5 +757,51 @@ class TextEditManager(private val state: TextEditorState) {
 
 		// Update the line in state
 		state.updateLine(lineIndex, newText)
+	}
+
+	private fun mergeOverlaps(
+		existingSpans: List<AnnotatedString.Range<SpanStyle>>,
+		spanStyle: SpanStyle,
+		start: Int,
+		end: Int
+	): List<AnnotatedString.Range<SpanStyle>> {
+		val result = mutableListOf<AnnotatedString.Range<SpanStyle>>()
+		val spanRanges = mutableListOf<Pair<Int, Int>>()
+
+		// First collect all ranges with matching style
+		existingSpans.forEach { span ->
+			if (span.item == spanStyle) {
+				spanRanges.add(span.start to span.end)
+			} else {
+				result.add(span)
+			}
+		}
+		// Add the new range
+		spanRanges.add(start to end)
+
+		// Sort ranges by start position
+		spanRanges.sortBy { it.first }
+
+		// Merge overlapping ranges in a single pass
+		var currentStart = spanRanges.firstOrNull()?.first ?: start
+		var currentEnd = spanRanges.firstOrNull()?.second ?: end
+
+		for (i in 1 until spanRanges.size) {
+			val (nextStart, nextEnd) = spanRanges[i]
+			if (nextStart <= currentEnd + 1) {
+				// Ranges overlap or are adjacent, extend current range
+				currentEnd = maxOf(currentEnd, nextEnd)
+			} else {
+				// Ranges don't overlap, add current range and start new one
+				result.add(AnnotatedString.Range(spanStyle, currentStart, currentEnd))
+				currentStart = nextStart
+				currentEnd = nextEnd
+			}
+		}
+
+		// Add final range
+		result.add(AnnotatedString.Range(spanStyle, currentStart, currentEnd))
+
+		return result.sortedBy { it.start }
 	}
 }
