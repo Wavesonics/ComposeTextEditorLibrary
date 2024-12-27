@@ -22,7 +22,6 @@ import com.darkrockstudios.texteditor.richstyle.SpellCheckStyle
 import com.darkrockstudios.texteditor.state.SpanClickType
 import com.darkrockstudios.texteditor.state.TextEditorState
 import com.darkrockstudios.texteditor.state.debugRichSpans
-import com.darkrockstudios.texteditor.state.getRichSpansAtPosition
 import com.darkrockstudios.texteditor.state.getSpanStylesAtPosition
 import com.darkrockstudios.texteditor.state.rememberTextEditorState
 import org.jetbrains.compose.ui.tooling.preview.Preview
@@ -58,8 +57,7 @@ fun App() {
         LaunchedEffect(Unit) {
             state.cursorPositionFlow.collect { position ->
                 val styles = state.getSpanStylesAtPosition(position)
-                val richSpans = state.getRichSpansAtPosition(position)
-                println("Cursor move, styles: ${styles.size} rich: ${richSpans.size}")
+                //val richSpans = state.getRichSpansAtPosition(position)
                 isBoldActive = styles.contains(BOLD)
                 isItalicActive = styles.contains(ITALICS)
             }
