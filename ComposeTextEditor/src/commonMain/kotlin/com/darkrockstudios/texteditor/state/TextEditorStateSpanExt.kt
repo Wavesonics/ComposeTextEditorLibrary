@@ -132,3 +132,36 @@ fun TextEditorState.countOverlappingSpans(): Map<CharLineOffset, Int> {
 
 	return spanCounts
 }
+
+fun TextEditorState.debugSpanStyles(filterRange: TextRange? = null) {
+	println("=== Debug SpanStyles ===")
+	textLines.forEachIndexed { lineIndex, line ->
+		if (line.spanStyles.isNotEmpty() && (filterRange == null || filterRange.containsLine(
+				lineIndex
+			))
+		) {
+			println("Line $lineIndex:")
+			line.spanStyles.forEach { span ->
+				println("  ${describeSpanStyle(span.item)} [${span.start} -> ${span.end}]")
+			}
+		}
+	}
+	println("=================")
+}
+
+private fun describeSpanStyle(style: SpanStyle): String {
+	val parts = mutableListOf<String>()
+
+	style.color.let { parts.add("Color:$it") }
+	style.fontSize.let { parts.add("Size:$it") }
+	style.fontWeight?.let { parts.add("Weight:$it") }
+	style.fontStyle?.let { parts.add("Style:$it") }
+	style.textDecoration?.let { parts.add("Decoration:$it") }
+	style.background.let { parts.add("Background:$it") }
+
+	return if (parts.isEmpty()) {
+		"EmptyStyle"
+	} else {
+		parts.joinToString(", ")
+	}
+}

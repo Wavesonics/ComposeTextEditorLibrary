@@ -6,6 +6,9 @@ data class TextRange(
 ) {
 	fun isSingleLine(): Boolean = start.line == end.line
 	fun validate(): Boolean = end isAfter start
+	fun containsLine(lineIndex: Int): Boolean {
+		return lineIndex >= start.line && lineIndex <= end.line
+	}
 
 	companion object {
 		fun fromOffsets(offset1: CharLineOffset, offset2: CharLineOffset): TextRange {
