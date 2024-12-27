@@ -21,8 +21,9 @@ import com.darkrockstudios.texteditor.richstyle.HighlightSpanStyle
 import com.darkrockstudios.texteditor.richstyle.SpellCheckStyle
 import com.darkrockstudios.texteditor.state.SpanClickType
 import com.darkrockstudios.texteditor.state.TextEditorState
-import com.darkrockstudios.texteditor.state.debugRichSpans
+import com.darkrockstudios.texteditor.state.debugSpanStyles
 import com.darkrockstudios.texteditor.state.getSpanStylesAtPosition
+import com.darkrockstudios.texteditor.state.getSpanStylesInRange
 import com.darkrockstudios.texteditor.state.rememberTextEditorState
 import org.jetbrains.compose.ui.tooling.preview.Preview
 
@@ -40,7 +41,12 @@ fun App() {
 
         LaunchedEffect(Unit) {
             state.cursorPositionFlow.collect { position ->
-                val styles = state.getSpanStylesAtPosition(position)
+                val selection = state.selector.selection
+                val styles = if (selection != null) {
+                    state.getSpanStylesInRange(selection)
+                } else {
+                    state.getSpanStylesAtPosition(position)
+                }
                 isBoldActive = styles.contains(BOLD)
                 isItalicActive = styles.contains(ITALICS)
             }
@@ -74,13 +80,13 @@ fun App() {
                 onBoldClick = {
 
                     state.selector.selection?.let { range ->
-                        state.debugRichSpans()
+                        state.debugSpanStyles(range)
                         if (isBoldActive) {
                             state.removeStyleSpan(range, BOLD)
                         } else {
                             state.addStyleSpan(range, BOLD)
                         }
-                        state.debugRichSpans()
+                        state.debugSpanStyles(range)
                     }
                     isBoldActive = !isBoldActive
                 },
