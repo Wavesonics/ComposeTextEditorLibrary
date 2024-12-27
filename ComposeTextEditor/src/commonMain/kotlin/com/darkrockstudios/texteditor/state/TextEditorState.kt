@@ -576,8 +576,8 @@ class TextEditorState(
 		return OperationMetadata(
 			deletedText = deletedContent,
 			deletedSpans = richSpanManager.getSpansInRange(range),
-			preservedSpans = richSpanManager.getSpansInRange(range).map { span ->
-				PreservedSpan(
+			preservedRichSpans = richSpanManager.getSpansInRange(range).map { span ->
+				PreservedRichSpan(
 					relativeStart = getRelativePosition(span.start, range.start),
 					relativeEnd = getRelativePosition(span.end, range.start),
 					style = span.style

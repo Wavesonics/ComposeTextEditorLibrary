@@ -33,7 +33,7 @@ data class RelativePosition(
 	val char: Int
 )
 
-data class PreservedSpan(
+data class PreservedRichSpan(
 	val relativeStart: RelativePosition,
 	val relativeEnd: RelativePosition,
 	val style: RichSpanStyle
@@ -42,7 +42,7 @@ data class PreservedSpan(
 data class OperationMetadata(
 	val deletedText: AnnotatedString? = null,
 	val deletedSpans: List<RichSpan> = emptyList(),
-	val preservedSpans: List<PreservedSpan> = emptyList()
+	val preservedRichSpans: List<PreservedRichSpan> = emptyList(),
 )
 
 data class HistoryEntry(

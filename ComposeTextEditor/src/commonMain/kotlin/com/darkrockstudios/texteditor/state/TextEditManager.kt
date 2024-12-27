@@ -547,8 +547,8 @@ class TextEditManager(private val state: TextEditorState) {
 			addToHistory = false
 		)
 
-		restorePreservedSpans(
-			entry.metadata.preservedSpans,
+		restorePreservedRichSpans(
+			entry.metadata.preservedRichSpans,
 			operation.range.start
 		)
 	}
@@ -566,8 +566,8 @@ class TextEditManager(private val state: TextEditorState) {
 			)
 			applyOperation(insertOperation, addToHistory = false)
 
-			restorePreservedSpans(
-				entry.metadata.preservedSpans,
+			restorePreservedRichSpans(
+				entry.metadata.preservedRichSpans,
 				operation.range.start
 			)
 		}
@@ -621,11 +621,11 @@ class TextEditManager(private val state: TextEditorState) {
 		}
 	}
 
-	private fun restorePreservedSpans(
-		preservedSpans: List<PreservedSpan>,
+	private fun restorePreservedRichSpans(
+		preservedRichSpans: List<PreservedRichSpan>,
 		insertPosition: CharLineOffset
 	) {
-		preservedSpans.forEach { preserved ->
+		preservedRichSpans.forEach { preserved ->
 			val startPos = CharLineOffset(
 				line = insertPosition.line + preserved.relativeStart.lineDiff,
 				char = if (preserved.relativeStart.lineDiff == 0)
