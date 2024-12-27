@@ -750,55 +750,28 @@ class TextEditManager(private val state: TextEditorState) {
 		for (existing in existingSpans) {
 			when {
 				// Existing span is completely before new span
-				existing.end <= start -> {
+				existing.end < start -> {
 					newSpans.add(existing)
 				}
 				// Existing span is completely after new span
-				existing.start >= end -> {
+				existing.start > end -> {
 					newSpans.add(existing)
 				}
-				// Spans overlap - merge styles
+				// Spans overlap or are adjacent - merge styles
 				else -> {
-					// Handle the part before overlap
-					if (existing.start < start) {
-						newSpans.add(
-							AnnotatedString.Range(
-								existing.item,
-								existing.start,
-								start
-							)
-						)
-					}
-
-					// Handle the overlapping part
-					val overlapStart = maxOf(existing.start, start)
-					val overlapEnd = minOf(existing.end, end)
+					// Merge the overlapping or adjacent span
+					val mergedStyle = existing.item.merge(spanStyle)
+					val mergedStart = minOf(existing.start, start)
+					val mergedEnd = maxOf(existing.end, end)
 					newSpans.add(
 						AnnotatedString.Range(
-							existing.item.merge(spanStyle),
-							overlapStart,
-							overlapEnd
+							mergedStyle,
+							mergedStart,
+							mergedEnd
 						)
 					)
-
-					// Handle the part after overlap
-					if (existing.end > end) {
-						newSpans.add(
-							AnnotatedString.Range(
-								existing.item,
-								end,
-								existing.end
-							)
-						)
-					}
 				}
 			}
-		}
-
-		// Add the new span for any uncovered regions
-		val coveredRanges = newSpans.filter { it.start <= end && it.end >= start }
-		if (coveredRanges.isEmpty()) {
-			newSpans.add(AnnotatedString.Range(spanStyle, start, end))
 		}
 
 		// Sort spans by start position
