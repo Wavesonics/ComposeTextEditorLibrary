@@ -30,7 +30,11 @@ val ITALICS = SpanStyle(fontStyle = FontStyle.Italic)
 @Preview
 fun App() {
     MaterialTheme {
-        val state: TextEditorState = rememberTextEditorState(SIMPLE_MARKDOWN.toAnnotatedStringFromMarkdown())
+        //val state: TextEditorState = rememberTextEditorState(SIMPLE_MARKDOWN.toAnnotatedStringFromMarkdown())
+        val state: TextEditorState = rememberTextEditorState(createRichTextDemo())
+        //val state: TextEditorState = rememberTextEditorState(createRichTextDemo2())
+        //val state: TextEditorState = rememberTextEditorState(alice_wounder_land.toAnnotatedStringFromMarkdown())
+
         var isBoldActive by remember { mutableStateOf(false) }
         var isItalicActive by remember { mutableStateOf(false) }
         var isHighlightActive by remember { mutableStateOf(false) }
@@ -49,15 +53,10 @@ fun App() {
         }
 
         LaunchedEffect(Unit) {
-            //val text = "test ssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss\nxxxxxxxxxxxxxxxxxx\nHello cat\n".repeat(5)
-            //state.setInitialText(alice_wounder_land)
-//            state.setText(createRichTextDemo())
-//
 //            state.selector.updateSelection(CharLineOffset(0, 10), CharLineOffset(0, 20))
 //            state.addRichSpan(6, 11, HighlightSpanStyle(Color(0x40FF0000)))
 //            state.addRichSpan(16, 31, SpellCheckStyle())
-
-//            state.setInitialText(createRichTextDemo2())
+//
 //            state.addRichSpan(30, 35, HighlightSpanStyle(Color(0x40FF0000)))
 
             state.editOperations.collect { operation ->
