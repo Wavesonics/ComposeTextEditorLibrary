@@ -2,6 +2,7 @@ package com.darkrockstudios.texteditor.state
 
 import androidx.compose.foundation.ScrollState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -9,6 +10,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextMeasurer
@@ -28,11 +31,19 @@ import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlin.math.min
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
 class TextEditorState(
 	scope: CoroutineScope,
-	internal val textMeasurer: TextMeasurer,
+	measurer: TextMeasurer,
 ) {
+	internal var textMeasurer: TextMeasurer = measurer
+		set(value) {
+			field = value
+			updateBookKeeping()
+		}
+
 	private var _version by mutableStateOf(0)
 	internal val _textLines = mutableListOf<AnnotatedString>()
 	val textLines: List<AnnotatedString> get() = _textLines
@@ -656,17 +667,29 @@ class TextEditorState(
 	}
 }
 
+@OptIn(ExperimentalUuidApi::class)
 @Composable
 fun rememberTextEditorState(): TextEditorState {
 	val scope = rememberCoroutineScope()
+	val density = LocalDensity.current
+	val windowInfo = LocalWindowInfo.current
+
+	// Trigger recomposition when window info changes
+	val measuringKey = remember(density, windowInfo) { Uuid.random() }
 	val textMeasurer = rememberTextMeasurer()
 
-	return remember {
+	val state = remember {
 		TextEditorState(
 			scope = scope,
-			textMeasurer = textMeasurer,
+			measurer = textMeasurer,
 		)
 	}
+
+	LaunchedEffect(measuringKey, textMeasurer) {
+		state.textMeasurer = textMeasurer
+	}
+
+	return state
 }
 
 enum class SpanClickType {

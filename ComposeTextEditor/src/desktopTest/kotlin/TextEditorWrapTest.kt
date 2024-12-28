@@ -103,7 +103,7 @@ class TextEditorWrapTest {
 
 		val state = TextEditorState(
 			scope = testScope,
-			textMeasurer = createMockTextMeasurer()
+			measurer = createMockTextMeasurer()
 		)
 
 		state.onViewportSizeChange(Size(100f, 500f))
