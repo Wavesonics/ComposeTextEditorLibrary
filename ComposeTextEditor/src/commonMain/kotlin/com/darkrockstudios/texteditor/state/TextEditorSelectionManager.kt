@@ -3,6 +3,7 @@ package com.darkrockstudios.texteditor.state
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.text.AnnotatedString
 import com.darkrockstudios.texteditor.CharLineOffset
 import com.darkrockstudios.texteditor.TextRange
 import kotlinx.coroutines.channels.BufferOverflow
@@ -74,8 +75,8 @@ class TextEditorSelectionManager(
 
 	fun hasSelection(): Boolean = _selection != null
 
-	fun getSelectedText(): String {
-		val range = _selection ?: return ""
+	fun getSelectedText(): AnnotatedString {
+		val range = _selection ?: return AnnotatedString("")
 		return state.getTextInRange(range)
 	}
 

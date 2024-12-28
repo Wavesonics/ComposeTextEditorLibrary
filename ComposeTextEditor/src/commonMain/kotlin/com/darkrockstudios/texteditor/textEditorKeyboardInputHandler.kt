@@ -11,7 +11,6 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.key.utf16CodePoint
 import androidx.compose.ui.platform.ClipboardManager
-import androidx.compose.ui.text.AnnotatedString
 import com.darkrockstudios.texteditor.state.TextEditorState
 import com.darkrockstudios.texteditor.state.moveCursorDown
 import com.darkrockstudios.texteditor.state.moveCursorLeft
@@ -40,7 +39,7 @@ internal fun Modifier.textEditorKeyboardInputHandler(
 				keyEvent.isCtrlPressed && keyEvent.key == Key.C -> {
 					state.selector.selection?.let {
 						val selectedText = state.selector.getSelectedText()
-						clipboardManager.setText(AnnotatedString(selectedText))
+						clipboardManager.setText(selectedText)
 					}
 					true
 				}
@@ -49,13 +48,13 @@ internal fun Modifier.textEditorKeyboardInputHandler(
 					state.selector.selection?.let {
 						val selectedText = state.selector.getSelectedText()
 						state.selector.deleteSelection()
-						clipboardManager.setText(AnnotatedString(selectedText))
+						clipboardManager.setText(selectedText)
 					}
 					true
 				}
 
 				keyEvent.isCtrlPressed && keyEvent.key == Key.V -> {
-					clipboardManager.getText()?.text?.let { text ->
+					clipboardManager.getText()?.let { text ->
 						val curSelection = state.selector.selection
 						if (curSelection != null) {
 							state.replace(curSelection, text)

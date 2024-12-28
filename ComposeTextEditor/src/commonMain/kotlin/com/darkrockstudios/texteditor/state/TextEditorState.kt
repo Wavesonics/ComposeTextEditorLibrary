@@ -610,7 +610,7 @@ class TextEditorState(
 
 	internal fun getLine(lineIndex: Int): AnnotatedString = textLines[lineIndex]
 
-	internal fun getTextInRange(range: TextRange): String {
+	internal fun getStringInRange(range: TextRange): String {
 		return if (range.isSingleLine()) {
 			textLines[range.start.line].text.substring(range.start.char, range.end.char)
 		} else {
@@ -627,6 +627,30 @@ class TextEditorState(
 
 				// Last line
 				append(textLines[range.end.line].text.substring(0, range.end.char))
+			}
+		}
+	}
+
+	internal fun getTextInRange(range: TextRange): AnnotatedString {
+		return if (range.isSingleLine()) {
+			// For single line, we can use subSequence which preserves spans
+			textLines[range.start.line].subSequence(range.start.char, range.end.char)
+		} else {
+			buildAnnotatedString {
+				// First line - from start to end, preserving spans
+				append(textLines[range.start.line].subSequence(range.start.char))
+				append('\n')
+
+				// Middle lines - complete lines with their spans
+				for (line in (range.start.line + 1) until range.end.line) {
+					append(textLines[line])
+					append('\n')
+				}
+
+				// Last line - up to end char, preserving spans
+				if (range.end.line < textLines.size) {
+					append(textLines[range.end.line].subSequence(0, range.end.char))
+				}
 			}
 		}
 	}
