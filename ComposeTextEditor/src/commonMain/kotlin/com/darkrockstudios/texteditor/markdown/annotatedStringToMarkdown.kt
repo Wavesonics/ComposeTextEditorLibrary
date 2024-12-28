@@ -52,9 +52,23 @@ fun AnnotatedString.toMarkdown(): String {
 
 		// Add the appropriate marker
 		if (boundary.isStart) {
-			result.append(boundary.marker.openMarker)
+			if (boundary.marker.openMarker.contains("#")) {
+				// Ensure header starts on a new line
+				if (!result.endsWith("\n") && result.isNotEmpty()) {
+					result.append("\n")
+				}
+				result.append(boundary.marker.openMarker)
+			} else {
+				result.append(boundary.marker.openMarker)
+			}
 		} else {
 			result.append(boundary.marker.closeMarker)
+			if (boundary.marker.closeMarker == "\n") {
+				// Avoid duplicate newlines
+				if (currentIndex < text.length && text[currentIndex] == '\n') {
+					currentIndex++
+				}
+			}
 		}
 	}
 
@@ -76,26 +90,21 @@ private data class StyleMarker(
 
 private fun getStyleMarker(style: SpanStyle): StyleMarkerPair? {
 	return when {
+		style.fontWeight == FontWeight.Bold && style.fontSize != TextUnit.Unspecified -> {
+			when (style.fontSize.value) {
+				32f -> StyleMarkerPair("# ", "\n") // Header 1
+				24f -> StyleMarkerPair("## ", "\n") // Header 2
+				18.72f -> StyleMarkerPair("### ", "\n") // Header 3
+				16f -> StyleMarkerPair("#### ", "\n") // Header 4
+				13.28f -> StyleMarkerPair("##### ", "\n") // Header 5
+				12f -> StyleMarkerPair("###### ", "\n") // Header 6
+				else -> null
+			}
+		}
 		style.fontWeight == FontWeight.Bold -> StyleMarkerPair("**", "**")
 		style.fontStyle == FontStyle.Italic -> StyleMarkerPair("*", "*")
 		style.fontFamily == FontFamily.Monospace -> StyleMarkerPair("`", "`")
 		style.textDecoration == TextDecoration.Underline -> StyleMarkerPair("[", "]()")
-		// Headers are a special case as they must be at the start of a line
-		style.fontSize != TextUnit.Unspecified -> {
-			when (style.fontSize.value) {
-				32f -> StyleMarkerPair("# ", "\n")
-				24f -> StyleMarkerPair("## ", "\n")
-				18.72f -> StyleMarkerPair("### ", "\n")
-				16f -> StyleMarkerPair("#### ", "\n")
-				13.28f -> StyleMarkerPair("##### ", "\n")
-				12f -> StyleMarkerPair("###### ", "\n")
-				else -> null
-			}
-		}
-
-		(style.fontStyle == FontStyle.Italic && style.color?.let { it.red == it.green && it.green == it.blue } == true) ->
-			StyleMarkerPair("> ", "\n")
-
 		else -> null
 	}
 }
@@ -104,11 +113,3 @@ private data class StyleMarkerPair(
 	val openMarker: String,
 	val closeMarker: String
 )
-
-/**
- * Utility extension to help determine if a position is at the start of a line in the text
- */
-private fun String.isStartOfLine(position: Int): Boolean {
-	if (position == 0) return true
-	return position > 0 && this[position - 1] == '\n'
-}
