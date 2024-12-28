@@ -17,6 +17,15 @@ kotlin {
 			}
 		}
 	}
+	wasmJs {
+		moduleName = "sampleApp"
+		browser {
+			commonWebpackConfig {
+				outputFileName = "sampleApp.js"
+			}
+		}
+		binaries.executable()
+	}
 
 	sourceSets {
 
@@ -88,6 +97,10 @@ compose.desktop {
 			packageVersion = "1.0.0"
 		}
 	}
+}
+
+compose.experimental {
+	web.application {}
 }
 
 android {

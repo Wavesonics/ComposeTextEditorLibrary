@@ -1,4 +1,5 @@
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
+import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -17,6 +18,16 @@ kotlin {
             }
         }
     }
+    @OptIn(ExperimentalWasmDsl::class)
+    wasmJs {
+        moduleName = "ComposeTextEditor"
+        browser {
+            commonWebpackConfig {
+                outputFileName = "composeTextEditorLibrary.js"
+            }
+        }
+        binaries.library()
+    }
 
     sourceSets {
         val commonMain by getting {
@@ -30,6 +41,7 @@ kotlin {
                 implementation(compose.components.uiToolingPreview)
                 implementation(libs.androidx.lifecycle.viewmodel)
                 implementation(libs.androidx.lifecycle.runtime.compose)
+                implementation(libs.kotlinx.datetime)
             }
         }
 

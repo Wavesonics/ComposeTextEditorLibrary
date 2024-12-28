@@ -14,6 +14,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import com.darkrockstudios.texteditor.richstyle.RichSpan
 import com.darkrockstudios.texteditor.state.SpanClickType
 import com.darkrockstudios.texteditor.state.TextEditorState
+import kotlinx.datetime.Clock
 
 internal fun Modifier.textEditorPointerInputHandling(
 	state: TextEditorState,
@@ -180,7 +181,7 @@ suspend fun PointerInputScope.detectTapsImperatively(
 		while (true) {
 			// Wait for tap down
 			val down = awaitFirstDown()
-			val downTime = System.currentTimeMillis()
+			val downTime = Clock.System.now().toEpochMilliseconds()
 			val downPosition = down.position
 
 			// Handle single tap immediately
