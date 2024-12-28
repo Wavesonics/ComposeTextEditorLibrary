@@ -10,15 +10,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.darkrockstudios.texteditor.CharLineOffset
 import com.darkrockstudios.texteditor.TextEditor
-import com.darkrockstudios.texteditor.richstyle.HighlightSpanStyle
-import com.darkrockstudios.texteditor.richstyle.SpellCheckStyle
+import com.darkrockstudios.texteditor.markdown.toAnnotatedStringFromMarkdown
 import com.darkrockstudios.texteditor.state.SpanClickType
 import com.darkrockstudios.texteditor.state.TextEditorState
 import com.darkrockstudios.texteditor.state.getSpanStylesAtPosition
@@ -33,7 +30,7 @@ val ITALICS = SpanStyle(fontStyle = FontStyle.Italic)
 @Preview
 fun App() {
     MaterialTheme {
-        val state: TextEditorState = rememberTextEditorState()
+        val state: TextEditorState = rememberTextEditorState(SIMPLE_MARKDOWN.toAnnotatedStringFromMarkdown())
         var isBoldActive by remember { mutableStateOf(false) }
         var isItalicActive by remember { mutableStateOf(false) }
         var isHighlightActive by remember { mutableStateOf(false) }
@@ -54,11 +51,11 @@ fun App() {
         LaunchedEffect(Unit) {
             //val text = "test ssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss\nxxxxxxxxxxxxxxxxxx\nHello cat\n".repeat(5)
             //state.setInitialText(alice_wounder_land)
-            state.setText(createRichTextDemo())
-
-            state.selector.updateSelection(CharLineOffset(0, 10), CharLineOffset(0, 20))
-            state.addRichSpan(6, 11, HighlightSpanStyle(Color(0x40FF0000)))
-            state.addRichSpan(16, 31, SpellCheckStyle())
+//            state.setText(createRichTextDemo())
+//
+//            state.selector.updateSelection(CharLineOffset(0, 10), CharLineOffset(0, 20))
+//            state.addRichSpan(6, 11, HighlightSpanStyle(Color(0x40FF0000)))
+//            state.addRichSpan(16, 31, SpellCheckStyle())
 
 //            state.setInitialText(createRichTextDemo2())
 //            state.addRichSpan(30, 35, HighlightSpanStyle(Color(0x40FF0000)))

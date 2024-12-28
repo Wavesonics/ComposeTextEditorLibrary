@@ -144,6 +144,14 @@ had happened lately, that Alice had begun to think that very few
 things indeed were really impossible.
 """
 
+const val SIMPLE_MARKDOWN = """# Understanding **RichSpan Management** in Compose Multiplatform
+
+The `RichSpanManager` plays a **critical role** in our text editor by efficiently managing **custom text styles** known as `RichSpanStyle`. These styles are applied dynamically to the text, enhancing flexibility. A **notable feature** of this manager is its ability to handle spans gracefully during operations like **insertion**, **deletion**, or **replacement**, ensuring text integrity.
+
+When a text edit occurs, spans are adjusted to maintain consistency. If the operation is an *insertion*, spans may **expand** or **shift** depending on the location relative to the insertion point. For *deletions*, spans **shrink** or **merge** based on the removed range. Replacement operations are treated as a **combination** of deletion and insertion, ensuring spans adapt seamlessly.
+
+Span deduplication plays a significant role by merging overlapping spans to reduce redundancy. Dynamic updates ensure that any changes in text instantly reflect on spans, keeping the document visually consistent. Efficient and robust, this approach simplifies complex text operations while maintaining **visual coherence**."""
+
 fun createRichTextDemo2(): AnnotatedString = buildAnnotatedString {
 	append("1234567890123456789112345678921234567893")
 }

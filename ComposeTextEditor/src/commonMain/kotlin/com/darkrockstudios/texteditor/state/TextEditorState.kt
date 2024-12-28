@@ -689,7 +689,7 @@ class TextEditorState(
 
 @OptIn(ExperimentalUuidApi::class)
 @Composable
-fun rememberTextEditorState(): TextEditorState {
+fun rememberTextEditorState(initialText: AnnotatedString? = null): TextEditorState {
 	val scope = rememberCoroutineScope()
 	val density = LocalDensity.current
 	val windowInfo = LocalWindowInfo.current
@@ -702,6 +702,7 @@ fun rememberTextEditorState(): TextEditorState {
 		TextEditorState(
 			scope = scope,
 			measurer = textMeasurer,
+			initialText = initialText,
 		)
 	}
 
