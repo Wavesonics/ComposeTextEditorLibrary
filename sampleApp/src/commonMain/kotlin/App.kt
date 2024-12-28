@@ -110,8 +110,14 @@ fun App() {
                     isItalicActive = !isItalicActive
                 },
                 onHighlightClick = {
+                    state.selector.selection?.let { range ->
+                        if (isHighlightActive) {
+                            state.removeRichSpan(range.start, range.end, HIGHLIGHT)
+                        } else {
+                            state.addRichSpan(range.start, range.end, HIGHLIGHT)
+                        }
+                    }
                     isHighlightActive = !isHighlightActive
-                    // Implement highlight styling logic
                 },
                 onUndoClick = state::undo,
                 onRedoClick = state::redo,

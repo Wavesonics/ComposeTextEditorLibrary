@@ -15,6 +15,10 @@ class RichSpanManager(
 		spans.add(RichSpan(start, end, style))
 	}
 
+	fun removeRichSpan(start: CharLineOffset, end: CharLineOffset, style: RichSpanStyle) {
+		spans.remove(RichSpan(start, end, style))
+	}
+
 	fun removeRichSpan(span: RichSpan) {
 		spans.remove(span)
 	}

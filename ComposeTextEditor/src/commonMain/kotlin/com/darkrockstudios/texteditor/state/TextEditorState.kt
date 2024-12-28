@@ -546,8 +546,18 @@ class TextEditorState(
 		updateBookKeeping()
 	}
 
+	fun addRichSpan(start: CharLineOffset, end: CharLineOffset, style: RichSpanStyle) {
+		richSpanManager.addRichSpan(start, end, style)
+		updateBookKeeping()
+	}
+
 	fun addRichSpan(start: Int, end: Int, style: RichSpanStyle) {
 		richSpanManager.addRichSpan(start.toCharLineOffset(), end.toCharLineOffset(), style)
+		updateBookKeeping()
+	}
+
+	fun removeRichSpan(start: CharLineOffset, end: CharLineOffset, style: RichSpanStyle) {
+		richSpanManager.removeRichSpan(start, end, style)
 		updateBookKeeping()
 	}
 
