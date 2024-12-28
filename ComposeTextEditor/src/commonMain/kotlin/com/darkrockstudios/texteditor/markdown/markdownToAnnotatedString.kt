@@ -215,22 +215,34 @@ private fun AnnotatedString.Builder.handleHeader(
 	startOffset: Int,
 	level: Int
 ) {
+	// Apply the header style
 	pushStyle(MarkdownStyles.header(level))
 
-	// Get the header text content, skipping the # markers and whitespace
+	// Process the child nodes, ignoring `#` markers but supporting nested spans
 	node.children.forEach { child ->
 		when (child.type) {
-			MarkdownTokenTypes.ATX_CONTENT -> {
-				append(child.getTextInNode(original).toString().trim())
+			MarkdownTokenTypes.ATX_HEADER -> {
+				// Skip processing the actual `#` markers
 			}
-			// Skip other header-related tokens
-			MarkdownTokenTypes.ATX_HEADER,
 			MarkdownTokenTypes.WHITE_SPACE -> {
+				// Skip leading whitespace (if it's part of the `#` header)
+				if (startOffset == 0) return@forEach
+				append(child.getTextInNode(original))
 			}
-
-			else -> appendMarkdownNode(original, child, startOffset)
+			MarkdownTokenTypes.ATX_CONTENT -> {
+				// Recursively process the header's content for nested styles
+				appendMarkdownChildren(original, child, startOffset)
+			}
+			else -> {
+				// Process any other nested styles or text
+				appendMarkdownNode(original, child, startOffset)
+			}
 		}
 	}
+
+	// Pop the header style
 	pop()
+
+	// Add a newline for formatting
 	append("\n")
 }

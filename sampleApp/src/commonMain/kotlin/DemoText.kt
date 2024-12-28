@@ -144,7 +144,7 @@ had happened lately, that Alice had begun to think that very few
 things indeed were really impossible.
 """
 
-const val SIMPLE_MARKDOWN = """# Understanding **RichSpan Management** in Compose Multiplatform
+const val SIMPLE_MARKDOWN = """# Understanding *RichSpan Management* in Compose Multiplatform
 
 The `RichSpanManager` plays a **critical role** in our text editor by efficiently managing **custom text styles** known as `RichSpanStyle`. These styles are applied dynamically to the text, enhancing flexibility. A **notable feature** of this manager is its ability to handle spans gracefully during operations like **insertion**, **deletion**, or **replacement**, ensuring text integrity.
 
