@@ -17,7 +17,7 @@ import org.intellij.markdown.flavours.commonmark.CommonMarkFlavourDescriptor
 import org.intellij.markdown.parser.MarkdownParser
 
 // Style Constants
-private object MarkdownStyles {
+object MarkdownStyles {
 	val BOLD = SpanStyle(fontWeight = FontWeight.Bold)
 	val ITALICS = SpanStyle(fontStyle = FontStyle.Italic)
 	val CODE = SpanStyle(

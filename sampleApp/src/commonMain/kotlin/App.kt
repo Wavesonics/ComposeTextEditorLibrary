@@ -10,21 +10,27 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.darkrockstudios.texteditor.TextEditor
-import com.darkrockstudios.texteditor.markdown.toAnnotatedStringFromMarkdown
+import com.darkrockstudios.texteditor.markdown.MarkdownStyles
+import com.darkrockstudios.texteditor.richstyle.HighlightSpanStyle
+import com.darkrockstudios.texteditor.richstyle.RichSpan
+import com.darkrockstudios.texteditor.richstyle.SpellCheckStyle
 import com.darkrockstudios.texteditor.state.SpanClickType
 import com.darkrockstudios.texteditor.state.TextEditorState
+import com.darkrockstudios.texteditor.state.getRichSpansAtPosition
+import com.darkrockstudios.texteditor.state.getRichSpansInRange
 import com.darkrockstudios.texteditor.state.getSpanStylesAtPosition
 import com.darkrockstudios.texteditor.state.getSpanStylesInRange
 import com.darkrockstudios.texteditor.state.rememberTextEditorState
 import org.jetbrains.compose.ui.tooling.preview.Preview
 
-val BOLD = SpanStyle(fontWeight = FontWeight.Bold)
-val ITALICS = SpanStyle(fontStyle = FontStyle.Italic)
+val BOLD = MarkdownStyles.BOLD
+val ITALICS = MarkdownStyles.ITALICS
+val HIGHLIGHT = HighlightSpanStyle(Color(0x40FF0000))
 
 @Composable
 @Preview
@@ -47,17 +53,25 @@ fun App() {
                 } else {
                     state.getSpanStylesAtPosition(position)
                 }
+
+                val richSpans = if (selection != null) {
+                    state.getRichSpansInRange(selection)
+                } else {
+                    state.getRichSpansAtPosition(position)
+                }
+
                 isBoldActive = styles.contains(BOLD)
                 isItalicActive = styles.contains(ITALICS)
+                isHighlightActive = richSpans.any { it.style == HIGHLIGHT }
             }
         }
 
         LaunchedEffect(Unit) {
 //            state.selector.updateSelection(CharLineOffset(0, 10), CharLineOffset(0, 20))
-//            state.addRichSpan(6, 11, HighlightSpanStyle(Color(0x40FF0000)))
-//            state.addRichSpan(16, 31, SpellCheckStyle())
+            state.addRichSpan(6, 11, HIGHLIGHT)
+            state.addRichSpan(16, 31, SpellCheckStyle())
 //
-//            state.addRichSpan(30, 35, HighlightSpanStyle(Color(0x40FF0000)))
+//            state.addRichSpan(30, 35, HIGHLIGHT)
 
             state.editOperations.collect { operation ->
                 println("Applying Operation: $operation")
