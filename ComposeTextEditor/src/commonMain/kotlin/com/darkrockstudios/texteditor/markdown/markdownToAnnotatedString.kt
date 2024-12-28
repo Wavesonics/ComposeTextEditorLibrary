@@ -76,7 +76,6 @@ private fun AnnotatedString.Builder.appendMarkdownNode(
 	when (node.type) {
 		MarkdownElementTypes.PARAGRAPH -> {
 			appendMarkdownChildren(original, node, startOffset)
-			append("\n")
 		}
 
 		MarkdownTokenTypes.WHITE_SPACE -> {
