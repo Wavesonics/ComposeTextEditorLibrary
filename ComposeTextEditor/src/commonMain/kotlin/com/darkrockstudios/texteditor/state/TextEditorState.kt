@@ -21,9 +21,10 @@ import androidx.compose.ui.unit.Constraints
 import com.darkrockstudios.texteditor.CharLineOffset
 import com.darkrockstudios.texteditor.LineWrap
 import com.darkrockstudios.texteditor.TextRange
-import com.darkrockstudios.texteditor.annotatedstring.splitToAnnotatedString
+import com.darkrockstudios.texteditor.annotatedstring.splitAnnotatedString
 import com.darkrockstudios.texteditor.annotatedstring.subSequence
 import com.darkrockstudios.texteditor.annotatedstring.toAnnotatedString
+import com.darkrockstudios.texteditor.markdown.toMarkdown
 import com.darkrockstudios.texteditor.richstyle.RichSpan
 import com.darkrockstudios.texteditor.richstyle.RichSpanStyle
 import kotlinx.coroutines.CoroutineScope
@@ -37,6 +38,7 @@ import kotlin.uuid.Uuid
 class TextEditorState(
 	scope: CoroutineScope,
 	measurer: TextMeasurer,
+	initialText: AnnotatedString? = null
 ) {
 	internal var textMeasurer: TextMeasurer = measurer
 		set(value) {
@@ -98,16 +100,16 @@ class TextEditorState(
 		_version++
 	}
 
-	fun setInitialText(text: String) {
+	fun setText(text: String) {
 		_textLines.clear()
 		_textLines.addAll(text.split("\n").map { it.toAnnotatedString() })
 		updateBookKeeping()
 		notifyContentChanged()
 	}
 
-	fun setInitialText(text: AnnotatedString) {
+	fun setText(text: AnnotatedString) {
 		_textLines.clear()
-		_textLines.addAll(text.splitToAnnotatedString())
+		_textLines.addAll(text.splitAnnotatedString())
 		updateBookKeeping()
 		notifyContentChanged()
 	}
@@ -191,7 +193,6 @@ class TextEditorState(
 				cursorPosition,
 				CharLineOffset(cursorPosition.line + 1, 0)
 			)
-			val deletedText = AnnotatedString("\n")
 
 			val operation = TextEditOperation.Delete(
 				range = deleteRange,
@@ -621,7 +622,7 @@ class TextEditorState(
 
 	internal fun getLine(lineIndex: Int): AnnotatedString = textLines[lineIndex]
 
-	internal fun getStringInRange(range: TextRange): String {
+	fun getStringInRange(range: TextRange): String {
 		return if (range.isSingleLine()) {
 			textLines[range.start.line].text.substring(range.start.char, range.end.char)
 		} else {
@@ -642,7 +643,7 @@ class TextEditorState(
 		}
 	}
 
-	internal fun getTextInRange(range: TextRange): AnnotatedString {
+	fun getTextInRange(range: TextRange): AnnotatedString {
 		return if (range.isSingleLine()) {
 			// For single line, we can use subSequence which preserves spans
 			textLines[range.start.line].subSequence(range.start.char, range.end.char)
@@ -663,6 +664,25 @@ class TextEditorState(
 					append(textLines[range.end.line].subSequence(0, range.end.char))
 				}
 			}
+		}
+	}
+
+	fun getAllText(): AnnotatedString {
+		return buildAnnotatedString {
+			textLines.forEach { line ->
+				append(line)
+				append('\n')
+			}
+		}
+	}
+
+	fun exportAsMarkdown(): String {
+		return getAllText().toMarkdown()
+	}
+
+	init {
+		if (initialText != null) {
+			setText(initialText)
 		}
 	}
 }

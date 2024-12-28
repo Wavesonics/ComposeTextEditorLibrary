@@ -8,7 +8,7 @@ internal fun String.toAnnotatedString() = AnnotatedString(this)
 internal fun AnnotatedString.subSequence(startIndex: Int = 0, endIndex: Int = length) =
 	subSequence(startIndex = startIndex, endIndex = endIndex)
 
-internal fun AnnotatedString.splitToAnnotatedString(): List<AnnotatedString> {
+internal fun AnnotatedString.splitAnnotatedString(): List<AnnotatedString> {
 	if (this.isEmpty()) return listOf(AnnotatedString(""))
 
 	val result = mutableListOf<AnnotatedString>()
@@ -23,7 +23,7 @@ internal fun AnnotatedString.splitToAnnotatedString(): List<AnnotatedString> {
 			append(lineText)
 
 			// Copy over all relevant spans for this line segment
-			this@splitToAnnotatedString.spanStyles.forEach { span ->
+			this@splitAnnotatedString.spanStyles.forEach { span ->
 				val spanStart = span.start
 				val spanEnd = span.end
 
@@ -40,7 +40,7 @@ internal fun AnnotatedString.splitToAnnotatedString(): List<AnnotatedString> {
 			}
 
 			// Copy over all relevant paragraph styles
-			this@splitToAnnotatedString.paragraphStyles.forEach { paragraph ->
+			this@splitAnnotatedString.paragraphStyles.forEach { paragraph ->
 				val paragraphStart = paragraph.start
 				val paragraphEnd = paragraph.end
 

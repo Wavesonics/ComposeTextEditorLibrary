@@ -54,7 +54,7 @@ fun App() {
         LaunchedEffect(Unit) {
             //val text = "test ssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss\nxxxxxxxxxxxxxxxxxx\nHello cat\n".repeat(5)
             //state.setInitialText(alice_wounder_land)
-            state.setInitialText(createRichTextDemo())
+            state.setText(createRichTextDemo())
 
             state.selector.updateSelection(CharLineOffset(0, 10), CharLineOffset(0, 20))
             state.addRichSpan(6, 11, HighlightSpanStyle(Color(0x40FF0000)))

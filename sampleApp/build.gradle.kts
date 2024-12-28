@@ -93,7 +93,7 @@ compose.desktop {
 
 		nativeDistributions {
 			targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
-			packageName = "org.darkrockstudios.texteditor"
+			packageName = "com.darkrockstudios.texteditor"
 			packageVersion = "1.0.0"
 		}
 	}

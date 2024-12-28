@@ -5,7 +5,7 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import com.darkrockstudios.texteditor.CharLineOffset
 import com.darkrockstudios.texteditor.TextRange
-import com.darkrockstudios.texteditor.annotatedstring.splitToAnnotatedString
+import com.darkrockstudios.texteditor.annotatedstring.splitAnnotatedString
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -146,7 +146,7 @@ class TextEditManager(private val state: TextEditorState) {
 	}
 
 	private fun handleMultiLineInsert(operation: TextEditOperation.Insert) {
-		val insertLines = operation.text.splitToAnnotatedString()
+		val insertLines = operation.text.splitAnnotatedString()
 		val currentLine = state._textLines[operation.position.line]
 
 		// Split current line content

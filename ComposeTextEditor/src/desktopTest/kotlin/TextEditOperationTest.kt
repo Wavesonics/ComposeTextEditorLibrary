@@ -59,7 +59,7 @@ class TextEditOperationTest {
 			scope = testScope,
 			measurer = mockTextMeasurer,
 		).apply {
-			setInitialText("line1\nline2\nline3\nline4")
+			setText("line1\nline2\nline3\nline4")
 			onViewportSizeChange(Size(1000f, 1000f))
 		}
 	}

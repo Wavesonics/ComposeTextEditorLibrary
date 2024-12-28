@@ -109,7 +109,7 @@ class TextEditorWrapTest {
 		state.onViewportSizeChange(Size(100f, 500f))
 
 		println("\n=== Setting Initial Text ===")
-		state.setInitialText("Initial")
+		state.setText("Initial")
 
 		println("\n=== Adding Initial Span ===")
 		val startPos = CharLineOffset(0, 0)
