@@ -233,11 +233,10 @@ class TextEditorState(
 		editManager.applyOperation(operation)
 	}
 
-	fun replace(range: TextEditorRange, newText: String) =
-		replace(range, newText.toAnnotatedString())
+	fun replace(range: TextEditorRange, newText: String, inheritStyle: Boolean = false) =
+		replace(range, newText.toAnnotatedString(), inheritStyle)
 
-	fun replace(range: TextEditorRange, newText: AnnotatedString) {
-		// Create Replace operation and let TextEditManager handle it
+	fun replace(range: TextEditorRange, newText: AnnotatedString, inheritStyle: Boolean = false) {
 		val operation = TextEditOperation.Replace(
 			range = range,
 			newText = newText,
@@ -273,7 +272,8 @@ class TextEditorState(
 					range.start.line,
 					range.start.char + newText.length
 				)
-			}
+			},
+			inheritStyle = inheritStyle,
 		)
 
 		editManager.applyOperation(operation)

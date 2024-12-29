@@ -40,7 +40,7 @@ class SpellCheckState(
 			.forEach { span ->
 				textState.removeRichSpan(span)
 			}
-		textState.replace(segment.range, correction)
+		textState.replace(segment.range, correction, true)
 	}
 
 	/**

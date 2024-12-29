@@ -129,10 +129,28 @@ class TextEditManager(private val state: TextEditorState) {
 			append(line.text.substring(safeEnd))
 		}
 
-		// Process spans using SpanManager
+		// Create an AnnotatedString that matches our current content
+		val originalWithSpans = buildAnnotatedString {
+			append(line.text.substring(0, safeStart))
+			append(newText)
+			if (safeEnd < line.length) {
+				append(line.text.substring(safeEnd, line.text.length))
+			}
+
+			// Add original spans adjusted for our new text structure
+			line.spanStyles.forEach { span ->
+				addStyle(span.item, span.start, span.end)
+			}
+			// Add new text spans shifted to their new position
+			newText.spanStyles.forEach { span ->
+				addStyle(span.item, span.start + safeStart, span.end + safeStart)
+			}
+		}
+
+		// Process spans using SpanManager with our properly structured text
 		val spanManager = SpanManager()
 		val processedSpans = spanManager.processSpans(
-			originalText = line,
+			originalText = originalWithSpans,
 			deletionStart = safeStart,
 			deletionEnd = safeEnd,
 			insertionPoint = safeStart,
@@ -141,7 +159,9 @@ class TextEditManager(private val state: TextEditorState) {
 
 		// Add processed spans to the result
 		processedSpans.forEach { span ->
-			addStyle(span.item, span.start, span.end)
+			if (span.start < length && span.end <= length && span.start < span.end) {
+				addStyle(span.item, span.start, span.end)
+			}
 		}
 	}
 
@@ -201,20 +221,43 @@ class TextEditManager(private val state: TextEditorState) {
 		when {
 			operation.range.isSingleLine() -> {
 				val line = state._textLines[operation.range.start.line]
+
+				// If we should inherit styles, collect them from the replaced range
+				val inheritedStyles = if (operation.inheritStyle) {
+					line.spanStyles.filter { span ->
+						span.start <= operation.range.end.char &&
+								span.end >= operation.range.start.char
+					}.map { it.item }.toSet()
+				} else {
+					emptySet()
+				}
+
+				// Create new text with inherited styles if needed
+				val newText = if (inheritedStyles.isNotEmpty()) {
+					buildAnnotatedString {
+						append(operation.newText)
+						println("\"${operation.newText}\"")
+						inheritedStyles.forEach { style ->
+							addStyle(style, 0, operation.newText.length)
+						}
+					}
+				} else {
+					operation.newText
+				}
+
 				state._textLines[operation.range.start.line] = handleReplace(
 					line,
 					operation.range.start.char,
 					operation.range.end.char,
-					operation.newText
+					newText
 				)
 			}
-
 			else -> {
-				// Handle multi-line replacement
 				val newContent = handleMultiLineReplace(
 					state,
 					operation.range,
 					operation.newText,
+					operation.inheritStyle
 				)
 
 				// Remove all affected lines
@@ -264,6 +307,7 @@ class TextEditManager(private val state: TextEditorState) {
 		state: TextEditorState,
 		range: TextEditorRange,
 		newText: AnnotatedString,
+		inheritStyle: Boolean,
 	): AnnotatedString = buildAnnotatedString {
 		// First, get all the text content we'll end up with
 		val firstLinePrefix = state.textLines[range.start.line].text.substring(0, range.start.char)

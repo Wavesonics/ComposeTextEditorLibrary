@@ -100,7 +100,8 @@ sealed class TextEditOperation {
 		val newText: AnnotatedString,
 		val oldText: AnnotatedString,
 		override val cursorBefore: CharLineOffset,
-		override val cursorAfter: CharLineOffset
+		override val cursorAfter: CharLineOffset,
+		val inheritStyle: Boolean = false,
 	) : TextEditOperation() {
 		override fun transformOffset(
 			offset: CharLineOffset,
