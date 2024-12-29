@@ -6,6 +6,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import com.darkrockstudios.symspellkt.api.SpellChecker
 import com.darkrockstudios.texteditor.RichSpanClickListener
 import com.darkrockstudios.texteditor.TextEditor
@@ -22,6 +25,7 @@ fun SpellCheckingTextEditor(
 	onRichSpanClick: RichSpanClickListener? = null,
 ) {
 	val menuState by remember(state) { mutableStateOf(SpellCheckMenuState(state)) }
+	val wordVisibilityBuffer = DpToPx(35.dp)
 
 	LaunchedEffect(state) {
 		state.textState.editOperations.debounceUntilQuiescent(500.milliseconds)
@@ -41,7 +45,9 @@ fun SpellCheckingTextEditor(
 				return@TextEditor if (type == SpanClickType.SECONDARY_CLICK || type == SpanClickType.TAP) {
 					val correction = state.handleSpanClick(span)
 					if (correction != null) {
-						val menuPos = offset.copy(y = offset.y - state.textState.scrollState.value)
+
+						val menuPos =
+							offset.copy(y = offset.y - state.textState.scrollState.value + wordVisibilityBuffer)
 						menuState.missSpelling.value =
 							SpellCheckMenuState.MissSpelling(correction, menuPos)
 						true
@@ -56,4 +62,10 @@ fun SpellCheckingTextEditor(
 			},
 		)
 	}
+}
+
+@Composable
+private fun DpToPx(dp: Dp): Float {
+	val density = LocalDensity.current.density
+	return dp.value * density
 }
