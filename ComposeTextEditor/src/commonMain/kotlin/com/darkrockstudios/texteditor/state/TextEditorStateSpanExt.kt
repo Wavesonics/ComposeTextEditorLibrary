@@ -2,7 +2,7 @@ package com.darkrockstudios.texteditor.state
 
 import androidx.compose.ui.text.SpanStyle
 import com.darkrockstudios.texteditor.CharLineOffset
-import com.darkrockstudios.texteditor.TextRange
+import com.darkrockstudios.texteditor.TextEditorRange
 
 /**
  * Returns all unique SpanStyles that are active at the given position.
@@ -33,7 +33,7 @@ fun TextEditorState.getSpanStylesAtPosition(position: CharLineOffset): Set<SpanS
  * Returns all unique SpanStyles that intersect with the given TextRange.
  * For partially overlapping spans, the entire SpanStyle is included.
  */
-fun TextEditorState.getSpanStylesInRange(range: TextRange): Set<SpanStyle> {
+fun TextEditorState.getSpanStylesInRange(range: TextEditorRange): Set<SpanStyle> {
 	// Validate range
 	if (range.start.line < 0 || range.start.line >= textLines.size ||
 		range.end.line < 0 || range.end.line >= textLines.size
@@ -92,7 +92,7 @@ fun TextEditorState.debugRichSpans() {
 		if (wrap.richSpans.isNotEmpty()) {
 			println("Line ${wrap.line} (Virtual line ${wrap.virtualLineIndex}):")
 			wrap.richSpans.forEach { span ->
-				println("  ${span.style::class.simpleName} [${span.start.line}:${span.start.char} -> ${span.end.line}:${span.end.char}]")
+				println("  ${span.style::class.simpleName} [${span.range.start.line}:${span.range.start.char} -> ${span.range.end.line}:${span.range.end.char}]")
 			}
 		}
 	}
@@ -105,8 +105,8 @@ fun TextEditorState.countOverlappingSpans(): Map<CharLineOffset, Int> {
 	lineOffsets.forEach { wrap ->
 		wrap.richSpans.forEach { span ->
 			// Check each character position in the span
-			var currentLine = span.start.line
-			var currentChar = span.start.char
+			var currentLine = span.range.start.line
+			var currentChar = span.range.start.char
 
 			while (true) {
 				val position = CharLineOffset(currentLine, currentChar)
@@ -116,7 +116,7 @@ fun TextEditorState.countOverlappingSpans(): Map<CharLineOffset, Int> {
 				}
 
 				// Move to next position
-				if (currentLine == span.end.line && currentChar >= span.end.char) {
+				if (currentLine == span.range.end.line && currentChar >= span.range.end.char) {
 					break
 				}
 
@@ -133,7 +133,7 @@ fun TextEditorState.countOverlappingSpans(): Map<CharLineOffset, Int> {
 	return spanCounts
 }
 
-fun TextEditorState.debugSpanStyles(filterRange: TextRange? = null) {
+fun TextEditorState.debugSpanStyles(filterRange: TextEditorRange? = null) {
 	println("=== Debug SpanStyles ===")
 	textLines.forEachIndexed { lineIndex, line ->
 		if (line.spanStyles.isNotEmpty() && (filterRange == null || filterRange.containsLine(

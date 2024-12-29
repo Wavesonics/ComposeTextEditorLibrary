@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
@@ -39,7 +40,8 @@ import kotlinx.coroutines.delay
 fun TextEditor(
 	state: TextEditorState = rememberTextEditorState(),
 	modifier: Modifier = Modifier,
-	onSpanClick: ((RichSpan, SpanClickType) -> Unit)? = null,
+	enabled: Boolean = true,
+	onRichSpanClick: RichSpanClickListener? = null,
 ) {
 	val focusRequester = remember { FocusRequester() }
 	val interactionSource = remember { MutableInteractionSource() }
@@ -88,7 +90,7 @@ fun TextEditor(
 					modifier = Modifier
 						.fillMaxWidth()
 						.height(state.totalContentHeight.dp)
-						.textEditorPointerInputHandling(state, onSpanClick)
+						.textEditorPointerInputHandling(state, onRichSpanClick)
 				) {
 					try {
 						var lastLine = -1
@@ -124,7 +126,7 @@ fun TextEditor(
 	}
 }
 
-fun Modifier.focusBorder(isFocused: Boolean): Modifier {
+private fun Modifier.focusBorder(isFocused: Boolean): Modifier {
 	return this.border(
 		width = 1.dp,
 		color = if (isFocused) Color(0xFFcfd6dc) else Color(0xFFDDDDDD)
@@ -138,3 +140,5 @@ private fun Modifier.requestFocusOnPress(focusRequester: FocusRequester) = point
 		focusRequester.requestFocus()
 	}
 }
+
+typealias RichSpanClickListener = ((RichSpan, SpanClickType, Offset) -> Boolean)

@@ -11,14 +11,14 @@ import androidx.compose.ui.input.pointer.PointerType
 import androidx.compose.ui.input.pointer.isPrimaryPressed
 import androidx.compose.ui.input.pointer.isSecondaryPressed
 import androidx.compose.ui.input.pointer.pointerInput
-import com.darkrockstudios.texteditor.richstyle.RichSpan
 import com.darkrockstudios.texteditor.state.SpanClickType
 import com.darkrockstudios.texteditor.state.TextEditorState
+import com.darkrockstudios.texteditor.state.isWordChar
 import kotlinx.datetime.Clock
 
 internal fun Modifier.textEditorPointerInputHandling(
 	state: TextEditorState,
-	onSpanClick: ((RichSpan, SpanClickType) -> Unit)? = null,
+	onSpanClick: RichSpanClickListener? = null,
 ): Modifier {
 	return this.pointerInput(Unit) {
 		awaitEachGesture {
@@ -163,10 +163,6 @@ private fun TextEditorState.findWordBoundary(position: CharLineOffset): Pair<Cha
 	)
 }
 
-private fun isWordChar(char: Char): Boolean {
-	return char.isLetterOrDigit() || char == '_'
-}
-
 suspend fun PointerInputScope.detectTapsImperatively(
 	onTap: (Offset) -> Unit,
 	onDoubleTap: (Offset) -> Unit,
@@ -252,18 +248,19 @@ private fun handleSpanInteraction(
 	state: TextEditorState,
 	offset: Offset,
 	clickType: SpanClickType,
-	onSpanClick: ((RichSpan, SpanClickType) -> Unit)?
-) {
+	onSpanClick: RichSpanClickListener?
+): Boolean {
 	val position = state.getOffsetAtPosition(offset)
 	val clickedSpan = state.findSpanAtPosition(position)
 
-	if (clickedSpan != null) {
-		onSpanClick?.invoke(clickedSpan, clickType)
+	return if (clickedSpan != null && onSpanClick != null) {
+		onSpanClick.invoke(clickedSpan, clickType, offset)
 	} else {
 		// Only update cursor on primary clicks or taps
 		if (clickType == SpanClickType.PRIMARY_CLICK || clickType == SpanClickType.TAP) {
 			state.updateCursorPosition(position)
 			state.selector.clearSelection()
 		}
+		true
 	}
 }

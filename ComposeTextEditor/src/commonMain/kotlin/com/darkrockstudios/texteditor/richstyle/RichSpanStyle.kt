@@ -5,23 +5,23 @@ import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextRange
 import com.darkrockstudios.texteditor.CharLineOffset
 import com.darkrockstudios.texteditor.LineWrap
+import com.darkrockstudios.texteditor.TextEditorRange
 
 interface RichSpanStyle {
 	fun DrawScope.drawCustomStyle(
 		layoutResult: TextLayoutResult,
-		lineIndex: Int,
+		lineWrap: LineWrap,
 		textRange: TextRange
 	)
 }
 
 data class RichSpan(
-	val start: CharLineOffset,
-	val end: CharLineOffset,
+	val range: TextEditorRange,
 	val style: RichSpanStyle
 ) {
 	fun intersectsWith(lineWrap: LineWrap): Boolean {
 		// If not on the right line, no intersection
-		if (lineWrap.line < start.line || lineWrap.line > end.line) {
+		if (lineWrap.line < range.start.line || lineWrap.line > range.end.line) {
 			return false
 		}
 
@@ -34,15 +34,15 @@ data class RichSpan(
 		}
 
 		// For single-line spans on the same line
-		if (start.line == end.line && start.line == lineWrap.line) {
+		if (range.start.line == range.end.line && range.start.line == lineWrap.line) {
 			// Check if any part of the span overlaps with this wrapped segment
-			return (start.char < lineEnd && end.char > lineStart)
+			return (range.start.char < lineEnd && range.end.char > lineStart)
 		}
 
 		// For multi-line spans or wrapped lines:
 		return when (lineWrap.line) {
-			start.line -> start.char < lineEnd     // First line: span starts before line segment ends
-			end.line -> end.char > lineStart       // Last line: span ends after line segment starts
+			range.start.line -> range.start.char < lineEnd     // First line: span starts before line segment ends
+			range.end.line -> range.end.char > lineStart       // Last line: span ends after line segment starts
 			else -> true                           // Middle lines are fully covered
 		}
 	}
@@ -54,12 +54,12 @@ data class RichSpan(
 		}
 
 		return when {
-			position.line < start.line || position.line > end.line -> false
-			position.line == start.line && position.line == end.line ->
-				position.char >= start.char && position.char < end.char
+			position.line < range.start.line || position.line > range.end.line -> false
+			position.line == range.start.line && position.line == range.end.line ->
+				position.char >= range.start.char && position.char < range.end.char
 
-			position.line == start.line -> position.char >= start.char
-			position.line == end.line -> position.char < end.char
+			position.line == range.start.line -> position.char >= range.start.char
+			position.line == range.end.line -> position.char < range.end.char
 			else -> true
 		}
 	}

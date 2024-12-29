@@ -20,7 +20,7 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.Constraints
 import com.darkrockstudios.texteditor.CharLineOffset
 import com.darkrockstudios.texteditor.LineWrap
-import com.darkrockstudios.texteditor.TextRange
+import com.darkrockstudios.texteditor.TextEditorRange
 import com.darkrockstudios.texteditor.annotatedstring.splitAnnotatedString
 import com.darkrockstudios.texteditor.annotatedstring.subSequence
 import com.darkrockstudios.texteditor.annotatedstring.toAnnotatedString
@@ -68,7 +68,7 @@ class TextEditorState(
 	var isFocused by mutableStateOf(false)
 	var lineOffsets by mutableStateOf(emptyList<LineWrap>())
 
-	val selectionRangeFlow: SharedFlow<TextRange?> get() = selector.selectionRangeFlow
+	val selectionRangeFlow: SharedFlow<TextEditorRange?> get() = selector.selectionRangeFlow
 
 	private var _canUndo by mutableStateOf(false)
 	private var _canRedo by mutableStateOf(false)
@@ -145,10 +145,9 @@ class TextEditorState(
 		editManager.applyOperation(operation)
 	}
 
-
 	fun backspaceAtCursor() {
 		if (cursorPosition.char > 0) {
-			val deleteRange = TextRange(
+			val deleteRange = TextEditorRange(
 				CharLineOffset(cursorPosition.line, cursorPosition.char - 1),
 				cursorPosition
 			)
@@ -161,7 +160,7 @@ class TextEditorState(
 			editManager.applyOperation(operation)
 		} else if (cursorPosition.line > 0) {
 			val previousLineLength = textLines[cursorPosition.line - 1].length
-			val deleteRange = TextRange(
+			val deleteRange = TextEditorRange(
 				CharLineOffset(cursorPosition.line - 1, previousLineLength),
 				cursorPosition
 			)
@@ -177,7 +176,7 @@ class TextEditorState(
 
 	fun deleteAtCursor() {
 		if (cursorPosition.char < textLines[cursorPosition.line].length) {
-			val deleteRange = TextRange(
+			val deleteRange = TextEditorRange(
 				cursorPosition,
 				CharLineOffset(cursorPosition.line, cursorPosition.char + 1)
 			)
@@ -189,7 +188,7 @@ class TextEditorState(
 			)
 			editManager.applyOperation(operation)
 		} else if (cursorPosition.line < textLines.size - 1) {
-			val deleteRange = TextRange(
+			val deleteRange = TextEditorRange(
 				cursorPosition,
 				CharLineOffset(cursorPosition.line + 1, 0)
 			)
@@ -225,7 +224,7 @@ class TextEditorState(
 		editManager.applyOperation(operation)
 	}
 
-	fun delete(range: TextRange) {
+	fun delete(range: TextEditorRange) {
 		val operation = TextEditOperation.Delete(
 			range = range,
 			cursorBefore = cursorPosition,
@@ -234,8 +233,10 @@ class TextEditorState(
 		editManager.applyOperation(operation)
 	}
 
-	fun replace(range: TextRange, newText: String) = replace(range, newText.toAnnotatedString())
-	fun replace(range: TextRange, newText: AnnotatedString) {
+	fun replace(range: TextEditorRange, newText: String) =
+		replace(range, newText.toAnnotatedString())
+
+	fun replace(range: TextEditorRange, newText: AnnotatedString) {
 		// Create Replace operation and let TextEditManager handle it
 		val operation = TextEditOperation.Replace(
 			range = range,
@@ -349,13 +350,13 @@ class TextEditorState(
 			if (lineWrap.line != curRealLine.line) {
 				curRealLine = lineWrap
 			}
-
+			//val textLayoutResult = lineWrap.textLayoutResult
 			val textLayoutResult = textMeasurer.measure(
 				textLines[lineWrap.line],
 				constraints = Constraints(maxWidth = viewportSize.width.toInt())
 			)
 
-			val relativeOffset = offset - curRealLine.offset
+			val relativeOffset = offset - lineWrap.offset
 			if (offset.y in curRealLine.offset.y..(curRealLine.offset.y + textLayoutResult.size.height)) {
 				val charPos = textLayoutResult.multiParagraph.getOffsetForPosition(relativeOffset)
 				return CharLineOffset(lineWrap.line, min(charPos, textLines[lineWrap.line].length))
@@ -536,13 +537,18 @@ class TextEditorState(
 		_canRedo = editManager.history.hasRedoLevels()
 	}
 
-	fun addStyleSpan(range: TextRange, style: SpanStyle) {
+	fun addStyleSpan(range: TextEditorRange, style: SpanStyle) {
 		editManager.addSpanStyle(range, style)
 		updateBookKeeping()
 	}
 
-	fun removeStyleSpan(range: TextRange, style: SpanStyle) {
+	fun removeStyleSpan(range: TextEditorRange, style: SpanStyle) {
 		editManager.removeStyleSpan(range, style)
+		updateBookKeeping()
+	}
+
+	fun addRichSpan(range: TextEditorRange, style: RichSpanStyle) {
+		richSpanManager.addRichSpan(range, style)
 		updateBookKeeping()
 	}
 
@@ -568,7 +574,7 @@ class TextEditorState(
 
 	fun findSpanAtPosition(position: CharLineOffset): RichSpan? {
 		// Find the line wrap that contains our position
-		val lineWrap = lineOffsets.firstOrNull { wrap ->
+		val lineWrap = lineOffsets.lastOrNull { wrap ->
 			wrap.line == position.line && position.char >= wrap.wrapStartsAtIndex
 		} ?: return null
 
@@ -578,7 +584,7 @@ class TextEditorState(
 		}
 	}
 
-	fun captureMetadata(range: TextRange): OperationMetadata {
+	fun captureMetadata(range: TextEditorRange): OperationMetadata {
 		val deletedContent = when {
 			range.isSingleLine() -> {
 				textLines[range.start.line].subSequence(range.start.char, range.end.char)
@@ -609,8 +615,8 @@ class TextEditorState(
 			deletedSpans = richSpanManager.getSpansInRange(range),
 			preservedRichSpans = richSpanManager.getSpansInRange(range).map { span ->
 				PreservedRichSpan(
-					relativeStart = getRelativePosition(span.start, range.start),
-					relativeEnd = getRelativePosition(span.end, range.start),
+					relativeStart = getRelativePosition(span.range.start, range.start),
+					relativeEnd = getRelativePosition(span.range.end, range.start),
 					style = span.style
 				)
 			}
@@ -632,7 +638,7 @@ class TextEditorState(
 
 	internal fun getLine(lineIndex: Int): AnnotatedString = textLines[lineIndex]
 
-	fun getStringInRange(range: TextRange): String {
+	fun getStringInRange(range: TextEditorRange): String {
 		return if (range.isSingleLine()) {
 			textLines[range.start.line].text.substring(range.start.char, range.end.char)
 		} else {
@@ -653,7 +659,7 @@ class TextEditorState(
 		}
 	}
 
-	fun getTextInRange(range: TextRange): AnnotatedString {
+	fun getTextInRange(range: TextEditorRange): AnnotatedString {
 		return if (range.isSingleLine()) {
 			// For single line, we can use subSequence which preserves spans
 			textLines[range.start.line].subSequence(range.start.char, range.end.char)
@@ -688,6 +694,15 @@ class TextEditorState(
 
 	fun exportAsMarkdown(): String {
 		return getAllText().toMarkdown()
+	}
+
+	fun computeTextHash(): Int {
+		var hash = 3
+		val multiplier = 31
+		textLines.forEach { line ->
+			hash = multiplier * hash + line.hashCode()
+		}
+		return hash
 	}
 
 	init {

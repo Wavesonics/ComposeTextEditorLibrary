@@ -1,6 +1,6 @@
 package com.darkrockstudios.texteditor
 
-data class TextRange(
+data class TextEditorRange(
 	val start: CharLineOffset,
 	val end: CharLineOffset
 ) {
@@ -11,19 +11,19 @@ data class TextRange(
 	}
 
 	companion object {
-		fun fromOffsets(offset1: CharLineOffset, offset2: CharLineOffset): TextRange {
+		fun fromOffsets(offset1: CharLineOffset, offset2: CharLineOffset): TextEditorRange {
 			return if (offset1 isBefore offset2) {
-				TextRange(offset1, offset2)
+				TextEditorRange(offset1, offset2)
 			} else {
-				TextRange(offset2, offset1)
+				TextEditorRange(offset2, offset1)
 			}
 		}
 	}
 }
 
 
-fun CharLineOffset.toRange(end: CharLineOffset): TextRange {
-	return TextRange(
+fun CharLineOffset.toRange(end: CharLineOffset): TextEditorRange {
+	return TextEditorRange(
 		start = this,
 		end = end
 	)

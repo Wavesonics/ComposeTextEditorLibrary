@@ -23,8 +23,8 @@ internal fun DrawScope.drawRichSpans(lineWrap: LineWrap, state: TextEditorState)
 		)
 
 		// Convert to absolute character indices
-		val spanStartAbsChar = richSpan.start.toCharacterIndex(state)
-		val spanEndAbsChar = richSpan.end.toCharacterIndex(state)
+		val spanStartAbsChar = richSpan.range.start.toCharacterIndex(state)
+		val spanEndAbsChar = richSpan.range.end.toCharacterIndex(state)
 		val lineStartAbsChar = lineStart.toCharacterIndex(state)
 
 		// If this wrapped segment intersects with our span
@@ -58,7 +58,7 @@ internal fun DrawScope.drawRichSpans(lineWrap: LineWrap, state: TextEditorState)
 				translate(top = lineWrap.offset.y) {
 					drawCustomStyle(
 						layoutResult = textLayoutResult,
-						lineIndex = lineWrap.virtualLineIndex,
+						lineWrap = lineWrap,
 						textRange = localRange
 					)
 				}

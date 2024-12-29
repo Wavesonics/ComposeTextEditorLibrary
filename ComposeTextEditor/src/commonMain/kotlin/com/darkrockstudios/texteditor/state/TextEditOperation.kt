@@ -3,7 +3,7 @@ package com.darkrockstudios.texteditor.state
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import com.darkrockstudios.texteditor.CharLineOffset
-import com.darkrockstudios.texteditor.TextRange
+import com.darkrockstudios.texteditor.TextEditorRange
 
 sealed class TextEditOperation {
 	abstract val cursorBefore: CharLineOffset
@@ -56,7 +56,7 @@ sealed class TextEditOperation {
 	}
 
 	data class Delete(
-		val range: TextRange,
+		val range: TextEditorRange,
 		override val cursorBefore: CharLineOffset,
 		override val cursorAfter: CharLineOffset
 	) : TextEditOperation() {
@@ -96,7 +96,7 @@ sealed class TextEditOperation {
 	}
 
 	data class Replace(
-		val range: TextRange,
+		val range: TextEditorRange,
 		val newText: AnnotatedString,
 		val oldText: AnnotatedString,
 		override val cursorBefore: CharLineOffset,
@@ -133,7 +133,7 @@ sealed class TextEditOperation {
 	}
 
 	data class StyleSpan(
-		val range: TextRange,
+		val range: TextEditorRange,
 		val style: SpanStyle,
 		val isAdd: Boolean, // true for add, false for remove
 		override val cursorBefore: CharLineOffset,
@@ -146,8 +146,11 @@ sealed class TextEditOperation {
 	}
 }
 
-internal fun TextEditOperation.transformRange(range: TextRange, state: TextEditorState): TextRange {
-	return TextRange(
+internal fun TextEditOperation.transformRange(
+	range: TextEditorRange,
+	state: TextEditorState
+): TextEditorRange {
+	return TextEditorRange(
 		transformOffset(range.start, state),
 		transformOffset(range.end, state)
 	)

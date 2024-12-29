@@ -29,4 +29,5 @@ dependencyResolutionManagement {
 }
 
 include(":ComposeTextEditor")
+include(":ComposeTextEditorSpellCheck")
 include(":sampleApp")

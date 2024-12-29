@@ -155,10 +155,6 @@ fun TextEditorState.moveToPreviousWord() {
 	updateCursorPosition(getOffsetAtCharacter(newPosition))
 }
 
-private fun isWordChar(char: Char): Boolean {
-	return char.isLetterOrDigit() || char == '_'
-}
-
 internal fun TextEditorState.moveCursorPageUp() {
 	// Get current viewport boundaries
 	val viewportTop = scrollState.value

@@ -5,7 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.text.AnnotatedString
 import com.darkrockstudios.texteditor.CharLineOffset
-import com.darkrockstudios.texteditor.TextRange
+import com.darkrockstudios.texteditor.TextEditorRange
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -13,16 +13,16 @@ import kotlinx.coroutines.flow.SharedFlow
 class TextEditorSelectionManager(
 	private val state: TextEditorState
 ) {
-	private var _selection: TextRange? by mutableStateOf(null)
-	val selection: TextRange? get() = _selection
+	private var _selection: TextEditorRange? by mutableStateOf(null)
+	val selection: TextEditorRange? get() = _selection
 
-	private val _selectionRangeFlow = MutableSharedFlow<TextRange?>(
+	private val _selectionRangeFlow = MutableSharedFlow<TextEditorRange?>(
 		extraBufferCapacity = 1,
 		onBufferOverflow = BufferOverflow.DROP_OLDEST
 	)
-	val selectionRangeFlow: SharedFlow<TextRange?> = _selectionRangeFlow
+	val selectionRangeFlow: SharedFlow<TextEditorRange?> = _selectionRangeFlow
 
-	private fun updateSelectionRange(range: TextRange?) {
+	private fun updateSelectionRange(range: TextEditorRange?) {
 		if (range != null && !range.validate()) {
 			// Don't update with invalid ranges
 			return
@@ -32,16 +32,16 @@ class TextEditorSelectionManager(
 	}
 
 	fun startSelection(position: CharLineOffset) {
-		updateSelectionRange(TextRange(position, position))
+		updateSelectionRange(TextEditorRange(position, position))
 	}
 
 	fun updateSelection(start: CharLineOffset, end: CharLineOffset) {
 		_selection = if (start != end) {
 			// Ensure start is always before end in the document
 			if (isBeforeInDocument(start, end)) {
-				TextRange(start, end)
+				TextEditorRange(start, end)
 			} else {
-				TextRange(end, start)
+				TextEditorRange(end, start)
 			}
 		} else {
 			null

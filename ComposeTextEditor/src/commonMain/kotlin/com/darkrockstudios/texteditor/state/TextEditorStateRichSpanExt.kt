@@ -1,7 +1,7 @@
 package com.darkrockstudios.texteditor.state
 
 import com.darkrockstudios.texteditor.CharLineOffset
-import com.darkrockstudios.texteditor.TextRange
+import com.darkrockstudios.texteditor.TextEditorRange
 import com.darkrockstudios.texteditor.richstyle.RichSpan
 
 /**
@@ -20,7 +20,7 @@ fun TextEditorState.getRichSpansAtPosition(position: CharLineOffset): Set<RichSp
 	}.toSet()
 }
 
-fun TextEditorState.getRichSpansInRange(range: TextRange): Set<RichSpan> {
+fun TextEditorState.getRichSpansInRange(range: TextEditorRange): Set<RichSpan> {
 	// Validate range
 	if (range.start.line < 0 || range.start.line >= textLines.size ||
 		range.end.line < 0 || range.end.line >= textLines.size
@@ -37,7 +37,7 @@ fun TextEditorState.getRichSpansInRange(range: TextRange): Set<RichSpan> {
 			lineWraps.forEach { lineWrap ->
 				richSpans.addAll(
 					lineWrap.richSpans.filter { span ->
-						(span.start.char < range.end.char && span.end.char > range.start.char)
+						(span.range.start.char < range.end.char && span.range.end.char > range.start.char)
 					}
 				)
 			}
@@ -48,7 +48,7 @@ fun TextEditorState.getRichSpansInRange(range: TextRange): Set<RichSpan> {
 			val firstLineWraps = lineOffsets.filter { it.line == range.start.line }
 			firstLineWraps.forEach { lineWrap ->
 				richSpans.addAll(
-					lineWrap.richSpans.filter { span -> span.end.char > range.start.char }
+					lineWrap.richSpans.filter { span -> span.range.end.char > range.start.char }
 				)
 			}
 
@@ -65,7 +65,7 @@ fun TextEditorState.getRichSpansInRange(range: TextRange): Set<RichSpan> {
 				val lastLineWraps = lineOffsets.filter { it.line == range.end.line }
 				lastLineWraps.forEach { lineWrap ->
 					richSpans.addAll(
-						lineWrap.richSpans.filter { span -> span.start.char < range.end.char }
+						lineWrap.richSpans.filter { span -> span.range.start.char < range.end.char }
 					)
 				}
 			}

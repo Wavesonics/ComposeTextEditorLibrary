@@ -31,7 +31,8 @@ kotlin {
 
 		val commonMain by getting {
 			dependencies {
-				implementation(project(":ComposeTextEditor"))
+				implementation(projects.composeTextEditorLibrary)
+				implementation(projects.composeTextEditorSpellCheck)
 				implementation(compose.runtime)
 				implementation(compose.foundation)
 				implementation(compose.material3)
@@ -39,6 +40,9 @@ kotlin {
 				implementation(compose.ui)
 				implementation(compose.components.resources)
 				implementation(compose.components.uiToolingPreview)
+				implementation(compose.components.resources)
+				implementation(libs.symspellkt)
+				implementation(libs.symspellkt.fdic)
 			}
 		}
 

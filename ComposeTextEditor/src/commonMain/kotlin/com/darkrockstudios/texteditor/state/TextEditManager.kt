@@ -4,7 +4,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import com.darkrockstudios.texteditor.CharLineOffset
-import com.darkrockstudios.texteditor.TextRange
+import com.darkrockstudios.texteditor.TextEditorRange
 import com.darkrockstudios.texteditor.annotatedstring.splitAnnotatedString
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -262,7 +262,7 @@ class TextEditManager(private val state: TextEditorState) {
 
 	private fun handleMultiLineReplace(
 		state: TextEditorState,
-		range: TextRange,
+		range: TextEditorRange,
 		newText: AnnotatedString,
 	): AnnotatedString = buildAnnotatedString {
 		// First, get all the text content we'll end up with
@@ -617,7 +617,7 @@ class TextEditManager(private val state: TextEditorState) {
 			)
 		}
 
-		val range = TextRange(operation.position, endPosition)
+		val range = TextEditorRange(operation.position, endPosition)
 		applyOperation(
 			TextEditOperation.Delete(
 				range = range,
@@ -737,7 +737,7 @@ class TextEditManager(private val state: TextEditorState) {
 		}
 	}
 
-	fun addSpanStyle(textRange: TextRange, spanStyle: SpanStyle) {
+	fun addSpanStyle(textRange: TextEditorRange, spanStyle: SpanStyle) {
 		val operation = TextEditOperation.StyleSpan(
 			range = textRange,
 			style = spanStyle,
@@ -748,7 +748,7 @@ class TextEditManager(private val state: TextEditorState) {
 		applyOperation(operation)
 	}
 
-	fun removeStyleSpan(textRange: TextRange, spanStyle: SpanStyle) {
+	fun removeStyleSpan(textRange: TextEditorRange, spanStyle: SpanStyle) {
 		val operation = TextEditOperation.StyleSpan(
 			range = textRange,
 			style = spanStyle,

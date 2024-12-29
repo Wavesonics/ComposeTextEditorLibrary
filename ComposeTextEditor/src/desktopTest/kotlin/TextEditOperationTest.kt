@@ -4,7 +4,7 @@ import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.unit.IntSize
 import com.darkrockstudios.texteditor.CharLineOffset
-import com.darkrockstudios.texteditor.TextRange
+import com.darkrockstudios.texteditor.TextEditorRange
 import com.darkrockstudios.texteditor.state.TextEditOperation
 import com.darkrockstudios.texteditor.state.TextEditorState
 import io.mockk.every
@@ -132,7 +132,7 @@ class TextEditOperationTest {
 	@Test
 	fun `Delete - transform offset before deletion range`() {
 		val operation = TextEditOperation.Delete(
-			range = TextRange(
+			range = TextEditorRange(
 				start = CharLineOffset(1, 5),
 				end = CharLineOffset(1, 10)
 			),
@@ -147,7 +147,7 @@ class TextEditOperationTest {
 	@Test
 	fun `Delete - transform offset within deletion range`() {
 		val operation = TextEditOperation.Delete(
-			range = TextRange(
+			range = TextEditorRange(
 				start = CharLineOffset(1, 5),
 				end = CharLineOffset(1, 10)
 			),
@@ -162,7 +162,7 @@ class TextEditOperationTest {
 	@Test
 	fun `Delete - transform offset after deletion range`() {
 		val operation = TextEditOperation.Delete(
-			range = TextRange(
+			range = TextEditorRange(
 				start = CharLineOffset(1, 5),
 				end = CharLineOffset(1, 10)
 			),
@@ -177,7 +177,7 @@ class TextEditOperationTest {
 	@Test
 	fun `Delete - transform offset with multiline deletion`() {
 		val operation = TextEditOperation.Delete(
-			range = TextRange(
+			range = TextEditorRange(
 				start = CharLineOffset(1, 5),
 				end = CharLineOffset(2, 3)
 			),
@@ -192,7 +192,7 @@ class TextEditOperationTest {
 	@Test
 	fun `Replace - transform offset before replacement range`() {
 		val operation = TextEditOperation.Replace(
-			range = TextRange(
+			range = TextEditorRange(
 				start = CharLineOffset(1, 5),
 				end = CharLineOffset(1, 10)
 			),
@@ -209,7 +209,7 @@ class TextEditOperationTest {
 	@Test
 	fun `Replace - transform offset within replacement range`() {
 		val operation = TextEditOperation.Replace(
-			range = TextRange(
+			range = TextEditorRange(
 				start = CharLineOffset(1, 5),
 				end = CharLineOffset(1, 10)
 			),
@@ -226,7 +226,7 @@ class TextEditOperationTest {
 	@Test
 	fun `Replace - transform offset after replacement range with longer text`() {
 		val operation = TextEditOperation.Replace(
-			range = TextRange(
+			range = TextEditorRange(
 				start = CharLineOffset(1, 5),
 				end = CharLineOffset(1, 10)
 			),
@@ -243,7 +243,7 @@ class TextEditOperationTest {
 	@Test
 	fun `Replace - transform offset after replacement range with shorter text`() {
 		val operation = TextEditOperation.Replace(
-			range = TextRange(
+			range = TextEditorRange(
 				start = CharLineOffset(1, 5),
 				end = CharLineOffset(1, 10)
 			),
@@ -260,7 +260,7 @@ class TextEditOperationTest {
 	@Test
 	fun `Replace - transform offset with multiline replacement`() {
 		val operation = TextEditOperation.Replace(
-			range = TextRange(
+			range = TextEditorRange(
 				start = CharLineOffset(1, 5),
 				end = CharLineOffset(2, 3)
 			),
@@ -291,7 +291,7 @@ class TextEditOperationTest {
 	@Test
 	fun `Delete - transform offset with empty range`() {
 		val operation = TextEditOperation.Delete(
-			range = TextRange(
+			range = TextEditorRange(
 				start = CharLineOffset(1, 5),
 				end = CharLineOffset(1, 5)
 			),
@@ -306,7 +306,7 @@ class TextEditOperationTest {
 	@Test
 	fun `Replace - transform offset with empty replacement`() {
 		val operation = TextEditOperation.Replace(
-			range = TextRange(
+			range = TextEditorRange(
 				start = CharLineOffset(1, 5),
 				end = CharLineOffset(1, 10)
 			),
