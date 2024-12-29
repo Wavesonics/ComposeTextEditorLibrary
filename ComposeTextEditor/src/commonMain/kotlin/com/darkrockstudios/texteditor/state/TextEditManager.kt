@@ -118,9 +118,9 @@ class TextEditManager(private val state: TextEditorState) {
 		end: Int,
 		newText: AnnotatedString
 	): AnnotatedString = buildAnnotatedString {
-		// Safely handle text portions with bounds checking
 		val safeStart = start.coerceIn(0, line.length)
 		val safeEnd = end.coerceIn(0, line.length)
+		val lengthDifference = newText.length - (safeEnd - safeStart)
 
 		// Append text portions
 		append(line.text.substring(0, safeStart))
@@ -129,36 +129,83 @@ class TextEditManager(private val state: TextEditorState) {
 			append(line.text.substring(safeEnd))
 		}
 
-		// Create an AnnotatedString that matches our current content
-		val originalWithSpans = buildAnnotatedString {
-			append(line.text.substring(0, safeStart))
-			append(newText)
-			if (safeEnd < line.length) {
-				append(line.text.substring(safeEnd, line.text.length))
-			}
+		val spansToApply = mutableListOf<AnnotatedString.Range<SpanStyle>>()
 
-			// Add original spans adjusted for our new text structure
-			line.spanStyles.forEach { span ->
-				addStyle(span.item, span.start, span.end)
-			}
-			// Add new text spans shifted to their new position
-			newText.spanStyles.forEach { span ->
-				addStyle(span.item, span.start + safeStart, span.end + safeStart)
+		// Handle spans from the original line
+		line.spanStyles.forEach { span ->
+			when {
+				// Span ends before replacement - keep as is
+				span.end <= safeStart -> {
+					spansToApply.add(span)
+				}
+				// Span contains our replacement range - adjust end position
+				span.start <= safeStart && span.end >= safeEnd -> {
+					spansToApply.add(
+						AnnotatedString.Range(
+							span.item,
+							span.start,
+							span.end + lengthDifference
+						)
+					)
+				}
+				// Span starts after replacement - shift position
+				span.start >= safeEnd -> {
+					spansToApply.add(
+						AnnotatedString.Range(
+							span.item,
+							span.start + lengthDifference,
+							span.end + lengthDifference
+						)
+					)
+				}
+				// Spans that start before and end inside replacement
+				span.start < safeStart && span.end <= safeEnd -> {
+					spansToApply.add(
+						AnnotatedString.Range(
+							span.item,
+							span.start,
+							safeStart
+						)
+					)
+				}
+				// Spans that start inside and end after replacement
+				span.start >= safeStart && span.start < safeEnd && span.end > safeEnd -> {
+					spansToApply.add(
+						AnnotatedString.Range(
+							span.item,
+							safeStart + newText.length,
+							span.end + lengthDifference
+						)
+					)
+				}
+				// Span is entirely within replacement - handle proportionally
+				span.start >= safeStart && span.end <= safeEnd -> {
+					val relativeStart = (span.start - safeStart).toFloat() / (safeEnd - safeStart)
+					val relativeEnd = (span.end - safeStart).toFloat() / (safeEnd - safeStart)
+					val newSpanStart = safeStart + (relativeStart * newText.length).toInt()
+					val newSpanEnd = safeStart + (relativeEnd * newText.length).toInt()
+					if (newSpanStart < newSpanEnd) {
+						spansToApply.add(
+							AnnotatedString.Range(span.item, newSpanStart, newSpanEnd)
+						)
+					}
+				}
 			}
 		}
 
-		// Process spans using SpanManager with our properly structured text
-		val spanManager = SpanManager()
-		val processedSpans = spanManager.processSpans(
-			originalText = originalWithSpans,
-			deletionStart = safeStart,
-			deletionEnd = safeEnd,
-			insertionPoint = safeStart,
-			insertedText = newText
-		)
+		// Add spans from the new text
+		newText.spanStyles.forEach { span ->
+			spansToApply.add(
+				AnnotatedString.Range(
+					span.item,
+					span.start + safeStart,
+					span.end + safeStart
+				)
+			)
+		}
 
-		// Add processed spans to the result
-		processedSpans.forEach { span ->
+		// Apply all spans with bounds checking
+		spansToApply.forEach { span ->
 			if (span.start < length && span.end <= length && span.start < span.end) {
 				addStyle(span.item, span.start, span.end)
 			}
@@ -307,12 +354,24 @@ class TextEditManager(private val state: TextEditorState) {
 		state: TextEditorState,
 		range: TextEditorRange,
 		newText: AnnotatedString,
-		inheritStyle: Boolean,
+		inheritStyle: Boolean
 	): AnnotatedString = buildAnnotatedString {
-		// First, get all the text content we'll end up with
-		val firstLinePrefix = state.textLines[range.start.line].text.substring(0, range.start.char)
-		val lastLineSuffix = if (range.end.line < state.textLines.size) {
-			state.textLines[range.end.line].text.substring(range.end.char)
+		// Validate range bounds
+		val startLine = range.start.line.coerceIn(0, state.textLines.lastIndex)
+		val endLine = range.end.line.coerceIn(0, state.textLines.lastIndex)
+
+		// First, gather all the text content we'll have in our final result
+		val firstLinePrefix = state.textLines[startLine].text.substring(
+			0,
+			range.start.char.coerceIn(0, state.textLines[startLine].length)
+		)
+
+		val lastLineSuffix = if (endLine < state.textLines.size) {
+			val lastLineLength = state.textLines[endLine].length
+			state.textLines[endLine].text.substring(
+				range.end.char.coerceIn(0, lastLineLength),
+				lastLineLength
+			)
 		} else ""
 
 		// Build our final text content
@@ -320,92 +379,147 @@ class TextEditManager(private val state: TextEditorState) {
 		append(newText.text)
 		append(lastLineSuffix)
 
-		// Collect spans from all affected lines
+		// Calculate the final text length
+		val finalTextLength = firstLinePrefix.length + newText.length + lastLineSuffix.length
+
+		// Collect spans from all affected lines with bounds checking
 		val allSpans = mutableListOf<AnnotatedString.Range<SpanStyle>>()
 
-		// Add spans from first line, adjusting if needed
-		val firstLine = state.textLines[range.start.line]
-		firstLine.spanStyles.forEach { span ->
-			when {
-				// Span ends before the replacement, keep as is
-				span.end <= range.start.char -> {
-					allSpans.add(span)
-				}
-				// Span starts before replacement but extends into it - truncate at replacement start
-				span.start < range.start.char -> {
-					allSpans.add(
-						AnnotatedString.Range(
-							span.item,
-							span.start,
-							range.start.char
+		// Add spans from first line that come before the replacement
+		val firstLine = state.textLines[startLine]
+		firstLine.spanStyles
+			.filter { span ->
+				span.start < firstLinePrefix.length &&
+						span.end <= firstLine.length
+			}
+			.forEach { span ->
+				when {
+					// Span ends before the replacement, keep as is
+					span.end <= range.start.char -> {
+						allSpans.add(span)
+					}
+					// Span starts before replacement but extends into it - truncate at replacement start
+					span.start < range.start.char -> {
+						allSpans.add(
+							AnnotatedString.Range(
+								span.item,
+								span.start,
+								range.start.char.coerceAtMost(span.end)
+							)
 						)
-					)
+					}
 				}
-				// Span starts within replacement - skip it
+			}
+
+		// Add spans from the new text being inserted
+		val insertOffset = firstLinePrefix.length
+		newText.spanStyles.forEach { span ->
+			// Ensure span bounds don't exceed the new text length
+			if (span.start < newText.length && span.end <= newText.length) {
+				allSpans.add(
+					AnnotatedString.Range(
+						span.item,
+						span.start + insertOffset,
+						span.end + insertOffset
+					)
+				)
 			}
 		}
 
-		// Add spans from the inserted text
-		newText.spanStyles.forEach { span ->
-			allSpans.add(
-				AnnotatedString.Range(
-					span.item,
-					span.start + range.start.char,
-					span.end + range.start.char
-				)
-			)
+		// Add inherited styles with proper boundary preservation
+		if (inheritStyle) {
+			// Calculate the relative boundaries within the replacement text
+			val originalLength = range.end.char - range.start.char
+			val scaleFactor = if (originalLength > 0) {
+				newText.length.toFloat() / originalLength
+			} else 1f
+
+			state.textLines[startLine].spanStyles
+				.filter { span -> span.start < range.end.char && span.end > range.start.char }
+				.forEach { span ->
+					// Calculate relative positions within the replaced text
+					val relativeStart = (span.start - range.start.char).coerceAtLeast(0)
+					val relativeEnd = (span.end - range.start.char).coerceAtMost(originalLength)
+
+					// Scale these positions to the new text length
+					val newStart = (relativeStart * scaleFactor).toInt()
+					val newEnd = (relativeEnd * scaleFactor).toInt()
+
+					// Apply the style at the adjusted position
+					if (newStart < newEnd) {
+						allSpans.add(
+							AnnotatedString.Range(
+								span.item,
+								firstLinePrefix.length + newStart,
+								firstLinePrefix.length + newEnd
+							)
+						)
+					}
+				}
 		}
 
-		// Add spans from last line, adjusting positions
-		if (range.end.line < state.textLines.size) {
-			val lastLine = state.textLines[range.end.line]
+		// Add spans from the last line after the replacement
+		if (endLine < state.textLines.size) {
+			val lastLine = state.textLines[endLine]
 			val newBaseOffset = firstLinePrefix.length + newText.length
 
-			lastLine.spanStyles.forEach { span ->
-				when {
-					// Span starts after the replacement, adjust position fully
-					span.start >= range.end.char -> {
-						allSpans.add(
-							AnnotatedString.Range(
-								span.item,
-								span.start - range.end.char + newBaseOffset,
-								span.end - range.end.char + newBaseOffset
-							)
-						)
+			lastLine.spanStyles
+				.filter { span -> span.start < lastLine.length && span.end <= lastLine.length }
+				.forEach { span ->
+					when {
+						// Span starts after the replacement, adjust position fully
+						span.start >= range.end.char -> {
+							val adjustedStart = span.start - range.end.char + newBaseOffset
+							val adjustedEnd = span.end - range.end.char + newBaseOffset
+							if (adjustedStart < finalTextLength && adjustedEnd <= finalTextLength) {
+								allSpans.add(
+									AnnotatedString.Range(
+										span.item,
+										adjustedStart,
+										adjustedEnd
+									)
+								)
+							}
+						}
+						// Span starts before end of replacement but extends beyond - preserve the part after
+						span.end > range.end.char -> {
+							val adjustedEnd = span.end - range.end.char + newBaseOffset
+							if (newBaseOffset < finalTextLength && adjustedEnd <= finalTextLength) {
+								allSpans.add(
+									AnnotatedString.Range(
+										span.item,
+										newBaseOffset,
+										adjustedEnd
+									)
+								)
+							}
+						}
 					}
-					// Span starts before end of replacement but extends beyond - preserve the part after
-					span.end > range.end.char -> {
-						allSpans.add(
-							AnnotatedString.Range(
-								span.item,
-								newBaseOffset,  // Start at the insertion point
-								span.end - range.end.char + newBaseOffset
-							)
-						)
-					}
-					// Span is entirely within replacement - skip it
 				}
-			}
 		}
 
-		// Process all spans through SpanManager to handle any overlaps/merging
+		// Process all spans through SpanManager with bounds validation
 		val spanManager = SpanManager()
 		val processedSpans = spanManager.processSpans(
 			originalText = buildAnnotatedString {
-				// Build the same text content explicitly
 				append(firstLinePrefix)
 				append(newText.text)
 				append(lastLineSuffix)
 
+				// Only add spans that are within bounds
 				allSpans.forEach { span ->
-					addStyle(span.item, span.start, span.end)
+					if (span.start < length && span.end <= length && span.start < span.end) {
+						addStyle(span.item, span.start, span.end)
+					}
 				}
 			}
 		)
 
-		// Apply the processed spans
+		// Apply the processed spans with final bounds checking
 		processedSpans.forEach { span ->
-			addStyle(span.item, span.start, span.end)
+			if (span.start < length && span.end <= length && span.start < span.end) {
+				addStyle(span.item, span.start, span.end)
+			}
 		}
 	}
 
