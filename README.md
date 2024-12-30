@@ -40,3 +40,13 @@ actually work. It just needs some more time and attention.
 - Write lots of tests
 - I don't know, probably a lot of other things
 - The code is largely prototype quality, would need a lot of spit and polish
+
+## Want to try it?
+
+_Keep in mind that this is not well tested, likely has many bugs._
+
+Text Editor:
+`implementation("com.darkrockstudios:composetexteditor:0.1.0")`
+
+Text Editor with Spell Checking:
+`implementation("com.darkrockstudios:composetexteditorspellcheck:0.1.0")`
