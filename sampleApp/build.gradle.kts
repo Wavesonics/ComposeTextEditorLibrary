@@ -31,7 +31,7 @@ kotlin {
 
 		val commonMain by getting {
 			dependencies {
-				implementation(projects.composeTextEditorLibrary)
+				implementation(projects.composeTextEditor)
 				implementation(projects.composeTextEditorSpellCheck)
 				implementation(compose.runtime)
 				implementation(compose.foundation)
