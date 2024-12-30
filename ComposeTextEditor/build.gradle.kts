@@ -5,12 +5,14 @@ plugins {
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.android.library)
+    id("module.publication")
 }
 
 kotlin {
     applyDefaultHierarchyTemplate()
     jvm("desktop")
     androidTarget {
+        publishLibraryVariants("release")
         compilations.all {
             kotlinOptions {
                 jvmTarget = libs.versions.jvm.get()
