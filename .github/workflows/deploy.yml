@@ -33,7 +33,7 @@ jobs:
         include:
           - target: publishAndroidReleasePublicationToSonatypeRepository
             os: ubuntu-latest
-          - target: publishJvmPublicationToSonatypeRepository
+          - target: publishDesktopPublicationToSonatypeRepository
             os: ubuntu-latest
           - target: publishWasmJsPublicationToSonatypeRepository
             os: ubuntu-latest
