@@ -1,6 +1,7 @@
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
@@ -27,7 +28,7 @@ fun HomeMenu(
 		DarkModeToggle(
 			isDarkMode = isDarkMode,
 			onToggle = toggleDarkMode,
-			modifier = Modifier.align(Alignment.TopEnd),
+			modifier = Modifier.align(Alignment.TopEnd).padding(16.dp),
 		)
 
 		Column(modifier = Modifier.widthIn(max = 512.dp).align(alignment = Alignment.Center)) {

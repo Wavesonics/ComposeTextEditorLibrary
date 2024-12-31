@@ -20,7 +20,7 @@ fun rememberTextEditorStyle(
 	textColor: Color = MaterialTheme.colorScheme.onSurface,
 	placeholderText: String = "",
 	placeholderColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
-	cursorColor: Color = MaterialTheme.colorScheme.primary,
+	cursorColor: Color = MaterialTheme.colorScheme.onSurface,
 	selectionColor: Color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
 	focusedBorderColor: Color = MaterialTheme.colorScheme.outline,
 	unfocusedBorderColor: Color = MaterialTheme.colorScheme.outlineVariant

@@ -17,7 +17,6 @@ import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.VerticalDivider
-import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -66,11 +65,11 @@ fun TextEditorToolbar(
 
 	Surface(
 		modifier = modifier.fillMaxWidth(),
-		color = MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp),
-		tonalElevation = 2.dp,
+		//color = MaterialTheme.colorScheme.surfaceColorAtElevation(1.dp),
+		//tonalElevation = 2.dp,
 	) {
 		Row(
-			modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
+			modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp),
 			verticalAlignment = Alignment.CenterVertically
 		) {
 			// History Controls Group
