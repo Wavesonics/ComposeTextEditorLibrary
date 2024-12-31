@@ -150,13 +150,3 @@ sealed class TextEditOperation {
 		): CharLineOffset = offset // Style changes don't affect positions
 	}
 }
-
-internal fun TextEditOperation.transformRange(
-	range: TextEditorRange,
-	state: TextEditorState
-): TextEditorRange {
-	return TextEditorRange(
-		transformOffset(range.start, state),
-		transformOffset(range.end, state)
-	)
-}
