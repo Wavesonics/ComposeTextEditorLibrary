@@ -1,10 +1,10 @@
-import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.text.TextLayoutResult
-import androidx.compose.ui.text.TextRange
+package spans
+
 import com.darkrockstudios.texteditor.CharLineOffset
+import com.darkrockstudios.texteditor.TextEditorRange
 import com.darkrockstudios.texteditor.richstyle.RichSpan
-import com.darkrockstudios.texteditor.richstyle.RichSpanStyle
 import org.junit.Test
+import utils.TestStyle
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
@@ -12,8 +12,10 @@ class RichSpanTest {
 	@Test
 	fun `test containsPosition - single line span`() {
 		val span = RichSpan(
-			start = CharLineOffset(1, 5),
-			end = CharLineOffset(1, 10),
+			TextEditorRange(
+				start = CharLineOffset(1, 5),
+				end = CharLineOffset(1, 10),
+			),
 			style = TestStyle()
 		)
 
@@ -36,8 +38,10 @@ class RichSpanTest {
 	@Test
 	fun `test containsPosition - multi line span`() {
 		val span = RichSpan(
-			start = CharLineOffset(1, 5),
-			end = CharLineOffset(3, 10),
+			TextEditorRange(
+				start = CharLineOffset(1, 5),
+				end = CharLineOffset(3, 10),
+			),
 			style = TestStyle()
 		)
 
@@ -81,8 +85,10 @@ class RichSpanTest {
 	@Test
 	fun `test containsPosition - zero width span`() {
 		val span = RichSpan(
-			start = CharLineOffset(1, 5),
-			end = CharLineOffset(1, 5),
+			TextEditorRange(
+				start = CharLineOffset(1, 5),
+				end = CharLineOffset(1, 5),
+			),
 			style = TestStyle()
 		)
 
@@ -99,8 +105,10 @@ class RichSpanTest {
 	@Test
 	fun `test containsPosition - edge cases`() {
 		val span = RichSpan(
-			start = CharLineOffset(0, 0),
-			end = CharLineOffset(2, 0),
+			TextEditorRange(
+				start = CharLineOffset(0, 0),
+				end = CharLineOffset(2, 0),
+			),
 			style = TestStyle()
 		)
 
@@ -115,16 +123,5 @@ class RichSpanTest {
 
 		// Negative character offset
 		assertFalse(span.containsPosition(CharLineOffset(1, -1)))
-	}
-
-	// Simple test implementation of RichSpanStyle
-	private class TestStyle : RichSpanStyle {
-		override fun DrawScope.drawCustomStyle(
-			layoutResult: TextLayoutResult,
-			lineIndex: Int,
-			textRange: TextRange
-		) {
-			// Noop
-		}
 	}
 }
