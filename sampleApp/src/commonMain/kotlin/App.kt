@@ -34,11 +34,11 @@ fun App() {
 				navigateTo = ::navigateTo,
 			)
 
-			Destination.TextEditor -> TextEditorUi(
+			Destination.TextEditor -> TextEditorDemoUi(
 				navigateTo = ::navigateTo,
 			)
 
-			Destination.SpellChecking -> SpellCheckingTextEditorUi(
+			Destination.SpellChecking -> SpellCheckingTextEditorDemoUi(
 				navigateTo = ::navigateTo,
 			)
 		}

@@ -18,7 +18,7 @@ import com.darkrockstudios.texteditor.state.TextEditorState
 import com.darkrockstudios.texteditor.state.rememberTextEditorState
 
 @Composable
-fun TextEditorUi(
+fun TextEditorDemoUi(
 	modifier: Modifier = Modifier,
 	navigateTo: (Destination) -> Unit,
 ) {

@@ -16,7 +16,7 @@ import com.darkrockstudios.texteditor.spellcheck.SpellCheckingTextEditor
 import com.darkrockstudios.texteditor.spellcheck.rememberSpellCheckState
 
 @Composable
-fun SpellCheckingTextEditorUi(
+fun SpellCheckingTextEditorDemoUi(
 	modifier: Modifier = Modifier,
 	navigateTo: (Destination) -> Unit,
 ) {
