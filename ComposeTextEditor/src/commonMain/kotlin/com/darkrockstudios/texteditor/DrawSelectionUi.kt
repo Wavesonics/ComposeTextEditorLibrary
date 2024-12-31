@@ -8,6 +8,7 @@ import com.darkrockstudios.texteditor.state.TextEditorState
 
 internal fun DrawScope.drawSelection(
 	state: TextEditorState,
+	selectionColor: Color,
 ) {
 	state.selector.selection?.let { selection ->
 		// Get only the wrapped lines within the selection range
@@ -69,7 +70,7 @@ internal fun DrawScope.drawSelection(
 				val lineHeight = multiParagraph.getLineHeight(wrap.virtualLineIndex)
 
 				drawRect(
-					color = Color(0x400000FF),
+					color = selectionColor,
 					topLeft = Offset(startX, wrap.offset.y),
 					size = Size(
 						width = endX - startX,

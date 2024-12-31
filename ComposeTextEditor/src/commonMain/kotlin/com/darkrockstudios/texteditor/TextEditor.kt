@@ -20,10 +20,10 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.toSize
@@ -41,6 +41,7 @@ fun TextEditor(
 	state: TextEditorState = rememberTextEditorState(),
 	modifier: Modifier = Modifier,
 	enabled: Boolean = true,
+	style: TextEditorStyle = rememberTextEditorStyle(),
 	onRichSpanClick: RichSpanClickListener? = null,
 ) {
 	val focusRequester = remember { FocusRequester() }
@@ -72,7 +73,7 @@ fun TextEditor(
 	) {
 		BoxWithConstraints(
 			modifier = Modifier
-				.focusBorder(state.isFocused && enabled)
+				.focusBorder(state.isFocused && enabled, style)
 				.padding(8.dp)
 				.then(
 					if (enabled) {
@@ -93,7 +94,6 @@ fun TextEditor(
 				}
 				.verticalScroll(state.scrollState)
 		) {
-			// We need a fixed height Box to enable scrolling
 			Box(
 				modifier = Modifier
 					.fillMaxWidth()
@@ -112,14 +112,26 @@ fun TextEditor(
 						)
 				) {
 					try {
+						// Draw placeholder if text is empty
+						if (state.isEmpty() && style.placeholderText.isNotEmpty()) {
+							drawText(
+								textMeasurer = state.textMeasurer,
+								text = style.placeholderText,
+								style = TextStyle.Default.copy(
+									color = style.placeholderColor,
+								),
+								topLeft = Offset(0f, 0f)
+							)
+						}
+
 						var lastLine = -1
 						state.lineOffsets.fastForEach { virtualLine ->
 							if (lastLine != virtualLine.line && state.textLines.size > virtualLine.line) {
 								val line = state.textLines[virtualLine.line]
 
 								drawText(
-									state.textMeasurer,
-									line,
+									textMeasurer = state.textMeasurer,
+									text = line,
 									topLeft = virtualLine.offset
 								)
 
@@ -129,15 +141,13 @@ fun TextEditor(
 							drawRichSpans(virtualLine, state)
 						}
 
-						drawSelection(state)
+						drawSelection(state, style.selectionColor)
 
 						if (enabled && state.isFocused && state.isCursorVisible) {
-							drawCursor(state)
+							drawCursor(state, style.cursorColor)
 						}
 					} catch (e: IllegalArgumentException) {
-						// TODO obviously have to fix this at some point.
-						// but drawText is throwing an exception when you resize the view
-						// If you catch it then we just move on happily
+						// Handle resize exception gracefully
 					}
 				}
 			}
@@ -145,16 +155,15 @@ fun TextEditor(
 	}
 }
 
-private fun Modifier.focusBorder(isFocused: Boolean): Modifier {
+private fun Modifier.focusBorder(isFocused: Boolean, style: TextEditorStyle): Modifier {
 	return this.border(
 		width = 1.dp,
-		color = if (isFocused) Color(0xFFcfd6dc) else Color(0xFFDDDDDD)
+		color = if (isFocused) style.focusedBorderColor else style.unfocusedBorderColor
 	)
 }
 
 private fun Modifier.requestFocusOnPress(focusRequester: FocusRequester) = pointerInput(Unit) {
 	awaitEachGesture {
-		// Wait for at least one pointer to press down
 		awaitFirstDown(requireUnconsumed = false)
 		focusRequester.requestFocus()
 	}

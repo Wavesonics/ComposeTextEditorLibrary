@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.darkrockstudios.texteditor.TextEditor
+import com.darkrockstudios.texteditor.rememberTextEditorStyle
 import com.darkrockstudios.texteditor.richstyle.SpellCheckStyle
 import com.darkrockstudios.texteditor.state.SpanClickType
 import com.darkrockstudios.texteditor.state.TextEditorState
@@ -57,11 +58,17 @@ fun TextEditorDemoUi(
 			state = state,
 		)
 
+		val style = rememberTextEditorStyle(
+			placeholderText = "Enter text here",
+			textColor = MaterialTheme.colorScheme.onSurface,
+		)
+
 		TextEditor(
 			state = state,
 			modifier = Modifier
 				.padding(16.dp)
 				.fillMaxSize(),
+			style = style,
 			onRichSpanClick = { span, clickType, _ ->
 				when (clickType) {
 					SpanClickType.TAP -> println("Touch tap on span: $span")
