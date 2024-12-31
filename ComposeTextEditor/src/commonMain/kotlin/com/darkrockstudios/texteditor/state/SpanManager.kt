@@ -37,6 +37,16 @@ class SpanManager {
 			SpanInfo(span.item, span.start, span.end)
 		}.toMutableList()
 
+		// Handle deletion if applicable
+		if (deletionStart >= 0 && deletionEnd >= 0) {
+			handleDeletion(spans, deletionStart, deletionEnd)
+		}
+
+		// Handle insertion if applicable
+		if (insertedText != null && insertionPoint >= 0) {
+			handleInsertion(spans, insertionPoint, insertedText.length)
+		}
+
 		// Add spans from inserted text if applicable
 		if (insertedText != null && insertionPoint >= 0) {
 			val uniqueInsertedSpans = insertedText.spanStyles.distinctBy { span ->
@@ -53,16 +63,6 @@ class SpanManager {
 					span.end + insertionPoint
 				)
 			})
-		}
-
-		// Handle deletion if applicable
-		if (deletionStart >= 0 && deletionEnd >= 0) {
-			handleDeletion(spans, deletionStart, deletionEnd)
-		}
-
-		// Handle insertion if applicable
-		if (insertedText != null && insertionPoint >= 0) {
-			handleInsertion(spans, insertionPoint, insertedText.length)
 		}
 
 		// Merge overlapping and adjacent spans
@@ -170,6 +170,8 @@ class SpanManager {
 			}
 		}
 		result.add(current)
+
+		//println("Style Spans Merged: $mergeCount")
 
 		return result
 	}
