@@ -54,10 +54,10 @@ internal fun isWordChar(text: CharSequence, pos: Int): Boolean {
 
 		// Special characters that might be part of a word
 		char == '\'' -> {
-			// Must have a letter or period before to be considered part of a word
-			pos > 0 && text[pos - 1].let { prev ->
-				prev.isLetter() || prev == '.'
-			}
+			// Must have a letter before AND a letter after to be considered part of a word
+			pos > 0 && pos < text.length - 1 &&
+					text[pos - 1].let { prev -> prev.isLetter() || prev == '.' } &&
+					text[pos + 1].isLetter()
 		}
 
 		char == '.' -> {
