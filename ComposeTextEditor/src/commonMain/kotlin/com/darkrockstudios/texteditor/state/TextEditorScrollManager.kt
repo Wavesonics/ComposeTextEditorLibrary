@@ -1,5 +1,6 @@
 package com.darkrockstudios.texteditor.state
 
+import androidx.annotation.VisibleForTesting
 import androidx.compose.foundation.ScrollState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -108,7 +109,8 @@ class TextEditorScrollManager(
 		return (topVisible && bottomVisible) || cursorSpansViewport
 	}
 
-	private fun calculateOffsetYPosition(offset: CharLineOffset): Float {
+	@VisibleForTesting
+	internal fun calculateOffsetYPosition(offset: CharLineOffset): Float {
 		val lineOffsets = getLineOffsets()
 		val wrappedLineIndex = lineOffsets.indexOfLast { lineWrap ->
 			lineWrap.line == offset.line && lineWrap.wrapStartsAtIndex <= offset.char
@@ -120,7 +122,8 @@ class TextEditorScrollManager(
 		return wrappedLine.offset.y
 	}
 
-	private fun calculateLineHeight(offset: CharLineOffset): Int {
+	@VisibleForTesting
+	internal fun calculateLineHeight(offset: CharLineOffset): Int {
 		val lineOffsets = getLineOffsets()
 		val currentLineIndex = lineOffsets.indexOfLast { lineWrap ->
 			lineWrap.line == offset.line && lineWrap.wrapStartsAtIndex <= offset.char
