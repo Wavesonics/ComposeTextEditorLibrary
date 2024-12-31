@@ -1,4 +1,7 @@
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -22,25 +25,41 @@ enum class Destination {
 @Composable
 @Preview
 fun App() {
-	MaterialTheme {
-		var curLocation by remember { mutableStateOf(Destination.Menu) }
+	val lightColorScheme = remember { lightColorScheme(primary = Color(0xFF1EB980)) }
+	val darkColorScheme = remember { darkColorScheme(primary = Color(0xFF66ffc7)) }
 
-		fun navigateTo(destination: Destination) {
-			curLocation = destination
+	var colorScheme by remember { mutableStateOf(lightColorScheme) }
+	fun toggleDarkMode(on: Boolean) {
+		colorScheme = if (on) {
+			darkColorScheme
+		} else {
+			lightColorScheme
 		}
+	}
 
-		when (curLocation) {
-			Destination.Menu -> HomeMenu(
-				navigateTo = ::navigateTo,
-			)
+	MaterialTheme(colorScheme = colorScheme) {
+		Surface {
+			var curLocation by remember { mutableStateOf(Destination.Menu) }
 
-			Destination.TextEditor -> TextEditorDemoUi(
-				navigateTo = ::navigateTo,
-			)
+			fun navigateTo(destination: Destination) {
+				curLocation = destination
+			}
 
-			Destination.SpellChecking -> SpellCheckingTextEditorDemoUi(
-				navigateTo = ::navigateTo,
-			)
+			when (curLocation) {
+				Destination.Menu -> HomeMenu(
+					navigateTo = ::navigateTo,
+					isDarkMode = (colorScheme == darkColorScheme),
+					toggleDarkMode = ::toggleDarkMode
+				)
+
+				Destination.TextEditor -> TextEditorDemoUi(
+					navigateTo = ::navigateTo,
+				)
+
+				Destination.SpellChecking -> SpellCheckingTextEditorDemoUi(
+					navigateTo = ::navigateTo,
+				)
+			}
 		}
 	}
 }
