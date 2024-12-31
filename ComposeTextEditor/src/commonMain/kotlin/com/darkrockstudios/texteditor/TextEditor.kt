@@ -48,10 +48,17 @@ fun TextEditor(
 	val clipboardManager = LocalClipboardManager.current
 
 	LaunchedEffect(Unit) {
-		focusRequester.requestFocus()
+		if (enabled) {
+			focusRequester.requestFocus()
+		}
 	}
 
-	LaunchedEffect(state.isFocused, state.cursorPosition) {
+	LaunchedEffect(state.isFocused, state.cursorPosition, enabled) {
+		if (!enabled) {
+			state.updateFocus(false)
+			return@LaunchedEffect
+		}
+
 		state.setCursorVisible()
 		while (state.isFocused) {
 			delay(500)
@@ -65,21 +72,27 @@ fun TextEditor(
 	) {
 		BoxWithConstraints(
 			modifier = Modifier
-				.focusBorder(state.isFocused)
+				.focusBorder(state.isFocused && enabled)
 				.padding(8.dp)
-				.focusRequester(focusRequester)
-				.onFocusChanged { focusState ->
-					state.updateFocus(focusState.isFocused)
-				}
-				.requestFocusOnPress(focusRequester)
-				.focusable(enabled = true, interactionSource = interactionSource)
-				.textEditorKeyboardInputHandler(state, clipboardManager)
+				.then(
+					if (enabled) {
+						Modifier
+							.focusRequester(focusRequester)
+							.onFocusChanged { focusState ->
+								state.updateFocus(focusState.isFocused)
+							}
+							.requestFocusOnPress(focusRequester)
+							.focusable(enabled = true, interactionSource = interactionSource)
+							.textEditorKeyboardInputHandler(state, clipboardManager)
+					} else {
+						Modifier
+					}
+				)
 				.onSizeChanged { size ->
 					state.onViewportSizeChange(size.toSize())
 				}
 				.verticalScroll(state.scrollState)
 		) {
-
 			// We need a fixed height Box to enable scrolling
 			Box(
 				modifier = Modifier
@@ -90,7 +103,13 @@ fun TextEditor(
 					modifier = Modifier
 						.fillMaxWidth()
 						.height(state.totalContentHeight.dp)
-						.textEditorPointerInputHandling(state, onRichSpanClick)
+						.then(
+							if (enabled) {
+								Modifier.textEditorPointerInputHandling(state, onRichSpanClick)
+							} else {
+								Modifier
+							}
+						)
 				) {
 					try {
 						var lastLine = -1
@@ -112,7 +131,7 @@ fun TextEditor(
 
 						drawSelection(state)
 
-						if (state.isFocused && state.isCursorVisible) {
+						if (enabled && state.isFocused && state.isCursorVisible) {
 							drawCursor(state)
 						}
 					} catch (e: IllegalArgumentException) {
