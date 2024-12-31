@@ -2,17 +2,21 @@ package com.darkrockstudios.texteditor.richstyle
 
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextRange
 import com.darkrockstudios.texteditor.LineWrap
+import kotlin.math.PI
+import kotlin.math.sin
 
 object SpellCheckStyle : RichSpanStyle {
-
 	private val color: Color = Color.Red
 	private val waveLength: Float = 8f
 	private val amplitude: Float = 1.5f
+	private val pointsPerWave: Int = 8
 
 	override fun DrawScope.drawCustomStyle(
 		layoutResult: TextLayoutResult,
@@ -43,57 +47,37 @@ object SpellCheckStyle : RichSpanStyle {
 		// Only draw if we have a valid width
 		if (endX > startX) {
 			val path = Path().apply {
+				// Start at the beginning
 				moveTo(startX, baselineY)
 
-				// Calculate how many complete waves we can fit
 				val width = endX - startX
-				val numWaves = (width / waveLength).toInt()
-				val remainingWidth = width % waveLength
+				val numPoints = ((width / waveLength) * pointsPerWave).toInt().coerceAtLeast(2)
+				val dx = width / (numPoints - 1)
 
-				var x = startX
-				var up = true
+				// Create smooth sine wave using more points
+				for (i in 0 until numPoints) {
+					val x = startX + (i * dx)
+					val phase = (x - startX) * (2 * PI / waveLength)
+					val y = baselineY + (amplitude * sin(phase)).toFloat()
 
-				// Draw complete waves
-				repeat(numWaves) {
-					drawWaveSegment(x, baselineY, waveLength, up)
-					x += waveLength
-					up = !up
-				}
-
-				// Draw remaining partial wave if needed
-				if (remainingWidth > 0) {
-					drawWaveSegment(x, baselineY, remainingWidth, up)
+					if (i == 0) {
+						moveTo(x, y)
+					} else {
+						lineTo(x, y)
+					}
 				}
 			}
 
+			// Draw with a smoother stroke
 			drawPath(
 				path = path,
 				color = color,
-				style = Stroke(width = 1f)
-			)
-		}
-	}
-
-	private fun Path.drawWaveSegment(startX: Float, baselineY: Float, width: Float, up: Boolean) {
-		val halfWave = width / 2
-		val midY = baselineY + (if (up) -amplitude else amplitude)
-		val endX = startX + width
-
-		// First half of wave
-		quadraticTo(
-			x1 = startX + halfWave / 2,
-			y1 = midY,
-			x2 = startX + halfWave,
-			y2 = baselineY
-		)
-
-		// Second half of wave (if there's enough space)
-		if (width > halfWave) {
-			quadraticTo(
-				x1 = startX + halfWave + (width - halfWave) / 2,
-				y1 = baselineY + (if (!up) -amplitude else amplitude),
-				x2 = endX,
-				y2 = baselineY
+				style = Stroke(
+					width = 1f,
+					miter = 1f,
+					join = StrokeJoin.Round,
+					cap = StrokeCap.Round
+				)
 			)
 		}
 	}
