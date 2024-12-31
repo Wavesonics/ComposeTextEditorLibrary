@@ -139,21 +139,21 @@ private fun TextEditorState.findWordBoundary(position: CharLineOffset): Pair<Cha
 	var endChar = position.char
 
 	// If we're at a word boundary or whitespace, try to find the nearest word
-	if (startChar >= line.length || !isWordChar(line[startChar])) {
+	if (startChar >= line.length || !isWordChar(line, startChar)) {
 		// Look backward for the start of a word
 		startChar = (startChar - 1).coerceAtLeast(0)
-		while (startChar > 0 && !isWordChar(line[startChar])) {
+		while (startChar > 0 && !isWordChar(line, startChar)) {
 			startChar--
 		}
 	}
 
 	// Find start of word
-	while (startChar > 0 && isWordChar(line[startChar - 1])) {
+	while (startChar > 0 && isWordChar(line, startChar - 1)) {
 		startChar--
 	}
 
 	// Find end of word
-	while (endChar < line.length && isWordChar(line[endChar])) {
+	while (endChar < line.length && isWordChar(line, endChar)) {
 		endChar++
 	}
 

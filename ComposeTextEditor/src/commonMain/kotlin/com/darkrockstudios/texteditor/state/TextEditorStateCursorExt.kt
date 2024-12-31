@@ -95,7 +95,7 @@ fun TextEditorState.moveToNextWord() {
 		val pos = getOffsetAtCharacter(newPosition)
 		val line = textLines[pos.line]
 
-		if (pos.char < line.length && !isWordChar(line[pos.char])) {
+		if (pos.char < line.length && !isWordChar(line, pos.char)) {
 			break
 		}
 		newPosition++
@@ -106,7 +106,7 @@ fun TextEditorState.moveToNextWord() {
 		val pos = getOffsetAtCharacter(newPosition)
 		val line = textLines[pos.line]
 
-		if (pos.char < line.length && isWordChar(line[pos.char])) {
+		if (pos.char < line.length && isWordChar(line, pos.char)) {
 			break
 		}
 		newPosition++
@@ -128,7 +128,7 @@ fun TextEditorState.moveToPreviousWord() {
 
 	// Handle if we're in whitespace or at word end
 	if (currentOffset.char == 0 ||
-		(currentOffset.char > 0 && !isWordChar(currentLine[currentOffset.char - 1]))
+		(currentOffset.char > 0 && !isWordChar(currentLine, currentOffset.char - 1))
 	) {
 		// Move back one to get to potential word
 		newPosition--
@@ -143,8 +143,8 @@ fun TextEditorState.moveToPreviousWord() {
 		// 1. We're at the start of the line, or
 		// 2. The previous char is not a word char
 		// Then we've found the start of a word
-		if (pos.char < line.length && isWordChar(line[pos.char]) &&
-			(pos.char == 0 || !isWordChar(line[pos.char - 1]))
+		if (pos.char < line.length && isWordChar(line, pos.char) &&
+			(pos.char == 0 || !isWordChar(line, pos.char - 1))
 		) {
 			break
 		}

@@ -88,7 +88,7 @@ class TextEditorState(
 	)
 
 	val selector = TextEditorSelectionManager(this)
-	private val editManager = TextEditManager(this)
+	internal val editManager = TextEditManager(this)
 	val richSpanManager = RichSpanManager(this)
 
 	val scrollState get() = scrollManager.scrollState
@@ -314,6 +314,8 @@ class TextEditorState(
 		_textLines.add(index, text)
 		updateBookKeeping()
 	}
+
+	fun isEmpty(): Boolean = textLines.size == 1 && textLines[0].isEmpty()
 
 	fun undo() {
 		editManager.undo()

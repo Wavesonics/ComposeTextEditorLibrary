@@ -69,7 +69,7 @@ sealed class TextEditOperation {
 				return offset
 			}
 
-			// If after the deletion range entirely, adjust line number
+			// If after the deletion range entirely, adjust line offset
 			if (offset.line > range.end.line) {
 				val linesDelta = range.end.line - range.start.line
 				return offset.copy(line = offset.line - linesDelta)
@@ -80,10 +80,13 @@ sealed class TextEditOperation {
 				return offset
 			}
 
-			// If on the same line after deletion point
-			if (offset.line == range.start.line && offset.char > range.end.char) {
-				val charDelta = range.end.char - range.start.char
-				return offset.copy(char = offset.char - charDelta)
+			// If on the end line after the deletion point
+			if (offset.line == range.end.line && offset.char > range.end.char) {
+				val charDelta = offset.char - range.end.char
+				return CharLineOffset(
+					line = range.start.line,
+					char = range.start.char + charDelta
+				)
 			}
 
 			// If within the deletion range
@@ -91,6 +94,7 @@ sealed class TextEditOperation {
 				return range.start
 			}
 
+			// Default case
 			return offset
 		}
 	}
