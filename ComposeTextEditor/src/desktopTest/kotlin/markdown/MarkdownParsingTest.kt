@@ -1,3 +1,5 @@
+package markdown
+
 import com.darkrockstudios.texteditor.markdown.toAnnotatedStringFromMarkdown
 import kotlin.test.Test
 import kotlin.test.assertEquals

@@ -1,4 +1,4 @@
-package com.darkrockstudios.texteditor.markdown
+package markdown
 
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString
@@ -10,6 +10,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.sp
+import com.darkrockstudios.texteditor.markdown.toMarkdown
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
