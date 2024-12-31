@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
@@ -67,87 +68,92 @@ fun TextEditor(
 		}
 	}
 
-	TextEditorScrollbar(
-		modifier = modifier,
-		scrollState = state.scrollState,
-	) {
-		BoxWithConstraints(
-			modifier = Modifier
-				.focusBorder(state.isFocused && enabled, style)
-				.padding(8.dp)
-				.then(
-					if (enabled) {
-						Modifier
-							.focusRequester(focusRequester)
-							.onFocusChanged { focusState ->
-								state.updateFocus(focusState.isFocused)
-							}
-							.requestFocusOnPress(focusRequester)
-							.focusable(enabled = true, interactionSource = interactionSource)
-							.textEditorKeyboardInputHandler(state, clipboardManager)
-					} else {
-						Modifier
-					}
-				)
-				.onSizeChanged { size ->
-					state.onViewportSizeChange(size.toSize())
-				}
-				.verticalScroll(state.scrollState)
+	Surface {
+		TextEditorScrollbar(
+			modifier = modifier,
+			scrollState = state.scrollState,
 		) {
-			Box(
+			BoxWithConstraints(
 				modifier = Modifier
-					.fillMaxWidth()
-					.height(state.totalContentHeight.dp)
+					.focusBorder(state.isFocused && enabled, style)
+					.padding(8.dp)
+					.then(
+						if (enabled) {
+							Modifier
+								.focusRequester(focusRequester)
+								.onFocusChanged { focusState ->
+									state.updateFocus(focusState.isFocused)
+								}
+								.requestFocusOnPress(focusRequester)
+								.focusable(enabled = true, interactionSource = interactionSource)
+								.textEditorKeyboardInputHandler(state, clipboardManager)
+						} else {
+							Modifier
+						}
+					)
+					.onSizeChanged { size ->
+						state.onViewportSizeChange(size.toSize())
+					}
+					.verticalScroll(state.scrollState)
 			) {
-				Canvas(
+				Box(
 					modifier = Modifier
 						.fillMaxWidth()
 						.height(state.totalContentHeight.dp)
-						.then(
-							if (enabled) {
-								Modifier.textEditorPointerInputHandling(state, onRichSpanClick)
-							} else {
-								Modifier
-							}
-						)
 				) {
-					try {
-						// Draw placeholder if text is empty
-						if (state.isEmpty() && style.placeholderText.isNotEmpty()) {
-							drawText(
-								textMeasurer = state.textMeasurer,
-								text = style.placeholderText,
-								style = TextStyle.Default.copy(
-									color = style.placeholderColor,
-								),
-								topLeft = Offset(0f, 0f)
+					Canvas(
+						modifier = Modifier
+							.fillMaxWidth()
+							.height(state.totalContentHeight.dp)
+							.then(
+								if (enabled) {
+									Modifier.textEditorPointerInputHandling(state, onRichSpanClick)
+								} else {
+									Modifier
+								}
 							)
-						}
-
-						var lastLine = -1
-						state.lineOffsets.fastForEach { virtualLine ->
-							if (lastLine != virtualLine.line && state.textLines.size > virtualLine.line) {
-								val line = state.textLines[virtualLine.line]
-
+					) {
+						try {
+							// Draw placeholder if text is empty
+							if (state.isEmpty() && style.placeholderText.isNotEmpty()) {
 								drawText(
 									textMeasurer = state.textMeasurer,
-									text = line,
-									topLeft = virtualLine.offset
+									text = style.placeholderText,
+									style = TextStyle.Default.copy(
+										color = style.placeholderColor,
+									),
+									topLeft = Offset(0f, 0f)
 								)
-
-								lastLine = virtualLine.line
 							}
 
-							drawRichSpans(virtualLine, state)
-						}
+							var lastLine = -1
+							state.lineOffsets.fastForEach { virtualLine ->
+								if (lastLine != virtualLine.line && state.textLines.size > virtualLine.line) {
+									val line = state.textLines[virtualLine.line]
 
-						drawSelection(state, style.selectionColor)
+									drawText(
+										textMeasurer = state.textMeasurer,
+										text = line,
+										topLeft = virtualLine.offset,
+										style = TextStyle.Default.copy(
+											color = style.placeholderColor,
+										)
+									)
 
-						if (enabled && state.isFocused && state.isCursorVisible) {
-							drawCursor(state, style.cursorColor)
+									lastLine = virtualLine.line
+								}
+
+								drawRichSpans(virtualLine, state)
+							}
+
+							drawSelection(state, style.selectionColor)
+
+							if (enabled && state.isFocused && state.isCursorVisible) {
+								drawCursor(state, style.cursorColor)
+							}
+						} catch (e: IllegalArgumentException) {
+							// Handle resize exception gracefully
 						}
-					} catch (e: IllegalArgumentException) {
-						// Handle resize exception gracefully
 					}
 				}
 			}
