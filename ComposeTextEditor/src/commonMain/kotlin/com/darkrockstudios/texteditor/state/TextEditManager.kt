@@ -60,55 +60,20 @@ class TextEditManager(private val state: TextEditorState) {
 		start: Int,
 		end: Int
 	): AnnotatedString = buildAnnotatedString {
-		// Append text without deleted portion
+		// Retain the portions of the text outside the deletion range
 		append(line.text.substring(0, start))
 		append(line.text.substring(end))
 
-		// We need to properly handle the spans
-		line.spanStyles.forEach { span ->
-			when {
-				// Case 1: Span ends before deletion - keep as is
-				span.end <= start -> {
-					addStyle(span.item, span.start, span.end)
-				}
+		// Process spans with SpanManager
+		val processedSpans = spanManager.processSpans(
+			originalText = line,
+			deletionStart = start,
+			deletionEnd = end
+		)
 
-				// Case 2: Span starts after deletion - adjust position
-				span.start >= end -> {
-					val newStart = span.start - (end - start)
-					val newEnd = span.end - (end - start)
-					addStyle(span.item, newStart, newEnd)
-				}
-
-				// Case 3: Span completely contains the deletion range
-				span.start < start && span.end > end -> {
-					// Keep the span before deletion
-					addStyle(span.item, span.start, start)
-
-					// Keep the span after deletion, adjusting position
-					val newStart = start  // This will connect with the end of the first part
-					val newEnd = span.end - (end - start)
-					addStyle(span.item, newStart, newEnd)
-				}
-
-				// Case 4: Deletion starts before span and ends inside it
-				span.start >= start && span.start < end && span.end > end -> {
-					// Preserve only the part after deletion
-					val newStart = start  // Move to deletion point
-					val newEnd = span.end - (end - start)
-					addStyle(span.item, newStart, newEnd)
-				}
-
-				// Case 5: Deletion starts inside span and ends after it
-				span.start < start && span.end > start && span.end <= end -> {
-					// Preserve only the part before deletion
-					addStyle(span.item, span.start, start)
-				}
-
-				// Case 6: Span is completely within deletion range - remove it entirely
-				span.start >= start && span.end <= end -> {
-					// Do nothing - span is deleted
-				}
-			}
+		// Add processed spans to the result
+		processedSpans.forEach { span ->
+			addStyle(span.item, span.start, span.end)
 		}
 	}
 
@@ -118,97 +83,23 @@ class TextEditManager(private val state: TextEditorState) {
 		end: Int,
 		newText: AnnotatedString
 	): AnnotatedString = buildAnnotatedString {
-		val safeStart = start.coerceIn(0, line.length)
-		val safeEnd = end.coerceIn(0, line.length)
-		val lengthDifference = newText.length - (safeEnd - safeStart)
+		// Replace the text
+		append(line.text.substring(0, start))
+		append(newText.text)
+		append(line.text.substring(end))
 
-		// Append text portions
-		append(line.text.substring(0, safeStart))
-		append(newText)
-		if (safeEnd < line.length) {
-			append(line.text.substring(safeEnd))
-		}
+		// Process spans with SpanManager
+		val processedSpans = spanManager.processSpans(
+			originalText = line,
+			insertionPoint = start,
+			insertedText = newText,
+			deletionStart = start,
+			deletionEnd = end
+		)
 
-		val spansToApply = mutableListOf<AnnotatedString.Range<SpanStyle>>()
-
-		// Handle spans from the original line
-		line.spanStyles.forEach { span ->
-			when {
-				// Span ends before replacement - keep as is
-				span.end <= safeStart -> {
-					spansToApply.add(span)
-				}
-				// Span contains our replacement range - adjust end position
-				span.start <= safeStart && span.end >= safeEnd -> {
-					spansToApply.add(
-						AnnotatedString.Range(
-							span.item,
-							span.start,
-							span.end + lengthDifference
-						)
-					)
-				}
-				// Span starts after replacement - shift position
-				span.start >= safeEnd -> {
-					spansToApply.add(
-						AnnotatedString.Range(
-							span.item,
-							span.start + lengthDifference,
-							span.end + lengthDifference
-						)
-					)
-				}
-				// Spans that start before and end inside replacement
-				span.start < safeStart && span.end <= safeEnd -> {
-					spansToApply.add(
-						AnnotatedString.Range(
-							span.item,
-							span.start,
-							safeStart
-						)
-					)
-				}
-				// Spans that start inside and end after replacement
-				span.start >= safeStart && span.start < safeEnd && span.end > safeEnd -> {
-					spansToApply.add(
-						AnnotatedString.Range(
-							span.item,
-							safeStart + newText.length,
-							span.end + lengthDifference
-						)
-					)
-				}
-				// Span is entirely within replacement - handle proportionally
-				span.start >= safeStart && span.end <= safeEnd -> {
-					val relativeStart = (span.start - safeStart).toFloat() / (safeEnd - safeStart)
-					val relativeEnd = (span.end - safeStart).toFloat() / (safeEnd - safeStart)
-					val newSpanStart = safeStart + (relativeStart * newText.length).toInt()
-					val newSpanEnd = safeStart + (relativeEnd * newText.length).toInt()
-					if (newSpanStart < newSpanEnd) {
-						spansToApply.add(
-							AnnotatedString.Range(span.item, newSpanStart, newSpanEnd)
-						)
-					}
-				}
-			}
-		}
-
-		// Add spans from the new text
-		newText.spanStyles.forEach { span ->
-			spansToApply.add(
-				AnnotatedString.Range(
-					span.item,
-					span.start + safeStart,
-					span.end + safeStart
-				)
-			)
-		}
-
-		// Apply all spans with bounds checking
-		spansToApply.forEach { span ->
-			if (span.start < length && span.end <= length && span.start < span.end) {
-				addStyle(span.item, span.start, span.end)
-			}
+		// Add processed spans to the result
+		processedSpans.forEach { span ->
+			addStyle(span.item, span.start, span.end)
 		}
 	}
 
@@ -217,8 +108,7 @@ class TextEditManager(private val state: TextEditorState) {
 		val currentLine = state._textLines[operation.position.line]
 
 		// Split current line content
-		val prefixEndIndex =
-			operation.position.char.coerceIn(0, currentLine.lastIndex.coerceAtLeast(0))
+		val prefixEndIndex = operation.position.char.coerceIn(0, currentLine.length)
 		val prefix = currentLine.subSequence(0, prefixEndIndex)
 
 		state._textLines[operation.position.line] = mergeSpanStyles(
@@ -240,7 +130,7 @@ class TextEditManager(private val state: TextEditorState) {
 			val lastInsertedLine = insertLines.last()
 			val suffix = currentLine.subSequence(
 				startIndex = prefixEndIndex,
-				endIndex = currentLine.lastIndex.coerceAtLeast(0)
+				endIndex = currentLine.length
 			)
 
 			val newLastLine = mergeSpanStyles(
@@ -499,7 +389,6 @@ class TextEditManager(private val state: TextEditorState) {
 		}
 
 		// Process all spans through SpanManager with bounds validation
-		val spanManager = SpanManager()
 		val processedSpans = spanManager.processSpans(
 			originalText = buildAnnotatedString {
 				append(firstLinePrefix)
@@ -528,6 +417,7 @@ class TextEditManager(private val state: TextEditorState) {
 		val startLine = operation.range.start.line.coerceIn(0, state._textLines.lastIndex)
 		val endLine = operation.range.end.line.coerceIn(0, state._textLines.lastIndex)
 
+		// Edge case: no lines to delete
 		if (startLine > endLine || state._textLines.isEmpty()) {
 			if (state._textLines.isEmpty()) {
 				state._textLines.add(AnnotatedString(""))
@@ -535,6 +425,7 @@ class TextEditManager(private val state: TextEditorState) {
 			return
 		}
 
+		// Process the first and last lines
 		val firstLine = state._textLines[startLine]
 		val lastLine = state._textLines[endLine]
 
@@ -544,57 +435,66 @@ class TextEditManager(private val state: TextEditorState) {
 		if (startLine == 0 && endLine == state._textLines.lastIndex &&
 			startChar == 0 && endChar == lastLine.text.length
 		) {
+			// If deleting all content, leave one empty line
 			state._textLines.clear()
 			state._textLines.add(AnnotatedString(""))
 		} else {
 			val startText = firstLine.text.substring(0, startChar)
 			val endText = lastLine.text.substring(endChar)
 
+			// Remove the lines between start and end
 			state.removeLines(startLine, endLine - startLine + 1)
 
-			state.insertLine(
-				startLine,
-				buildAnnotatedStringWithSpans { addSpan ->
-					append(startText)
-					append(endText)
+			val newText = buildAnnotatedStringWithSpans { addSpan ->
+				append(startText)
+				append(endText)
 
-					// Handle spans from the first line
-					firstLine.spanStyles.forEach { span ->
-						when {
-							// Span ends before deletion - keep as is
-							span.end <= startChar -> {
-								addSpan(span.item, span.start, span.end)
-							}
-							// Span starts before deletion - extend to the new end
-							span.start < startChar -> {
-								addSpan(span.item, span.start, startChar)
-							}
+				// Handle spans from the first line
+				firstLine.spanStyles.forEach { span ->
+					when {
+						// Span ends before deletion - keep as is
+						span.end <= startChar -> {
+							addSpan(span.item, span.start, span.end)
+						}
+						// Span starts before deletion - extend to the new end
+						span.start < startChar -> {
+							addSpan(span.item, span.start, startChar)
 						}
 					}
+				}
 
-					// Handle spans from the last line
-					val startLength = startText.length
-					lastLine.spanStyles.forEach { span ->
-						when {
-							// Span starts after deletion - shift it back
-							span.start >= endChar -> {
-								addSpan(
-									span.item,
-									span.start - endChar + startLength,
-									span.end - endChar + startLength
-								)
-							}
-							// Span extends past deletion point - preserve the remainder
-							span.end > endChar -> {
-								addSpan(
-									span.item,
-									startLength, // Start at the join point
-									span.end - endChar + startLength
-								)
-							}
+				// Handle spans from the last line
+				val startLength = startText.length
+				lastLine.spanStyles.forEach { span ->
+					when {
+						// Span starts after deletion - shift it back
+						span.start >= endChar -> {
+							addSpan(
+								span.item,
+								span.start - endChar + startLength,
+								span.end - endChar + startLength
+							)
+						}
+						// Span extends past deletion point - preserve the remainder
+						span.end > endChar -> {
+							addSpan(
+								span.item,
+								startLength, // Start at the join point
+								span.end - endChar + startLength
+							)
 						}
 					}
-				})
+				}
+			}
+
+			if (state.isEmpty()) {
+				state.updateLine(0, newText)
+			} else {
+				state.insertLine(
+					startLine,
+					newText
+				)
+			}
 		}
 	}
 
@@ -866,14 +766,14 @@ class TextEditManager(private val state: TextEditorState) {
 		}
 	}
 
-	private fun mergeSpanStyles(
+	internal fun mergeSpanStyles(
 		original: AnnotatedString,
 		insertionIndex: Int,
 		newText: AnnotatedString
 	): AnnotatedString = buildAnnotatedString {
 		// First, append all text
 		append(original.text.substring(0, insertionIndex))
-		append(newText)
+		append(newText.text)
 		if (insertionIndex < original.length) {
 			append(original.text.substring(insertionIndex))
 		}
