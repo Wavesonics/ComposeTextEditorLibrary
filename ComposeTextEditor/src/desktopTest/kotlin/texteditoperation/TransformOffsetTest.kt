@@ -1,3 +1,5 @@
+package texteditoperation
+
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextLayoutResult
@@ -24,10 +26,9 @@ class TextEditOperationTest {
 		// Create a mock TextLayoutResult
 		val mockLayoutResult = mockk<TextLayoutResult> {
 			every { size } returns IntSize(100, 20)
-			every { lineCount } returns 1
+			every { lineCount } returns 4
 			every { getLineEnd(any(), any()) } answers {
 				val line = firstArg<Int>()
-				// Return different line lengths based on the test data
 				when (line) {
 					0 -> 5  // "line1"
 					1 -> 5  // "line2"
@@ -36,8 +37,18 @@ class TextEditOperationTest {
 					else -> 0
 				}
 			}
+			every { getLineStart(any()) } answers {
+				val line = firstArg<Int>()
+				when (line) {
+					0 -> 0
+					1 -> 6  // Start of "line2" (newline included)
+					2 -> 12 // Start of "line3"
+					3 -> 18 // Start of "line4"
+					else -> 0
+				}
+			}
 			every { multiParagraph } returns mockk {
-				every { lineCount } returns 1
+				every { lineCount } returns 4
 				every { getLineHeight(any()) } returns 20f
 			}
 		}
@@ -187,6 +198,34 @@ class TextEditOperationTest {
 
 		val result = operation.transformOffset(CharLineOffset(3, 0), testState)
 		assertEquals(CharLineOffset(2, 0), result)
+	}
+
+	@Test
+	fun `Delete - transform offset with multiline operation`() {
+		// Define the delete operation
+		val operation = TextEditOperation.Delete(
+			range = TextEditorRange(
+				start = CharLineOffset(0, 3),
+				end = CharLineOffset(1, 2)
+			),
+			cursorBefore = CharLineOffset(1, 2),
+			cursorAfter = CharLineOffset(0, 3)
+		)
+
+		// Test transformOffset before deletion range
+		val offsetBefore = CharLineOffset(0, 1)
+		val transformedBefore = operation.transformOffset(offsetBefore, testState)
+		assertEquals(offsetBefore, transformedBefore)
+
+		// Test transformOffset within deletion range
+		val offsetWithin = CharLineOffset(0, 4)
+		val transformedWithin = operation.transformOffset(offsetWithin, testState)
+		assertEquals(CharLineOffset(0, 3), transformedWithin)
+
+		// Test transformOffset after deletion range
+		val offsetAfter = CharLineOffset(1, 4)
+		val transformedAfter = operation.transformOffset(offsetAfter, testState)
+		assertEquals(CharLineOffset(0, 5), transformedAfter)
 	}
 
 	@Test
