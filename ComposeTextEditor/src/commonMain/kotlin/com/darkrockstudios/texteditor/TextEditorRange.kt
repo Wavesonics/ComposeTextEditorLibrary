@@ -23,8 +23,5 @@ data class TextEditorRange(
 
 
 fun CharLineOffset.toRange(end: CharLineOffset): TextEditorRange {
-	return TextEditorRange(
-		start = this,
-		end = end
-	)
+	return TextEditorRange.fromOffsets(this, end)
 }

@@ -7,7 +7,7 @@ import kotlin.time.TimeSource
 import kotlin.time.measureTimedValue
 
 @OptIn(ExperimentalContracts::class)
-public inline fun <T> measureAndReport(message: String, block: () -> T): T {
+internal inline fun <T> measureAndReport(message: String, block: () -> T): T {
 	contract {
 		callsInPlace(block, InvocationKind.EXACTLY_ONCE)
 	}
