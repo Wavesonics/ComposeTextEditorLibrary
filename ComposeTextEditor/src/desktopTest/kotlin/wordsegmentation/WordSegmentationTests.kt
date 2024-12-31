@@ -1,3 +1,5 @@
+package wordsegmentation
+
 import com.darkrockstudios.texteditor.state.TextEditorState
 import com.darkrockstudios.texteditor.state.wordSegments
 import io.mockk.mockk
