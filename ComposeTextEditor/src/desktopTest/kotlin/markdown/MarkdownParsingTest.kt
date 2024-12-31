@@ -28,12 +28,9 @@ class MarkdownParsingTest {
 
    This is bold and italic text.
 
-
 Here's a link in the text.
-
    
    Here's some inline code and a code block:
-
 fun hello() {
     println("Hello!")
 }
