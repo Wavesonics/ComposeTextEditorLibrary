@@ -22,7 +22,7 @@ jobs:
     strategy:
       matrix:
         include:
-          - target: assemble
+          - target: test
             os: ubuntu-latest
           #- target: desktopTest
           #  os: ubuntu-latest
