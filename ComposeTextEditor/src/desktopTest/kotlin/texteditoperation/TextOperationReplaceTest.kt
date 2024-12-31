@@ -51,10 +51,10 @@ class TextOperationReplaceTest {
 				start = CharLineOffset(0, 5),
 				end = CharLineOffset(2, 4)
 			),
-			newText = AnnotatedString("Awesome"),
+			newText = AnnotatedString(" Awesome"),
 			oldText = AnnotatedString("\nWorld\nText"),
-			cursorBefore = CharLineOffset(0, 5),
-			cursorAfter = CharLineOffset(0, 13)
+			cursorBefore = CharLineOffset(0, 6),
+			cursorAfter = CharLineOffset(0, 11)
 		)
 
 		state.editManager.applyOperation(operation)
@@ -70,7 +70,7 @@ class TextOperationReplaceTest {
 
 		val oldText = buildAnnotatedString {
 			append("World")
-			addStyle(boldStyle, 0, 6)
+			addStyle(boldStyle, 0, 5)
 		}
 
 		val newText = buildAnnotatedString {

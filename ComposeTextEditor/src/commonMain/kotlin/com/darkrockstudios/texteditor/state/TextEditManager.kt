@@ -46,10 +46,10 @@ class TextEditManager(private val state: TextEditorState) {
 		} else {
 			// Single line insert with span merging
 			val line = state._textLines[operation.position.line]
-			state._textLines[operation.position.line] = mergeSpanStyles(
-				line,
-				operation.position.char,
-				operation.text
+			state._textLines[operation.position.line] = mergeAnnotatedStrings(
+				original = line,
+				start = operation.position.char,
+				newText = operation.text
 			)
 		}
 		return null
@@ -59,49 +59,24 @@ class TextEditManager(private val state: TextEditorState) {
 		line: AnnotatedString,
 		start: Int,
 		end: Int
-	): AnnotatedString = buildAnnotatedString {
-		// Retain the portions of the text outside the deletion range
-		append(line.text.substring(0, start))
-		append(line.text.substring(end))
-
-		// Process spans with SpanManager
-		val processedSpans = spanManager.processSpans(
-			originalText = line,
-			deletionStart = start,
-			deletionEnd = end
-		)
-
-		// Add processed spans to the result
-		processedSpans.forEach { span ->
-			addStyle(span.item, span.start, span.end)
-		}
-	}
+	): AnnotatedString = mergeAnnotatedStrings(
+		original = line,
+		start = start,
+		end = end
+	)
 
 	private fun handleReplace(
 		line: AnnotatedString,
 		start: Int,
 		end: Int,
 		newText: AnnotatedString
-	): AnnotatedString = buildAnnotatedString {
-		// Replace the text
-		append(line.text.substring(0, start))
-		append(newText.text)
-		append(line.text.substring(end))
+	): AnnotatedString = mergeAnnotatedStrings(
+		original = line,
+		start = start,
+		end = end,
+		newText = newText
+	)
 
-		// Process spans with SpanManager
-		val processedSpans = spanManager.processSpans(
-			originalText = line,
-			insertionPoint = start,
-			insertedText = newText,
-			deletionStart = start,
-			deletionEnd = end
-		)
-
-		// Add processed spans to the result
-		processedSpans.forEach { span ->
-			addStyle(span.item, span.start, span.end)
-		}
-	}
 
 	private fun handleMultiLineInsert(operation: TextEditOperation.Insert) {
 		val insertLines = operation.text.splitAnnotatedString()
@@ -110,11 +85,10 @@ class TextEditManager(private val state: TextEditorState) {
 		// Split current line content
 		val prefixEndIndex = operation.position.char.coerceIn(0, currentLine.length)
 		val prefix = currentLine.subSequence(0, prefixEndIndex)
-
-		state._textLines[operation.position.line] = mergeSpanStyles(
-			prefix,
-			prefix.length,
-			insertLines.first()
+		state._textLines[operation.position.line] = mergeAnnotatedStrings(
+			original = prefix,
+			start = prefix.length,
+			newText = insertLines.first()
 		)
 
 		// Insert middle lines (if any)
@@ -133,10 +107,10 @@ class TextEditManager(private val state: TextEditorState) {
 				endIndex = currentLine.length
 			)
 
-			val newLastLine = mergeSpanStyles(
-				lastInsertedLine,
-				lastInsertedLine.length,
-				suffix
+			val newLastLine = mergeAnnotatedStrings(
+				original = lastInsertedLine,
+				start = lastInsertedLine.length,
+				newText = suffix
 			)
 			state.insertLine(
 				operation.position.line + insertLines.lastIndex,
@@ -204,7 +178,11 @@ class TextEditManager(private val state: TextEditorState) {
 				)
 
 				// Insert the new content at the start line
-				state.insertLine(operation.range.start.line, newContent)
+				if (state.isEmpty()) {
+					state.updateLine(0, newContent)
+				} else {
+					state.insertLine(operation.range.start.line, newContent)
+				}
 			}
 		}
 		return metadata
@@ -766,32 +744,29 @@ class TextEditManager(private val state: TextEditorState) {
 		}
 	}
 
-	internal fun mergeSpanStyles(
+	internal fun mergeAnnotatedStrings(
 		original: AnnotatedString,
-		insertionIndex: Int,
-		newText: AnnotatedString
+		start: Int,
+		end: Int = start, // For insertions, start == end
+		newText: AnnotatedString? = null
 	): AnnotatedString = buildAnnotatedString {
-		// First, append all text
-		append(original.text.substring(0, insertionIndex))
-		append(newText.text)
-		if (insertionIndex < original.length) {
-			append(original.text.substring(insertionIndex))
-		}
+		// Add text outside the affected range
+		append(original.text.substring(0, start))
+		if (newText != null) append(newText.text)
+		append(original.text.substring(end))
 
-		// Process and condense spans with proper bounds checking
+		// Process spans with SpanManager
 		val processedSpans = spanManager.processSpans(
 			originalText = original,
-			insertionPoint = insertionIndex,
-			insertedText = newText
+			insertionPoint = if (newText != null) start else -1,
+			insertedText = newText,
+			deletionStart = if (end > start) start else -1,
+			deletionEnd = if (end > start) end else -1
 		)
 
-		// Add processed spans to the result with bounds validation
+		// Add processed spans to the result
 		processedSpans.forEach { span ->
-			val safeStart = span.start.coerceIn(0, length)
-			val safeEnd = span.end.coerceIn(safeStart, length)
-			if (safeEnd > safeStart) {
-				addStyle(span.item, safeStart, safeEnd)
-			}
+			addStyle(span.item, span.start, span.end)
 		}
 	}
 

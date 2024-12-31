@@ -1,10 +1,12 @@
-package com.darkrockstudios.texteditor.state
+package texteditmanager
 
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.buildAnnotatedString
+import com.darkrockstudios.texteditor.state.TextEditManager
+import com.darkrockstudios.texteditor.state.TextEditorState
 import io.mockk.mockk
 import kotlinx.coroutines.test.TestScope
 import org.junit.Assert.assertEquals
@@ -30,7 +32,8 @@ class TextEditManagerSpanMergeTest {
 		val insertionIndex = 6
 
 		// Act
-		val result = manager.mergeSpanStyles(original, insertionIndex, newText)
+		val result =
+			manager.mergeAnnotatedStrings(original, start = insertionIndex, newText = newText)
 
 		// Assert
 		assertEquals("Hello new World", result.text)
@@ -48,7 +51,8 @@ class TextEditManagerSpanMergeTest {
 		val insertionIndex = 6
 
 		// Act
-		val result = manager.mergeSpanStyles(original, insertionIndex, newText)
+		val result =
+			manager.mergeAnnotatedStrings(original, start = insertionIndex, newText = newText)
 
 		// Assert
 		assertEquals("Hello new World", result.text)
@@ -71,7 +75,8 @@ class TextEditManagerSpanMergeTest {
 		val insertionIndex = 6
 
 		// Act
-		val result = manager.mergeSpanStyles(original, insertionIndex, newText)
+		val result =
+			manager.mergeAnnotatedStrings(original, start = insertionIndex, newText = newText)
 
 		// Assert
 		assertEquals("Hello new World", result.text)
@@ -97,13 +102,13 @@ class TextEditManagerSpanMergeTest {
 		val insertionIndex = 6
 
 		// Act
-		val result = manager.mergeSpanStyles(original, insertionIndex, newText)
+		val result =
+			manager.mergeAnnotatedStrings(original, start = insertionIndex, newText = newText)
 
 		// Assert
 		assertEquals("Hello new World", result.text)
-		assertEquals(2, result.spanStyles.size) // Updated to 2 because spans overlap
+		assertEquals(2, result.spanStyles.size)
 
-		// Check styles are preserved and in correct positions
 		with(result.spanStyles) {
 			val redSpan = first { it.start == 0 && it.end == 15 }
 			assertEquals(Color.Red, (redSpan.item as SpanStyle).color)
@@ -124,7 +129,8 @@ class TextEditManagerSpanMergeTest {
 		val insertionIndex = 5
 
 		// Act
-		val result = manager.mergeSpanStyles(original, insertionIndex, newText)
+		val result =
+			manager.mergeAnnotatedStrings(original, start = insertionIndex, newText = newText)
 
 		// Assert
 		assertEquals("Hellonice  World", result.text)
@@ -150,7 +156,8 @@ class TextEditManagerSpanMergeTest {
 		val insertionIndex = 5
 
 		// Act
-		val result = manager.mergeSpanStyles(original, insertionIndex, newText)
+		val result =
+			manager.mergeAnnotatedStrings(original, start = insertionIndex, newText = newText)
 
 		// Assert
 		assertEquals("Hello new World", result.text)
@@ -176,7 +183,8 @@ class TextEditManagerSpanMergeTest {
 		val insertionIndex = 0
 
 		// Act
-		val result = manager.mergeSpanStyles(original, insertionIndex, newText)
+		val result =
+			manager.mergeAnnotatedStrings(original, start = insertionIndex, newText = newText)
 
 		// Assert
 		assertEquals("Hey Hello", result.text)
@@ -209,7 +217,8 @@ class TextEditManagerSpanMergeTest {
 		val insertionIndex = 5
 
 		// Act
-		val result = manager.mergeSpanStyles(original, insertionIndex, newText)
+		val result =
+			manager.mergeAnnotatedStrings(original, start = insertionIndex, newText = newText)
 
 		// Assert
 		assertEquals("Hello World", result.text)
@@ -226,6 +235,72 @@ class TextEditManagerSpanMergeTest {
 			assertEquals(11, blueSpan.end)
 			assertEquals(Color.Blue, (blueSpan.item as SpanStyle).color)
 		}
+	}
+
+	@Test
+	fun `test delete text with spans`() {
+		// Arrange
+		val original = buildAnnotatedString {
+			append("Hello World")
+			addStyle(SpanStyle(color = Color.Red), 0, 5) // "Hello"
+			addStyle(SpanStyle(color = Color.Blue), 6, 11) // "World"
+		}
+		val startIndex = 3
+		val endIndex = 8
+
+		// Act
+		val result = manager.mergeAnnotatedStrings(original, start = startIndex, end = endIndex)
+
+		// Assert
+		assertEquals("Helrld", result.text)
+		assertEquals(2, result.spanStyles.size)
+
+		val redSpan = result.spanStyles.first()
+		assertEquals(0, redSpan.start)
+		assertEquals(3, redSpan.end)
+		assertEquals(Color.Red, redSpan.item.color)
+
+		val blueSpan = result.spanStyles.last()
+		assertEquals(3, blueSpan.start)
+		assertEquals(6, blueSpan.end)
+		assertEquals(Color.Blue, blueSpan.item.color)
+	}
+
+	@Test
+	fun `test replace text with overlapping spans`() {
+		// Arrange
+		val original = buildAnnotatedString {
+			append("Hello World")
+			addStyle(SpanStyle(color = Color.Red), 0, 5) // "Hello"
+			addStyle(SpanStyle(color = Color.Blue), 6, 11) // "World"
+		}
+		val newText = buildAnnotatedString {
+			append("Beautiful")
+			addStyle(SpanStyle(color = Color.Green), 0, 9) // "Beautiful"
+		}
+		val startIndex = 3
+		val endIndex = 8
+
+		// Act
+		val result = manager.mergeAnnotatedStrings(
+			original,
+			start = startIndex,
+			end = endIndex,
+			newText = newText
+		)
+
+		// Assert
+		assertEquals("HelBeautifulrld", result.text)
+		assertEquals(3, result.spanStyles.size)
+
+		val redSpan = result.spanStyles.first { it.start == 0 && it.end == 3 }
+		assertEquals(Color.Red, redSpan.item.color)
+
+		val greenSpan = result.spanStyles.first { it.start == 3 && it.end == 12 }
+		assertEquals(Color.Green, greenSpan.item.color)
+
+		val blueSpan = result.spanStyles.first { it.start == 12 && it.end == 15 }
+		assertEquals(Color.Blue, blueSpan.item.color)
 	}
 
 	private fun createTestEditorState(): TextEditorState {
