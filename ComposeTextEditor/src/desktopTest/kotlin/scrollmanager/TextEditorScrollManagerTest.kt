@@ -1,4 +1,4 @@
-package com.darkrockstudios.texteditor.state
+package scrollmanager
 
 import androidx.compose.foundation.ScrollState
 import androidx.compose.ui.geometry.Offset
@@ -8,6 +8,7 @@ import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.IntSize
 import com.darkrockstudios.texteditor.CharLineOffset
 import com.darkrockstudios.texteditor.LineWrap
+import com.darkrockstudios.texteditor.state.TextEditorScrollManager
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
