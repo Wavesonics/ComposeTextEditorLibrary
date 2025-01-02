@@ -721,9 +721,7 @@ class TextEditorState(
 	}
 
 	init {
-		if (initialText != null) {
-			setText(initialText)
-		}
+		setText(initialText ?: AnnotatedString(""))
 	}
 }
 
