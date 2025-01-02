@@ -24,6 +24,10 @@ class SpellCheckState(
 	private var lastTextHash = -1
 	private val misspelledWords = mutableListOf<WordSegment>()
 
+	private fun removeMissSpellingsInRange(range: TextEditorRange) {
+		misspelledWords.removeAll { it.range.intersects(range) }
+	}
+
 	fun handleSpanClick(span: RichSpan): WordSegment? {
 		return if (span.style is SpellCheckStyle) {
 			findWordSegmentContainingRange(
@@ -41,6 +45,8 @@ class SpellCheckState(
 			.forEach { span ->
 				textState.removeRichSpan(span)
 			}
+		misspelledWords.remove(segment)
+		println("Correcting spelling for $segment, correcting to: $correction")
 		textState.replace(segment.range, correction, true)
 	}
 
@@ -50,7 +56,7 @@ class SpellCheckState(
 	 */
 	fun runFullSpellCheck() {
 		val sp = spellChecker ?: return
-
+		println("Running full Spell Check")
 		textState.apply {
 			// Remove all existing spell checks
 			richSpanManager.getAllRichSpans()
@@ -83,6 +89,7 @@ class SpellCheckState(
 		// Check spelling in the range
 		val misspelledSegments = mutableListOf<WordSegment>()
 		println("Spell Checking Range: $range")
+		removeMissSpellingsInRange(range)
 		textState.wordSegmentsInRange(range).mapNotNullTo(misspelledSegments) { segment ->
 			println("Checking Segment: $segment")
 			val suggestions = sp.lookup(segment.text)
@@ -106,6 +113,8 @@ class SpellCheckState(
 	 */
 	fun checkWordSegment(segment: WordSegment): Boolean {
 		val sp = spellChecker ?: return false
+
+		removeMissSpellingsInRange(segment.range)
 
 		textState.apply {
 			// First remove any existing spell check spans in this range
@@ -147,6 +156,10 @@ class SpellCheckState(
 
 				is TextEditOperation.Replace -> operation.range
 				is TextEditOperation.StyleSpan -> null
+			}
+
+			range?.let {
+				removeMissSpellingsInRange(range)
 			}
 
 			range?.affectedLineWraps(textState)?.forEach { vLine ->

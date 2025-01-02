@@ -40,7 +40,6 @@ fun SpellCheckingTextEditor(
 	LaunchedEffect(state) {
 		state.textState.editOperations.debounceUntilQuiescentWithBatch(500.milliseconds)
 			.collect { operations ->
-				println("Delivering operations: ${operations.size}")
 				val rangesToCheck = computeAffectedRanges(operations, state.textState)
 				rangesToCheck.forEach { range ->
 					state.runPartialSpellCheck(range)
@@ -59,7 +58,6 @@ fun SpellCheckingTextEditor(
 				return@TextEditor if (type == SpanClickType.SECONDARY_CLICK || type == SpanClickType.TAP) {
 					val correction = state.handleSpanClick(span)
 					if (correction != null) {
-
 						val menuPos =
 							offset.copy(y = offset.y - state.textState.scrollState.value + wordVisibilityBuffer)
 						menuState.missSpelling.value =
