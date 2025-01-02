@@ -126,7 +126,7 @@ class TextEditManager(private val state: TextEditorState) {
 		val metadata = if (addToHistory) {
 			state.captureMetadata(operation.range)
 		} else {
-			return null
+			null
 		}
 
 		when {
@@ -147,7 +147,6 @@ class TextEditManager(private val state: TextEditorState) {
 				val newText = if (inheritedStyles.isNotEmpty()) {
 					buildAnnotatedString {
 						append(operation.newText)
-						println("\"${operation.newText}\"")
 						inheritedStyles.forEach { style ->
 							addStyle(style, 0, operation.newText.length)
 						}
@@ -185,6 +184,7 @@ class TextEditManager(private val state: TextEditorState) {
 				}
 			}
 		}
+
 		return metadata
 	}
 
@@ -593,21 +593,29 @@ class TextEditManager(private val state: TextEditorState) {
 		operation: TextEditOperation.Replace,
 		entry: HistoryEntry
 	) {
-		println("Undoing Replace:")
-		println("Original range: ${operation.range}")
-		println("Restoring text: ${operation.oldText}")
-		println("Metadata: ${entry.metadata}")
-
-		applyOperation(
-			TextEditOperation.Replace(
-				range = operation.range,
-				oldText = operation.newText,
-				newText = operation.oldText,
-				cursorBefore = entry.operation.cursorAfter,
-				cursorAfter = entry.operation.cursorBefore
-			),
-			addToHistory = false
+		val startPos = operation.range.start
+		val endPos = CharLineOffset(
+			line = startPos.line,
+			char = startPos.char + operation.newText.length
 		)
+
+		// First remove the single line text
+		val deleteRange = TextEditorRange(startPos, endPos)
+		val deleteOp = TextEditOperation.Delete(
+			range = deleteRange,
+			cursorBefore = operation.cursorAfter,
+			cursorAfter = startPos
+		)
+		applyOperation(deleteOp, addToHistory = false)
+
+		// Then insert the multi-line text properly split into physical lines
+		val insertOp = TextEditOperation.Insert(
+			position = startPos,
+			text = operation.oldText,
+			cursorBefore = startPos,
+			cursorAfter = operation.cursorBefore
+		)
+		applyOperation(insertOp, addToHistory = false)
 
 		restorePreservedRichSpans(
 			entry.metadata.preservedRichSpans,
