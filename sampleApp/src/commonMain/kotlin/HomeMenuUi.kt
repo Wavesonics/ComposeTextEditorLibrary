@@ -36,6 +36,10 @@ fun HomeMenu(
 				Text("Text Editor")
 			}
 
+			Button(onClick = { navigateTo(Destination.EmptyTextEditor) }) {
+				Text("Text Editor (Blank)")
+			}
+
 			Button(onClick = { navigateTo(Destination.SpellChecking) }) {
 				Text("Spell Check")
 			}

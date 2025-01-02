@@ -22,18 +22,25 @@ import com.darkrockstudios.texteditor.state.rememberTextEditorState
 fun TextEditorDemoUi(
 	modifier: Modifier = Modifier,
 	navigateTo: (Destination) -> Unit,
+	demoContent: Boolean,
 ) {
-	//val state: TextEditorState = rememberTextEditorState(SIMPLE_MARKDOWN.toAnnotatedStringFromMarkdown())
-	val state: TextEditorState = rememberTextEditorState(createRichTextDemo())
-	//val state: TextEditorState = rememberTextEditorState(createRichTextDemo2())
-	//val state: TextEditorState = rememberTextEditorState(alice_wounder_land.toAnnotatedStringFromMarkdown())
+	val state: TextEditorState = if (demoContent) {
+		//rememberTextEditorState(SIMPLE_MARKDOWN.toAnnotatedStringFromMarkdown())
+		rememberTextEditorState(createRichTextDemo())
+		//rememberTextEditorState(createRichTextDemo2())
+		//rememberTextEditorState(alice_wounder_land.toAnnotatedStringFromMarkdown())
+	} else {
+		rememberTextEditorState()
+	}
 
 	LaunchedEffect(Unit) {
-		//state.selector.updateSelection(CharLineOffset(0, 10), CharLineOffset(0, 20))
-		state.addRichSpan(6, 11, HIGHLIGHT)
-		state.addRichSpan(16, 31, SpellCheckStyle)
+		if (demoContent) {
+			//state.selector.updateSelection(CharLineOffset(0, 10), CharLineOffset(0, 20))
+			state.addRichSpan(6, 11, HIGHLIGHT)
+			state.addRichSpan(16, 31, SpellCheckStyle)
 
-		//state.addRichSpan(30, 35, HIGHLIGHT)
+			//state.addRichSpan(30, 35, HIGHLIGHT)
+		}
 
 		state.editOperations.collect { operation ->
 			println("Applying Operation: $operation")
