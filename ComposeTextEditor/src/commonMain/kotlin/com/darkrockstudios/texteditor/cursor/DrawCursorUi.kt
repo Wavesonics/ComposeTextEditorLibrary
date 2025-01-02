@@ -4,7 +4,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import com.darkrockstudios.texteditor.state.TextEditorState
 
-internal fun DrawScope.drawCursor(
+internal fun DrawScope.DrawCursor(
 	state: TextEditorState,
 	cursorColor: Color,
 ) {

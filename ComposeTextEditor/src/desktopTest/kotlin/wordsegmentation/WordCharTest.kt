@@ -48,4 +48,35 @@ class WordCharTest {
 		assertFalse(isWordChar("word\n", 4)) // Newline
 		assertFalse(isWordChar("word\t", 4)) // Tab
 	}
+
+	@Test
+	fun `test index boundary cases`() {
+		assertFalse(isWordChar("word", -1)) // Before start
+		assertFalse(isWordChar("word", 4)) // At length
+		assertFalse(isWordChar("word", 5)) // After end
+		assertFalse(isWordChar("", 0)) // Empty string
+	}
+
+	@Test
+	fun `test boundary cases with special characters`() {
+		// Test apostrophe at boundaries
+		assertFalse(isWordChar("'word", 0)) // Start of text
+		assertFalse(isWordChar("word'", 4)) // End of text
+
+		// Test period at boundaries
+		assertFalse(isWordChar(".word", 0)) // Start of text
+		assertFalse(isWordChar("word.", 4)) // End of text
+
+		// Test hyphen at boundaries
+		assertFalse(isWordChar("-word", 0)) // Start of text
+		assertFalse(isWordChar("word-", 4)) // End of text
+
+		// Edge cases for special character context checks
+		assertFalse(isWordChar("a'", 1)) // Apostrophe at end
+		assertFalse(isWordChar("a.", 1)) // Period at end
+		assertFalse(isWordChar("a-", 1)) // Hyphen at end
+		assertFalse(isWordChar("'b", 0)) // Apostrophe at start
+		assertFalse(isWordChar(".b", 0)) // Period at start
+		assertFalse(isWordChar("-b", 0)) // Hyphen at start
+	}
 }

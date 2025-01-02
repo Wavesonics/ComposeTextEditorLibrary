@@ -66,7 +66,9 @@ class TextEditorState(
 
 	var isCursorVisible by mutableStateOf(true)
 	var isFocused by mutableStateOf(false)
-	var lineOffsets by mutableStateOf(emptyList<LineWrap>())
+
+	private var _lineOffsets by mutableStateOf(emptyList<LineWrap>())
+	val lineOffsets: List<LineWrap> get() = _lineOffsets
 
 	val selectionRangeFlow: SharedFlow<TextEditorRange?> get() = selector.selectionRangeFlow
 
@@ -84,7 +86,7 @@ class TextEditorState(
 		getLines = { textLines },
 		getViewportSize = { viewportSize },
 		getCursorPosition = { cursorPosition },
-		getLineOffsets = { lineOffsets },
+		getLineOffsets = { _lineOffsets },
 	)
 
 	val selector = TextEditorSelectionManager(this)
@@ -326,15 +328,19 @@ class TextEditorState(
 	}
 
 	fun getWrappedLineIndex(position: CharLineOffset): Int {
-		return lineOffsets.indexOfLast { lineOffset ->
+		return _lineOffsets.indexOfLast { lineOffset ->
 			lineOffset.line == position.line && lineOffset.wrapStartsAtIndex <= position.char
 		}
 	}
 
 	fun getWrappedLine(position: CharLineOffset): LineWrap {
-		return lineOffsets.last { lineOffset ->
+		return _lineOffsets.last { lineOffset ->
 			lineOffset.line == position.line && lineOffset.wrapStartsAtIndex <= position.char
 		}
+	}
+
+	fun getWrappedLine(vLineIndex: Int): LineWrap {
+		return _lineOffsets[vLineIndex]
 	}
 
 	fun onViewportSizeChange(size: Size) {
@@ -343,12 +349,12 @@ class TextEditorState(
 	}
 
 	fun getOffsetAtPosition(offset: Offset): CharLineOffset {
-		if (lineOffsets.isEmpty()) return CharLineOffset(0, 0)
+		if (_lineOffsets.isEmpty()) return CharLineOffset(0, 0)
 
-		var curRealLine: LineWrap = lineOffsets[0]
+		var curRealLine: LineWrap = _lineOffsets[0]
 
 		// Find the line that contains the offset
-		for (lineWrap in lineOffsets) {
+		for (lineWrap in _lineOffsets) {
 			if (lineWrap.line != curRealLine.line) {
 				curRealLine = lineWrap
 			}
@@ -479,7 +485,7 @@ class TextEditorState(
 					)
 				}
 			} else {
-				val existing = lineOffsets.find { it.line == lineIndex }?.textLayoutResult
+				val existing = _lineOffsets.find { it.line == lineIndex }?.textLayoutResult
 				if (existing != null) {
 					existing
 				} else {
@@ -522,7 +528,7 @@ class TextEditorState(
 				val richSpans = if (shouldRemeasure) {
 					richSpanManager.getSpansForLineWrap(lineWrap)
 				} else {
-					lineOffsets.find {
+					_lineOffsets.find {
 						it.line == lineIndex && it.wrapStartsAtIndex == lineWrapsAt
 					}?.richSpans ?: emptyList()
 				}
@@ -532,7 +538,7 @@ class TextEditorState(
 			}
 		}
 
-		lineOffsets = offsets
+		_lineOffsets = offsets
 		scrollManager.updateContentHeight(yOffset.toInt())
 
 		_canUndo = editManager.history.hasUndoLevels()
@@ -576,7 +582,7 @@ class TextEditorState(
 
 	fun findSpanAtPosition(position: CharLineOffset): RichSpan? {
 		// Find the line wrap that contains our position
-		val lineWrap = lineOffsets.lastOrNull { wrap ->
+		val lineWrap = _lineOffsets.lastOrNull { wrap ->
 			wrap.line == position.line && position.char >= wrap.wrapStartsAtIndex
 		} ?: return null
 
@@ -692,6 +698,13 @@ class TextEditorState(
 				append('\n')
 			}
 		}
+	}
+
+	fun getTextLength(): Int {
+		val length = textLines.sumOf { line ->
+			line.length + 1
+		}
+		return length - 1
 	}
 
 	fun exportAsMarkdown(): String {

@@ -13,19 +13,19 @@ class RichSpanManager(
 
 	fun getAllRichSpans(): Set<RichSpan> = spans
 
-	fun addRichSpan(range: TextEditorRange, style: RichSpanStyle) {
+	internal fun addRichSpan(range: TextEditorRange, style: RichSpanStyle) {
 		spans.add(RichSpan(range, style))
 	}
 
-	fun addRichSpan(start: CharLineOffset, end: CharLineOffset, style: RichSpanStyle) {
+	internal fun addRichSpan(start: CharLineOffset, end: CharLineOffset, style: RichSpanStyle) {
 		spans.add(RichSpan(TextEditorRange(start, end), style))
 	}
 
-	fun removeRichSpan(start: CharLineOffset, end: CharLineOffset, style: RichSpanStyle) {
+	internal fun removeRichSpan(start: CharLineOffset, end: CharLineOffset, style: RichSpanStyle) {
 		spans.remove(RichSpan(TextEditorRange(start, end), style))
 	}
 
-	fun removeRichSpan(span: RichSpan) {
+	internal fun removeRichSpan(span: RichSpan) {
 		spans.remove(span)
 	}
 

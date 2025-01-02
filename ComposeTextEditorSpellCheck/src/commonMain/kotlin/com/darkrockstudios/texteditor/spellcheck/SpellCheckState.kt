@@ -14,6 +14,7 @@ import com.darkrockstudios.texteditor.state.TextEditorState
 import com.darkrockstudios.texteditor.state.WordSegment
 import com.darkrockstudios.texteditor.state.getRichSpansInRange
 import com.darkrockstudios.texteditor.state.wordSegments
+import com.darkrockstudios.texteditor.state.wordSegmentsInRange
 import com.mohamedrejeb.richeditor.compose.spellcheck.utils.applyCapitalizationStrategy
 
 class SpellCheckState(
@@ -64,20 +65,101 @@ class SpellCheckState(
 				if (suggestions.spellingIsCorrect(segment.text)) {
 					null
 				} else {
+					addRichSpan(segment.range, SpellCheckStyle)
 					segment
 				}
-			}
-
-			misspelledWords.fastForEach { wordSegment ->
-				addRichSpan(wordSegment.range, SpellCheckStyle)
 			}
 		}
 	}
 
-	fun onTextChange(operation: TextEditOperation) {
+	fun runPartialSpellCheck(range: TextEditorRange) {
+		val sp = spellChecker ?: return
+
+		// Remove existing spell check spans in the range
+		textState.richSpanManager.getSpansInRange(range)
+			.filter { it.style is SpellCheckStyle }
+			.forEach { span -> textState.removeRichSpan(span) }
+
+		// Check spelling in the range
+		val misspelledSegments = mutableListOf<WordSegment>()
+		println("Spell Checking Range: $range")
+		textState.wordSegmentsInRange(range).mapNotNullTo(misspelledSegments) { segment ->
+			println("Checking Segment: $segment")
+			val suggestions = sp.lookup(segment.text)
+			if (suggestions.spellingIsCorrect(segment.text)) {
+				null
+			} else {
+				textState.addRichSpan(segment.range, SpellCheckStyle)
+				segment
+			}
+		}
+
+		misspelledWords.addAll(misspelledSegments)
+	}
+
+	/**
+	 * Run spell check on a specific word segment.
+	 * This will remove any existing spell check spans for the word and add a new one if misspelled.
+	 *
+	 * @param segment The word segment to check
+	 * @return true if the word is misspelled and a new span was added, false otherwise
+	 */
+	fun checkWordSegment(segment: WordSegment): Boolean {
+		val sp = spellChecker ?: return false
+
+		textState.apply {
+			// First remove any existing spell check spans in this range
+			getRichSpansInRange(segment.range)
+				.filter { it.style is SpellCheckStyle }
+				.forEach { span ->
+					removeRichSpan(span)
+				}
+
+			// Check if the word is misspelled
+			val suggestions = sp.lookup(segment.text)
+			val isSpelledCorrectly = suggestions.spellingIsCorrect(segment.text)
+
+			if (!isSpelledCorrectly) {
+				// Add a new spell check span
+				addRichSpan(segment.range, SpellCheckStyle)
+
+				// Update our misspelled words cache
+				misspelledWords.removeAll { it.range == segment.range }
+				misspelledWords.add(segment)
+
+				return true
+			}
+		}
+
+		// Word is spelled correctly
+		return false
+	}
+
+	fun invalidateSpellCheckSpans(operation: TextEditOperation) {
 		val newTextHash = textState.computeTextHash()
 		if (lastTextHash != newTextHash) {
-			runFullSpellCheck()
+			val range: TextEditorRange? = when (operation) {
+				is TextEditOperation.Delete -> operation.range
+				is TextEditOperation.Insert -> TextEditorRange(
+					operation.position,
+					operation.position
+				)
+
+				is TextEditOperation.Replace -> operation.range
+				is TextEditOperation.StyleSpan -> null
+			}
+
+			range?.affectedLineWraps(textState)?.forEach { vLine ->
+				val lineWrap = textState.getWrappedLine(vLine)
+				lineWrap.richSpans
+					.filter { it.style is SpellCheckStyle }
+					.fastForEach { span ->
+						if (range.intersects(span.range)) {
+							textState.removeRichSpan(span)
+						}
+					}
+			}
+
 			lastTextHash = newTextHash
 		}
 	}
@@ -104,8 +186,8 @@ class SpellCheckState(
 				&& segmentedWord.equals(word, ignoreCase = true).not()
 				&& suggestions.find { it.term.equals(segmentedWord, ignoreCase = true) } == null
 			) {
-				// Add the segmented suggest as first item if it didn't already exist
-				listOf(SuggestionItem(segmentedWord, 1.0, 0.1)) + suggestions
+				// Add the segmented suggest as the last item
+				suggestions.toMutableList().apply { add(SuggestionItem(segmentedWord, 1.0, 0.1)) }
 			} else {
 				suggestions
 			}

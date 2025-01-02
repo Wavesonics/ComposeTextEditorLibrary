@@ -24,18 +24,17 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalClipboardManager
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.drawText
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.toSize
-import androidx.compose.ui.util.fastForEach
-import com.darkrockstudios.texteditor.cursor.drawCursor
+import com.darkrockstudios.texteditor.cursor.DrawCursor
 import com.darkrockstudios.texteditor.richstyle.RichSpan
 import com.darkrockstudios.texteditor.scrollbar.TextEditorScrollbar
 import com.darkrockstudios.texteditor.state.SpanClickType
 import com.darkrockstudios.texteditor.state.TextEditorState
 import com.darkrockstudios.texteditor.state.rememberTextEditorState
 import kotlinx.coroutines.delay
+
+private const val CURSOR_BLINK_SPEED_MS = 500L
 
 @Composable
 fun TextEditor(
@@ -63,7 +62,7 @@ fun TextEditor(
 
 		state.setCursorVisible()
 		while (state.isFocused) {
-			delay(500)
+			delay(CURSOR_BLINK_SPEED_MS)
 			state.toggleCursor()
 		}
 	}
@@ -114,42 +113,16 @@ fun TextEditor(
 							)
 					) {
 						try {
-							// Draw placeholder if text is empty
 							if (state.isEmpty() && style.placeholderText.isNotEmpty()) {
-								drawText(
-									textMeasurer = state.textMeasurer,
-									text = style.placeholderText,
-									style = TextStyle.Default.copy(
-										color = style.placeholderColor,
-									),
-									topLeft = Offset(0f, 0f)
-								)
+								DrawPlaceholderText(state, style)
 							}
 
-							var lastLine = -1
-							state.lineOffsets.fastForEach { virtualLine ->
-								if (lastLine != virtualLine.line && state.textLines.size > virtualLine.line) {
-									val line = state.textLines[virtualLine.line]
+							DrawEditorText(state, style)
 
-									drawText(
-										textMeasurer = state.textMeasurer,
-										text = line,
-										topLeft = virtualLine.offset,
-										style = TextStyle.Default.copy(
-											color = style.placeholderColor,
-										)
-									)
-
-									lastLine = virtualLine.line
-								}
-
-								drawRichSpans(virtualLine, state)
-							}
-
-							drawSelection(state, style.selectionColor)
+							DrawSelection(state, style.selectionColor)
 
 							if (enabled && state.isFocused && state.isCursorVisible) {
-								drawCursor(state, style.cursorColor)
+								DrawCursor(state, style.cursorColor)
 							}
 						} catch (e: IllegalArgumentException) {
 							// Handle resize exception gracefully

@@ -12,8 +12,11 @@ import androidx.compose.ui.unit.dp
 import com.darkrockstudios.symspellkt.api.SpellChecker
 import com.darkrockstudios.texteditor.RichSpanClickListener
 import com.darkrockstudios.texteditor.TextEditor
+import com.darkrockstudios.texteditor.TextEditorRange
+import com.darkrockstudios.texteditor.spellcheck.utils.debounceUntilQuiescentWithBatch
 import com.darkrockstudios.texteditor.state.SpanClickType
-import com.mohamedrejeb.richeditor.compose.spellcheck.utils.debounceUntilQuiescent
+import com.darkrockstudios.texteditor.state.TextEditOperation
+import com.darkrockstudios.texteditor.state.TextEditorState
 import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
@@ -28,9 +31,20 @@ fun SpellCheckingTextEditor(
 	val wordVisibilityBuffer = DpToPx(35.dp)
 
 	LaunchedEffect(state) {
-		state.textState.editOperations.debounceUntilQuiescent(500.milliseconds)
+		state.textState.editOperations
 			.collect { operation ->
-				state.onTextChange(operation)
+				state.invalidateSpellCheckSpans(operation)
+			}
+	}
+
+	LaunchedEffect(state) {
+		state.textState.editOperations.debounceUntilQuiescentWithBatch(500.milliseconds)
+			.collect { operations ->
+				println("Delivering operations: ${operations.size}")
+				val rangesToCheck = computeAffectedRanges(operations, state.textState)
+				rangesToCheck.forEach { range ->
+					state.runPartialSpellCheck(range)
+				}
 			}
 	}
 
@@ -68,4 +82,30 @@ fun SpellCheckingTextEditor(
 private fun DpToPx(dp: Dp): Float {
 	val density = LocalDensity.current.density
 	return dp.value * density
+}
+
+private fun computeAffectedRanges(
+	operations: List<TextEditOperation>,
+	state: TextEditorState
+): List<TextEditorRange> {
+	return operations.fold(mutableListOf<TextEditorRange>()) { ranges, op ->
+		val opRange = when (op) {
+			is TextEditOperation.Insert -> TextEditorRange(
+				op.position,
+				op.position.copy(char = op.position.char + op.text.length)
+			)
+
+			is TextEditOperation.Delete -> op.range
+			is TextEditOperation.Replace -> op.range
+			else -> null
+		}
+		opRange?.let { newRange ->
+			// Merge overlapping ranges
+			val overlapping = ranges.filter { it.intersects(newRange) }
+			ranges.removeAll(overlapping)
+			val mergedRange = overlapping.fold(newRange) { acc, r -> acc.merge(r) }
+			ranges.add(mergedRange)
+		}
+		ranges
+	}
 }

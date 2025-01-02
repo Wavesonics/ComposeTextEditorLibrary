@@ -704,7 +704,7 @@ class TextEditManager(private val state: TextEditorState) {
 					preserved.relativeEnd.char
 			)
 
-			state.richSpanManager.addRichSpan(startPos, endPos, preserved.style)
+			state.addRichSpan(startPos, endPos, preserved.style)
 		}
 	}
 

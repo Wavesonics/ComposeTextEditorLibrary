@@ -1,4 +1,4 @@
-package com.mohamedrejeb.richeditor.compose.spellcheck.utils
+package com.darkrockstudios.texteditor.spellcheck.utils
 
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -14,6 +14,24 @@ internal fun <T> Flow<T>.debounceUntilQuiescent(duration: Duration): Flow<T> = c
 		job = launch {
 			delay(duration)
 			send(value)
+			job = null
+		}
+	}
+}
+
+internal fun <T> Flow<T>.debounceUntilQuiescentWithBatch(
+	duration: Duration
+): Flow<List<T>> = channelFlow {
+	val operations = mutableListOf<T>()
+	var job: Job? = null
+
+	collect { value ->
+		operations.add(value)
+		job?.cancel()
+		job = launch {
+			delay(duration)
+			send(operations.toList())
+			operations.clear()
 			job = null
 		}
 	}

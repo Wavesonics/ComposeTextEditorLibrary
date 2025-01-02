@@ -6,7 +6,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import com.darkrockstudios.texteditor.state.TextEditorState
 
-internal fun DrawScope.drawSelection(
+internal fun DrawScope.DrawSelection(
 	state: TextEditorState,
 	selectionColor: Color,
 ) {

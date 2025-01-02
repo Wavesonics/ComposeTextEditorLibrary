@@ -55,6 +55,18 @@ kotlin {
 				implementation(libs.kotlinx.coroutines.swing)
 			}
 		}
+
+		val desktopTest by getting {
+			dependencies {
+				implementation(libs.jetbrains.kotlin.test)
+				implementation(libs.jetbrains.kotlin.test.junit)
+				implementation(libs.mockk)
+				implementation(libs.kotlinx.coroutines.test)
+				implementation(libs.kotlinx.coroutines.test.jvm)
+
+				implementation(libs.symspellkt)
+			}
+		}
 	}
 }
 

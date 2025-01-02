@@ -5,29 +5,32 @@ import com.darkrockstudios.texteditor.richstyle.RichSpan
 import com.darkrockstudios.texteditor.richstyle.RichSpanStyle
 
 // History manager for undo/redo support
-class TextEditHistory {
-	private val undoStack = mutableListOf<HistoryEntry>()
-	private val redoStack = mutableListOf<HistoryEntry>()
+class TextEditHistory(private val maxHistorySize: Int = 100) {
+	private val undoQueue = ArrayDeque<HistoryEntry>(maxHistorySize)
+	private val redoQueue = ArrayDeque<HistoryEntry>(maxHistorySize)
 
-	fun hasUndoLevels(): Boolean = undoStack.isNotEmpty()
-	fun hasRedoLevels(): Boolean = redoStack.isNotEmpty()
+	fun hasUndoLevels(): Boolean = undoQueue.isNotEmpty()
+	fun hasRedoLevels(): Boolean = redoQueue.isNotEmpty()
 
 	fun recordEdit(operation: TextEditOperation, metadata: OperationMetadata) {
-		undoStack.add(HistoryEntry(operation, metadata))
-		redoStack.clear() // Clear redo stack when new edit is made
+		if (undoQueue.size >= maxHistorySize) {
+			undoQueue.removeFirstOrNull()
+		}
+		undoQueue.addLast(HistoryEntry(operation, metadata))
+		redoQueue.clear() // Clear redo queue when new edit is made
 	}
 
 	fun undo(): HistoryEntry? {
-		return undoStack.removeLastOrNull()?.also { redoStack.add(it) }
+		return undoQueue.removeLastOrNull()?.also { redoQueue.addLast(it) }
 	}
 
 	fun redo(): HistoryEntry? {
-		return redoStack.removeLastOrNull()?.also { undoStack.add(it) }
+		return redoQueue.removeLastOrNull()?.also { undoQueue.addLast(it) }
 	}
 
 	fun clear() {
-		undoStack.clear()
-		redoStack.clear()
+		undoQueue.clear()
+		redoQueue.clear()
 	}
 }
 
