@@ -40,10 +40,11 @@ fun SpellCheckingTextEditor(
 	LaunchedEffect(state) {
 		state.textState.editOperations.debounceUntilQuiescentWithBatch(500.milliseconds)
 			.collect { operations ->
-				val rangesToCheck = computeAffectedRanges(operations, state.textState)
-				rangesToCheck.forEach { range ->
-					state.runPartialSpellCheck(range)
-				}
+				state.runFullSpellCheck()
+//				val rangesToCheck = computeAffectedRanges(operations, state.textState)
+//				rangesToCheck.forEach { range ->
+//					state.runPartialSpellCheck(range)
+//				}
 			}
 	}
 
