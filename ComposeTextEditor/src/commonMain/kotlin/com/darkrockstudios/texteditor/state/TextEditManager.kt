@@ -589,8 +589,16 @@ class TextEditManager(private val state: TextEditorState) {
 		operation: TextEditOperation.Replace,
 		entry: HistoryEntry
 	) {
+		val undoRange = TextEditorRange(
+			start = operation.range.start,
+			end = CharLineOffset(
+				operation.range.start.line,
+				operation.range.start.char + operation.newText.length
+			)
+		)
+
 		val undoOperation = TextEditOperation.Replace(
-			range = operation.range,
+			range = undoRange,  // Use the adjusted range
 			oldText = operation.newText,  // B (current state)
 			newText = operation.oldText,  // A (what we're restoring)
 			cursorBefore = entry.operation.cursorAfter,
@@ -598,7 +606,6 @@ class TextEditManager(private val state: TextEditorState) {
 			inheritStyle = operation.inheritStyle
 		)
 
-		// Apply the operation atomically
 		applyOperation(undoOperation, addToHistory = false)
 
 		// Restore any preserved rich spans
