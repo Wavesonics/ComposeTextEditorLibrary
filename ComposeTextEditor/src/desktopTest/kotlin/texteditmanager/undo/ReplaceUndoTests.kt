@@ -181,7 +181,7 @@ class ReplaceUndoTests {
 
 		val range = TextEditorRange(
 			start = CharLineOffset(0, 3),
-			end = CharLineOffset(0, 8)
+			end = CharLineOffset(0, 9)
 		)
 		val newText = buildAnnotatedString {
 			pushStyle(SpanStyle(color = Color.Green))
@@ -190,9 +190,9 @@ class ReplaceUndoTests {
 		}
 		val replaceOperation = TextEditOperation.Replace(
 			range = range,
-			oldText = AnnotatedString("lo Wo"),
+			oldText = state.getTextInRange(range),  // This will preserve the original styles
 			newText = newText,
-			cursorBefore = CharLineOffset(0, 8),
+			cursorBefore = CharLineOffset(0, 9),
 			cursorAfter = CharLineOffset(0, 10),
 			inheritStyle = true
 		)

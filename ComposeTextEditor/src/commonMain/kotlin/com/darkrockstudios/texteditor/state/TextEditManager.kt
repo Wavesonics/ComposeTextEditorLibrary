@@ -553,7 +553,7 @@ class TextEditManager(private val state: TextEditorState) {
 			newText = operation.oldText,  // A (what we're restoring)
 			cursorBefore = entry.operation.cursorAfter,
 			cursorAfter = entry.operation.cursorBefore,
-			inheritStyle = operation.inheritStyle
+			inheritStyle = false
 		)
 
 		// Apply the operation atomically
@@ -683,11 +683,11 @@ class TextEditManager(private val state: TextEditorState) {
 					val newEnd = maxOf(end, overlapping.maxOf { it.last })
 
 					ranges.add(newStart..newEnd)
-					addStyle(item as SpanStyle, newStart, newEnd)
+					addStyle(item, newStart, newEnd)
 				} else {
 					// No overlap - add new range
 					ranges.add(start..end)
-					addStyle(item as SpanStyle, start, end)
+					addStyle(item, start, end)
 				}
 			}
 
