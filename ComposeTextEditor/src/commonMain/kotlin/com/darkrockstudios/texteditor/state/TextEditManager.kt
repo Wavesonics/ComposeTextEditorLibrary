@@ -230,6 +230,19 @@ class TextEditManager(private val state: TextEditorState) {
 		newText: AnnotatedString,
 		inheritStyle: Boolean
 	): List<AnnotatedString> {
+
+		// If replacing entire document and not inheriting styles, just return the new text
+		if (!inheritStyle &&
+			range.start == CharLineOffset(0, 0) &&
+			range.end.line >= state.textLines.lastIndex
+		) {
+			return if (newText.contains('\n')) {
+				newText.splitAnnotatedString()
+			} else {
+				listOf(newText)
+			}
+		}
+
 		// Split the new text into lines if it contains newlines
 		val newLines = if (newText.contains('\n')) {
 			newText.splitAnnotatedString()
@@ -237,150 +250,81 @@ class TextEditManager(private val state: TextEditorState) {
 			listOf(newText)
 		}
 
-		// Validate range bounds
-		val startLine = range.start.line.coerceIn(0, state.textLines.lastIndex)
-		val endLine = range.end.line.coerceIn(0, state.textLines.lastIndex)
-
-		// Process first line - combine prefix with first new line
-		val firstLine = state.textLines[startLine]
+		// Process first line
+		val firstLine = state.textLines[range.start.line]
 		val firstLinePrefix =
 			firstLine.subSequence(0, range.start.char.coerceIn(0, firstLine.length))
 
-		// Collect inherited styles if needed
-		val inheritedStyles = if (inheritStyle) {
-			// Collect styles from the first line that overlap with our range
-			firstLine.spanStyles.filter { span ->
-				span.start <= range.end.char && span.end >= range.start.char
-			}.map { it.item }.toSet()
-		} else {
-			emptySet()
-		}
-
-		// Process last line - get suffix if it exists
-		val lastLineSuffix = if (endLine < state.textLines.size) {
-			val lastLine = state.textLines[endLine]
-			lastLine.subSequence(
-				range.end.char.coerceIn(0, lastLine.length),
-				lastLine.length
-			)
+		// Process last line
+		val lastLineSuffix = if (range.end.line < state.textLines.size) {
+			val lastLine = state.textLines[range.end.line]
+			lastLine.subSequence(range.end.char.coerceIn(0, lastLine.length), lastLine.length)
 		} else {
 			null
 		}
 
 		return buildList {
 			if (!newText.contains('\n')) {
-				// Single-line case
-				add(buildAnnotatedString {
-					append(firstLinePrefix.text)
-					append(newText.text)
-					if (lastLineSuffix != null) {
-						append(lastLineSuffix.text)
-					}
+				// Single-line case - use SpanManager for the entire operation
+				val processedSpans = spanManager.processSpans(
+					originalText = firstLine,
+					deletionStart = range.start.char,
+					deletionEnd = range.end.char,
+					insertionPoint = range.start.char,
+					insertedText = if (inheritStyle) newText else null
+				)
 
-					// Handle styles from prefix
-					firstLinePrefix.spanStyles.forEach { span ->
-						addStyle(span.item, span.start, span.end)
-					}
-
-					val prefixLength = firstLinePrefix.length
-
-					// If inheriting styles, apply them to the new text
-					if (inheritStyle) {
-						inheritedStyles.forEach { style ->
-							addStyle(style, prefixLength, prefixLength + newText.length)
-						}
-					}
-
-					// Add new text styles on top of inherited styles
-					newText.spanStyles.forEach { span ->
-						addStyle(span.item, span.start + prefixLength, span.end + prefixLength)
-					}
-
-					// Handle styles from suffix
-					if (lastLineSuffix != null) {
-						val offset = prefixLength + newText.length
-						lastLineSuffix.spanStyles.forEach { span ->
-							addStyle(span.item, span.start + offset, span.end + offset)
-						}
-					}
-				})
+				add(
+					AnnotatedString(
+						text = firstLinePrefix.text + newText.text + (lastLineSuffix?.text ?: ""),
+						spanStyles = processedSpans
+					)
+				)
 			} else {
-				// First line: combine prefix with first line of new text
-				add(buildAnnotatedString {
-					append(firstLinePrefix.text)
-					append(newLines.first().text)
-
-					// Handle styles from prefix
-					firstLinePrefix.spanStyles.forEach { span ->
-						addStyle(span.item, span.start, span.end)
-					}
-
-					val prefixLength = firstLinePrefix.length
-
-					// If inheriting styles, apply them to the first line portion
-					if (inheritStyle) {
-						inheritedStyles.forEach { style ->
-							addStyle(style, prefixLength, prefixLength + newLines.first().length)
-						}
-					}
-
-					// Add new text styles for first line
-					newLines.first().spanStyles.forEach { span ->
-						addStyle(span.item, span.start + prefixLength, span.end + prefixLength)
-					}
-				})
+				// Multi-line case
+				// First line
+				val firstLineSpans = spanManager.processSpans(
+					originalText = firstLine,
+					deletionStart = range.start.char,
+					deletionEnd = firstLine.length,
+					insertionPoint = range.start.char,
+					insertedText = if (inheritStyle) newLines.first() else null
+				)
+				add(
+					AnnotatedString(
+						text = firstLinePrefix.text + newLines.first().text,
+						spanStyles = firstLineSpans
+					)
+				)
 
 				// Middle lines
 				if (newLines.size > 2) {
-					// For middle lines, either use their styles or inherit
 					newLines.subList(1, newLines.lastIndex).forEach { line ->
-						add(buildAnnotatedString {
-							append(line.text)
-
-							// If inheriting styles, apply them to the whole line
-							if (inheritStyle) {
-								inheritedStyles.forEach { style ->
-									addStyle(style, 0, line.length)
-								}
-							}
-
-							// Add line's own styles on top
-							line.spanStyles.forEach { span ->
-								addStyle(span.item, span.start, span.end)
-							}
-						})
+						add(line)
 					}
 				}
 
-				// Last line: combine last line of new text with suffix
+				// Last line
 				if (newLines.size > 1) {
 					val lastNewLine = newLines.last()
-					add(buildAnnotatedString {
-						append(lastNewLine.text)
-						if (lastLineSuffix != null) {
-							append(lastLineSuffix.text)
-						}
+					val lastLineSpans = if (lastLineSuffix != null) {
+						spanManager.processSpans(
+							originalText = state.textLines[range.end.line],
+							deletionStart = 0,
+							deletionEnd = range.end.char,
+							insertionPoint = 0,
+							insertedText = if (inheritStyle) lastNewLine else null
+						)
+					} else {
+						lastNewLine.spanStyles
+					}
 
-						// If inheriting styles, apply them to the last line portion
-						if (inheritStyle) {
-							inheritedStyles.forEach { style ->
-								addStyle(style, 0, lastNewLine.length)
-							}
-						}
-
-						// Add last line's own styles
-						lastNewLine.spanStyles.forEach { span ->
-							addStyle(span.item, span.start, span.end)
-						}
-
-						// Handle styles from suffix
-						if (lastLineSuffix != null) {
-							val offset = lastNewLine.length
-							lastLineSuffix.spanStyles.forEach { span ->
-								addStyle(span.item, span.start + offset, span.end + offset)
-							}
-						}
-					})
+					add(
+						AnnotatedString(
+							text = lastNewLine.text + (lastLineSuffix?.text ?: ""),
+							spanStyles = lastLineSpans
+						)
+					)
 				}
 			}
 		}
