@@ -693,9 +693,11 @@ class TextEditorState(
 
 	fun getAllText(): AnnotatedString {
 		return buildAnnotatedString {
-			textLines.forEach { line ->
+			textLines.forEachIndexed { index, line ->
 				append(line)
-				append('\n')
+				if (index < textLines.lastIndex) {
+					append('\n')
+				}
 			}
 		}
 	}
