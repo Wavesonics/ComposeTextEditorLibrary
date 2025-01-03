@@ -230,103 +230,35 @@ class TextEditManager(private val state: TextEditorState) {
 		newText: AnnotatedString,
 		inheritStyle: Boolean
 	): List<AnnotatedString> {
-
-		// If replacing entire document and not inheriting styles, just return the new text
-		if (!inheritStyle &&
-			range.start == CharLineOffset(0, 0) &&
-			range.end.line >= state.textLines.lastIndex
-		) {
-			return if (newText.contains('\n')) {
-				newText.splitAnnotatedString()
-			} else {
-				listOf(newText)
-			}
-		}
-
-		// Split the new text into lines if it contains newlines
-		val newLines = if (newText.contains('\n')) {
-			newText.splitAnnotatedString()
-		} else {
-			listOf(newText)
-		}
-
-		// Process first line
+		// Extract prefix from the first line
 		val firstLine = state.textLines[range.start.line]
-		val firstLinePrefix =
-			firstLine.subSequence(0, range.start.char.coerceIn(0, firstLine.length))
+		val prefix = firstLine.subSequence(0, range.start.char.coerceIn(0, firstLine.length))
 
-		// Process last line
-		val lastLineSuffix = if (range.end.line < state.textLines.size) {
+		// Extract suffix from the last line
+		val suffix = if (range.end.line < state.textLines.size) {
 			val lastLine = state.textLines[range.end.line]
 			lastLine.subSequence(range.end.char.coerceIn(0, lastLine.length), lastLine.length)
 		} else {
-			null
+			AnnotatedString("")
 		}
 
-		return buildList {
-			if (!newText.contains('\n')) {
-				// Single-line case - use SpanManager for the entire operation
-				val processedSpans = spanManager.processSpans(
-					originalText = firstLine,
-					deletionStart = range.start.char,
-					deletionEnd = range.end.char,
-					insertionPoint = range.start.char,
-					insertedText = if (inheritStyle) newText else null
-				)
+		return if (newText.contains('\n')) {
+			val newLines = newText.splitAnnotatedString()
 
-				add(
-					AnnotatedString(
-						text = firstLinePrefix.text + newText.text + (lastLineSuffix?.text ?: ""),
-						spanStyles = processedSpans
-					)
-				)
-			} else {
-				// Multi-line case
-				// First line
-				val firstLineSpans = spanManager.processSpans(
-					originalText = firstLine,
-					deletionStart = range.start.char,
-					deletionEnd = firstLine.length,
-					insertionPoint = range.start.char,
-					insertedText = if (inheritStyle) newLines.first() else null
-				)
-				add(
-					AnnotatedString(
-						text = firstLinePrefix.text + newLines.first().text,
-						spanStyles = firstLineSpans
-					)
-				)
+			buildList {
+				add(appendAnnotatedStrings(prefix, newLines.first()))
 
-				// Middle lines
-				if (newLines.size > 2) {
-					newLines.subList(1, newLines.lastIndex).forEach { line ->
-						add(line)
-					}
+				(1..<newLines.lastIndex).forEach { newLineIndex ->
+					add(newLines[newLineIndex])
 				}
 
-				// Last line
-				if (newLines.size > 1) {
-					val lastNewLine = newLines.last()
-					val lastLineSpans = if (lastLineSuffix != null) {
-						spanManager.processSpans(
-							originalText = state.textLines[range.end.line],
-							deletionStart = 0,
-							deletionEnd = range.end.char,
-							insertionPoint = 0,
-							insertedText = if (inheritStyle) lastNewLine else null
-						)
-					} else {
-						lastNewLine.spanStyles
-					}
-
-					add(
-						AnnotatedString(
-							text = lastNewLine.text + (lastLineSuffix?.text ?: ""),
-							spanStyles = lastLineSpans
-						)
-					)
-				}
+				add(appendAnnotatedStrings(newLines.last(), suffix))
 			}
+		} else {
+			listOf(
+				//buildAnnotatedStringWithSpans {  }
+				combineAnnotatedStrings(prefix, newText, suffix)
+			)
 		}
 	}
 
@@ -688,6 +620,35 @@ class TextEditManager(private val state: TextEditorState) {
 		}
 	}
 
+	internal fun combineAnnotatedStrings(
+		prefix: AnnotatedString,
+		center: AnnotatedString,
+		suffix: AnnotatedString,
+	): AnnotatedString {
+		val temp = appendAnnotatedStrings(prefix, center)
+		return appendAnnotatedStrings(temp, suffix)
+	}
+
+	internal fun appendAnnotatedStrings(
+		original: AnnotatedString,
+		newText: AnnotatedString
+	): AnnotatedString = mergeAnnotatedStrings(
+		original = original,
+		start = original.length,
+		end = original.length,
+		newText = newText
+	)
+
+	internal fun prependAnnotatedStrings(
+		original: AnnotatedString,
+		newText: AnnotatedString
+	): AnnotatedString = mergeAnnotatedStrings(
+		original = original,
+		start = 0,
+		end = 0,
+		newText = newText
+	)
+
 	internal fun mergeAnnotatedStrings(
 		original: AnnotatedString,
 		start: Int,
@@ -761,6 +722,7 @@ class TextEditManager(private val state: TextEditorState) {
 		state.updateLine(lineIndex, newText)
 	}
 
+	// TODO should be done in SpanManager, or it already is in proccessSpan?
 	private fun mergeOverlaps(
 		existingSpans: List<AnnotatedString.Range<SpanStyle>>,
 		spanStyle: SpanStyle,
