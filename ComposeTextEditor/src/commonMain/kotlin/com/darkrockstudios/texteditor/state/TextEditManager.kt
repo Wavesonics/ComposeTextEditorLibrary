@@ -232,18 +232,39 @@ class TextEditManager(private val state: TextEditorState) {
 	): List<AnnotatedString> {
 		// Extract prefix from the first line
 		val firstLine = state.textLines[range.start.line]
-		val prefix = firstLine.subSequence(0, range.start.char.coerceIn(0, firstLine.length))
+		val prefix =
+			firstLine.subSequence(0, range.start.char.coerceIn(0, firstLine.length)).ifEmpty {
+				AnnotatedString("")
+			}
+
+		val inheritedStyles = if (inheritStyle) {
+			getStyles(range)
+		} else {
+			emptySet()
+		}
 
 		// Extract suffix from the last line
 		val suffix = if (range.end.line < state.textLines.size) {
 			val lastLine = state.textLines[range.end.line]
 			lastLine.subSequence(range.end.char.coerceIn(0, lastLine.length), lastLine.length)
+				.ifEmpty {
+					AnnotatedString("")
+				}
 		} else {
 			AnnotatedString("")
 		}
 
 		return if (newText.contains('\n')) {
-			val newLines = newText.splitAnnotatedString()
+			val newLines = if (inheritStyle) {
+				buildAnnotatedStringWithSpans { addSpan ->
+					append(newText.text)
+					inheritedStyles.forEach { style ->
+						addSpan(style, 0, newText.lastIndex)
+					}
+				}.splitAnnotatedString()
+			} else {
+				newText.splitAnnotatedString()
+			}
 
 			buildList {
 				add(appendAnnotatedStrings(prefix, newLines.first()))
@@ -256,9 +277,44 @@ class TextEditManager(private val state: TextEditorState) {
 			}
 		} else {
 			listOf(
-				//buildAnnotatedStringWithSpans {  }
-				combineAnnotatedStrings(prefix, newText, suffix)
+				buildAnnotatedString {
+					append(prefix)
+					if (inheritStyle) {
+						buildAnnotatedStringWithSpans { addSpan ->
+							append(newText.text)
+							inheritedStyles.forEach { style ->
+								addSpan(style, 0, newText.lastIndex)
+							}
+						}
+					} else {
+						append(newText)
+					}
+					append(suffix)
+				}
 			)
+		}
+	}
+
+	private fun getStyles(range: TextEditorRange): Set<SpanStyle> {
+		val firstLine = state.textLines[range.start.line]
+		// Collect styles from all affected lines that overlap with our range
+		return buildSet {
+			// First line styles
+			addAll(firstLine.spanStyles
+				.filter { span -> span.end > range.start.char }
+				.map { it.item })
+
+			// Middle lines styles (if any)
+			(range.start.line + 1 until range.end.line).forEach { lineIndex ->
+				addAll(state.textLines[lineIndex].spanStyles.map { it.item })
+			}
+
+			// Last line styles (if different from first line)
+			if (range.end.line > range.start.line && range.end.line < state.textLines.size) {
+				addAll(state.textLines[range.end.line].spanStyles
+					.filter { span -> span.start < range.end.char }
+					.map { it.item })
+			}
 		}
 	}
 
@@ -465,16 +521,34 @@ class TextEditManager(private val state: TextEditorState) {
 		operation: TextEditOperation.Replace,
 		entry: HistoryEntry
 	) {
-		val undoRange = TextEditorRange(
-			start = operation.range.start,
-			end = CharLineOffset(
-				operation.range.start.line,
-				operation.range.start.char + operation.newText.length
-			)
-		)
+		// For single-line to multi-line replacements, we need to handle differently
+		val undoRange =
+			if (operation.oldText.contains('\n').not() && operation.newText.contains('\n')) {
+				// If we expanded a single line into multiple lines, capture the whole new range
+				val newLines = operation.newText.text.split('\n')
+				TextEditorRange(
+					start = operation.range.start,
+					end = CharLineOffset(
+						operation.range.start.line + newLines.size - 1,
+						newLines.last().length
+					)
+				)
+			} else if (operation.newText.contains('\n')) {
+				// For multi-line replacements, use the original range
+				operation.range
+			} else {
+				// For single-line replacements, adjust the end position based on length difference
+				TextEditorRange(
+					start = operation.range.start,
+					end = CharLineOffset(
+						operation.range.start.line,
+						operation.range.start.char + operation.newText.length
+					)
+				)
+			}
 
 		val undoOperation = TextEditOperation.Replace(
-			range = undoRange,  // Use the adjusted range
+			range = undoRange,
 			oldText = operation.newText,  // B (current state)
 			newText = operation.oldText,  // A (what we're restoring)
 			cursorBefore = entry.operation.cursorAfter,
@@ -482,6 +556,7 @@ class TextEditManager(private val state: TextEditorState) {
 			inheritStyle = operation.inheritStyle
 		)
 
+		// Apply the operation atomically
 		applyOperation(undoOperation, addToHistory = false)
 
 		// Restore any preserved rich spans
@@ -585,13 +660,13 @@ class TextEditManager(private val state: TextEditorState) {
 	}
 
 	private fun buildAnnotatedStringWithSpans(
-		block: AnnotatedString.Builder.(addSpan: (Any, Int, Int) -> Unit) -> Unit
+		block: AnnotatedString.Builder.(addSpan: (SpanStyle, Int, Int) -> Unit) -> Unit
 	): AnnotatedString {
 		return buildAnnotatedString {
 			// Track spans by style to detect overlaps
 			val spansByStyle = mutableMapOf<Any, MutableSet<IntRange>>()
 
-			fun addSpanIfNew(item: Any, start: Int, end: Int) {
+			fun addSpanIfNew(item: SpanStyle, start: Int, end: Int) {
 				val ranges = spansByStyle.getOrPut(item) { mutableSetOf() }
 
 				// Check for overlaps

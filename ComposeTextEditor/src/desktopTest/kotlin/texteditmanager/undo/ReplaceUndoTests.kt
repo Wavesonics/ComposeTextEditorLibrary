@@ -33,9 +33,6 @@ class ReplaceUndoTests {
 	@Test
 	fun `test undo basic single line replace`() {
 		state.setText("Hello World")
-		println("Initial Range: ${CharLineOffset(0, 6)} to ${CharLineOffset(0, 11)}")
-		println("Initial oldText: World")
-		println("Initial newText: Everyone")
 
 		val range = TextEditorRange(
 			start = CharLineOffset(0, 6),
@@ -51,13 +48,9 @@ class ReplaceUndoTests {
 		)
 
 		state.editManager.applyOperation(replaceOperation)
-		println("After replace text: ${state.textLines[0].text}")
-		println("After replace spans: ${state.textLines[0].spanStyles}")
 		assertEquals("Hello Everyone", state.textLines[0].text)
 
 		state.undo()
-		println("After undo text: ${state.textLines[0].text}")
-		println("After undo spans: ${state.textLines[0].spanStyles}")
 		assertEquals("Hello World", state.textLines[0].text)
 		assertEquals(CharLineOffset(0, 11), state.cursorPosition)
 	}
@@ -112,12 +105,12 @@ class ReplaceUndoTests {
 
 		val range = TextEditorRange(
 			start = CharLineOffset(0, 6),
-			end = CharLineOffset(2, 4)
+			end = CharLineOffset(2, 5)
 		)
 		val replaceOperation = TextEditOperation.Replace(
 			range = range,
 			oldText = buildAnnotatedString {
-				append("Line\nSecond Line\nThir")
+				append("Line\nSecond Line\nThird")
 			},
 			newText = AnnotatedString("Text"),
 			cursorBefore = CharLineOffset(2, 4),
@@ -133,6 +126,7 @@ class ReplaceUndoTests {
 
 		// Undo and verify original structure
 		state.undo()
+
 		assertEquals(3, state.textLines.size)
 		assertEquals("First Line", state.textLines[0].text)
 		assertEquals("Second Line", state.textLines[1].text)
