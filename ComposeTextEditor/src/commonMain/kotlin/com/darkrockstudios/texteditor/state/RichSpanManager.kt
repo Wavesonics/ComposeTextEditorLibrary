@@ -46,12 +46,7 @@ class RichSpanManager(
 						updatedSpans,
 						span
 					)
-
-					is TextEditOperation.Replace -> {
-						handleReplace(operation, metadata)
-						return
-					}
-
+					is TextEditOperation.Replace -> handleReplace(operation, updatedSpans, span)
 					is TextEditOperation.StyleSpan -> handleStyleSpan(updatedSpans, span)
 				}
 			}
@@ -143,24 +138,114 @@ class RichSpanManager(
 
 	private fun handleReplace(
 		operation: TextEditOperation.Replace,
-		metadata: OperationMetadata?
+		updatedSpans: MutableSet<RichSpan>,
+		span: RichSpan
 	) {
-		// Handle replace as a delete followed by insert
-		val deleteOp = TextEditOperation.Delete(
-			range = operation.range,
-			cursorBefore = operation.cursorBefore,
-			cursorAfter = operation.range.start,
-		)
-		updateSpans(deleteOp, metadata)
+		// Calculate new end position after replacement
+		val newEnd = if (operation.newText.contains('\n')) {
+			val lines = operation.newText.text.split('\n')
+			val lastLineLength = lines.last().length
+			CharLineOffset(
+				operation.range.start.line + (lines.size - 1),
+				if (lines.size == 1) operation.range.start.char + lastLineLength else lastLineLength
+			)
+		} else {
+			CharLineOffset(
+				operation.range.start.line,
+				operation.range.start.char + operation.newText.length
+			)
+		}
 
-		val insertOp = TextEditOperation.Insert(
-			position = operation.range.start,
-			text = operation.newText,
-			cursorBefore = operation.range.start,
-			cursorAfter = operation.cursorAfter
-		)
-		updateSpans(insertOp, metadata)
-		return
+		when {
+			// Span ends before replacement - keep as is
+			span.range.end.line < operation.range.start.line ||
+					(span.range.end.line == operation.range.start.line &&
+							span.range.end.char <= operation.range.start.char) -> {
+				updatedSpans.add(span)
+			}
+
+			// Span starts after replacement - adjust position
+			span.range.start.line > operation.range.end.line ||
+					(span.range.start.line == operation.range.end.line &&
+							span.range.start.char >= operation.range.end.char) -> {
+				// Calculate position adjustment
+				val lineDiff = newEnd.line - operation.range.end.line
+				val charDiff = if (span.range.start.line == operation.range.end.line) {
+					newEnd.char - operation.range.end.char
+				} else 0
+
+				// Adjust span positions
+				val newStart = CharLineOffset(
+					span.range.start.line + lineDiff,
+					span.range.start.char + charDiff
+				)
+				val newEndPos = CharLineOffset(
+					span.range.end.line + lineDiff,
+					span.range.end.char + charDiff
+				)
+				updatedSpans.add(span.copy(range = TextEditorRange(newStart, newEndPos)))
+			}
+
+			// Span overlaps with replacement
+			else -> {
+				// If span starts before replacement
+				if (span.range.start.line < operation.range.start.line ||
+					(span.range.start.line == operation.range.start.line &&
+							span.range.start.char < operation.range.start.char)
+				) {
+
+					// If span also ends after replacement, bridge across
+					if (span.range.end.line > operation.range.end.line ||
+						(span.range.end.line == operation.range.end.line &&
+								span.range.end.char > operation.range.end.char)
+					) {
+						// Create spanning span
+						updatedSpans.add(
+							span.copy(
+								range = TextEditorRange(
+									span.range.start,
+									CharLineOffset(
+										newEnd.line + (span.range.end.line - operation.range.end.line),
+										if (span.range.end.line == operation.range.end.line)
+											newEnd.char + (span.range.end.char - operation.range.end.char)
+										else span.range.end.char
+									)
+								)
+							)
+						)
+					} else {
+						// Span ends within replacement - truncate at replacement start
+						updatedSpans.add(
+							span.copy(
+								range = TextEditorRange(
+									span.range.start,
+									operation.range.start
+								)
+							)
+						)
+					}
+				} else if (span.range.end.line > operation.range.end.line ||
+					(span.range.end.line == operation.range.end.line &&
+							span.range.end.char > operation.range.end.char)
+				) {
+					// Span starts within replacement but ends after - preserve end portion
+					updatedSpans.add(
+						span.copy(
+							range = TextEditorRange(
+								newEnd,
+								CharLineOffset(
+									newEnd.line + (span.range.end.line - operation.range.end.line),
+									if (span.range.end.line == operation.range.end.line)
+										newEnd.char + (span.range.end.char - operation.range.end.char)
+									else span.range.end.char
+								)
+							)
+						)
+					)
+				}
+				// Else span is entirely within replacement - it gets removed
+			}
+		}
 	}
 
 	private fun TextEditorRange.handleDelete(

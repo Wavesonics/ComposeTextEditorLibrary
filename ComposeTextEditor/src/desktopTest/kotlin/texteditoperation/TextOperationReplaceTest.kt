@@ -64,6 +64,27 @@ class TextOperationReplaceTest {
 	}
 
 	@Test
+	fun `test replace spanning multiple lines with multiple lines`() {
+		state.setText("Hello\nWorld\nText")
+
+		val operation = TextEditOperation.Replace(
+			range = TextEditorRange(
+				start = CharLineOffset(0, 5),
+				end = CharLineOffset(2, 4)
+			),
+			newText = AnnotatedString(" Awesome\nNew Line"),
+			oldText = AnnotatedString("\nWorld\nText"),
+			cursorBefore = CharLineOffset(0, 6),
+			cursorAfter = CharLineOffset(0, 11)
+		)
+
+		state.editManager.applyOperation(operation)
+
+		assertEquals(2, state.textLines.size)
+		assertEquals("Hello Awesome\nNew Line", state.getAllText().text)
+	}
+
+	@Test
 	fun `test replace with SpanStyle`() {
 		state.setText("Hello World")
 		val boldStyle = SpanStyle(fontWeight = FontWeight.Bold)
