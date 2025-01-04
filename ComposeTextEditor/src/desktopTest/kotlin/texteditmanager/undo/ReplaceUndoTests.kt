@@ -72,7 +72,7 @@ class ReplaceUndoTests {
 		)
 		val replaceOperation = TextEditOperation.Replace(
 			range = range,
-			oldText = AnnotatedString("World"),
+			oldText = state.getTextInRange(range),
 			newText = AnnotatedString("Everyone"),
 			cursorBefore = CharLineOffset(0, 11),
 			cursorAfter = CharLineOffset(0, 14),
@@ -305,9 +305,7 @@ class ReplaceUndoTests {
 		)
 		val replaceOperation = TextEditOperation.Replace(
 			range = range,
-			oldText = buildAnnotatedString {
-				append("Line\nSecond Line\nThird")
-			},
+			oldText = state.getTextInRange(range),
 			newText = AnnotatedString("NEW\nTEXT"),
 			cursorBefore = CharLineOffset(2, 5),
 			cursorAfter = CharLineOffset(1, 4),
@@ -327,6 +325,7 @@ class ReplaceUndoTests {
 		assertEquals("First Line", state.textLines[0].text)
 		assertEquals("Second Line", state.textLines[1].text)
 		assertEquals("Third Line", state.textLines[2].text)
+
 		// Verify original styles restored
 		assertTrue(state.textLines[0].spanStyles.any { it.item == redStyle })
 		assertTrue(state.textLines[1].spanStyles.any { it.item == blueStyle })
