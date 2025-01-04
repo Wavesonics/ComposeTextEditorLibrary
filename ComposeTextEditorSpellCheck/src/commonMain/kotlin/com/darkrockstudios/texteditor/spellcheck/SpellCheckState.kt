@@ -9,13 +9,13 @@ import com.darkrockstudios.symspellkt.common.spellingIsCorrect
 import com.darkrockstudios.texteditor.TextEditorRange
 import com.darkrockstudios.texteditor.richstyle.RichSpan
 import com.darkrockstudios.texteditor.richstyle.SpellCheckStyle
+import com.darkrockstudios.texteditor.spellcheck.utils.applyCapitalizationStrategy
 import com.darkrockstudios.texteditor.state.TextEditOperation
 import com.darkrockstudios.texteditor.state.TextEditorState
 import com.darkrockstudios.texteditor.state.WordSegment
 import com.darkrockstudios.texteditor.state.getRichSpansInRange
 import com.darkrockstudios.texteditor.state.wordSegments
 import com.darkrockstudios.texteditor.state.wordSegmentsInRange
-import com.mohamedrejeb.richeditor.compose.spellcheck.utils.applyCapitalizationStrategy
 
 class SpellCheckState(
 	val textState: TextEditorState,

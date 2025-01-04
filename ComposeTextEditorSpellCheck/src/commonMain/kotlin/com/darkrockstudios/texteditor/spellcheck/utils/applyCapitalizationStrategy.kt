@@ -1,4 +1,4 @@
-package com.mohamedrejeb.richeditor.compose.spellcheck.utils
+package com.darkrockstudios.texteditor.spellcheck.utils
 
 internal fun applyCapitalizationStrategy(source: String, target: String): String {
 	fun isAllUpperCase(str: String): Boolean = str.all { it.isUpperCase() || !it.isLetter() }
