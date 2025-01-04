@@ -59,7 +59,26 @@ internal fun isWordChar(text: CharSequence, pos: Int): Boolean {
 
 		// Special characters that might be part of a word
 		char == '\'' -> {
-			hasLetterAt(text, pos - 1) && hasLetterAt(text, pos + 1)
+			// Allow apostrophe if the preceding character is either a letter or a period
+			// and the following character is either a letter or this is an "'s" pattern
+			// that ends with punctuation or whitespace, etc.
+			val prev = text.getOrNull(pos - 1)
+			val next = text.getOrNull(pos + 1)
+
+			((prev?.isLetter() == true) || (prev == '.')) &&
+					when {
+						next == null -> false
+						next.isLetter() -> true
+						next == 's' -> {
+							// Check bounds (pos+2) for punctuation or whitespace, etc.
+							val afterS = text.getOrNull(pos + 2)
+							afterS == null ||
+									afterS.isWhitespace() ||
+									afterS in listOf('.', ',', ';', ':')
+						}
+
+						else -> false
+					}
 		}
 
 		char == '.' -> {

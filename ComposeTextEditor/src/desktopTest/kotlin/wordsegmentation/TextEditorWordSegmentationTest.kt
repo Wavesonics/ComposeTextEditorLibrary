@@ -122,6 +122,14 @@ class TextEditorWordSegmentationTest {
 	}
 
 	@Test
+	fun `test possessives with abbreviations`() {
+		assertSegments(
+			"U.S.'s example, NASA's work",
+			listOf("U.S.'s", "example", "NASA's", "work")
+		)
+	}
+
+	@Test
 	fun `test edge cases`() {
 		// Empty and whitespace
 		assertSegments("", emptyList())
