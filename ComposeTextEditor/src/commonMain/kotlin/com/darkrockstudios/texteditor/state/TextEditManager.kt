@@ -521,31 +521,30 @@ class TextEditManager(private val state: TextEditorState) {
 		operation: TextEditOperation.Replace,
 		entry: HistoryEntry
 	) {
-		// For single-line to multi-line replacements, we need to handle differently
-		val undoRange =
-			if (operation.oldText.contains('\n').not() && operation.newText.contains('\n')) {
-				// If we expanded a single line into multiple lines, capture the whole new range
-				val newLines = operation.newText.text.split('\n')
-				TextEditorRange(
-					start = operation.range.start,
-					end = CharLineOffset(
-						operation.range.start.line + newLines.size - 1,
-						newLines.last().length
-					)
-				)
-			} else if (operation.newText.contains('\n')) {
-				// For multi-line replacements, use the original range
-				operation.range
-			} else {
-				// For single-line replacements, adjust the end position based on length difference
-				TextEditorRange(
-					start = operation.range.start,
-					end = CharLineOffset(
-						operation.range.start.line,
+		// Calculate the current range of the replaced text
+		val undoRange = if (operation.newText.contains('\n')) {
+			// For any multi-line new text, calculate the current range it occupies
+			val newLines = operation.newText.text.split('\n')
+			TextEditorRange(
+				start = operation.range.start,
+				end = CharLineOffset(
+					operation.range.start.line + newLines.size - 1,
+					if (newLines.size == 1)
 						operation.range.start.char + operation.newText.length
-					)
+					else
+						newLines.last().length
 				)
-			}
+			)
+		} else {
+			// For single-line replacements, adjust the end position based on length difference
+			TextEditorRange(
+				start = operation.range.start,
+				end = CharLineOffset(
+					operation.range.start.line,
+					operation.range.start.char + operation.newText.length
+				)
+			)
+		}
 
 		val undoOperation = TextEditOperation.Replace(
 			range = undoRange,
