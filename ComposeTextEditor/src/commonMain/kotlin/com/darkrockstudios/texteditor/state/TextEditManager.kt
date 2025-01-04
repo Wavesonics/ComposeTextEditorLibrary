@@ -1,12 +1,14 @@
 package com.darkrockstudios.texteditor.state
 
-import androidx.annotation.VisibleForTesting
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import com.darkrockstudios.texteditor.CharLineOffset
 import com.darkrockstudios.texteditor.TextEditorRange
 import com.darkrockstudios.texteditor.annotatedstring.splitAnnotatedString
+import com.darkrockstudios.texteditor.utils.appendAnnotatedStrings
+import com.darkrockstudios.texteditor.utils.buildAnnotatedStringWithSpans
+import com.darkrockstudios.texteditor.utils.mergeAnnotatedStrings
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -47,7 +49,7 @@ class TextEditManager(private val state: TextEditorState) {
 		} else {
 			// Single line insert with span merging
 			val line = state._textLines[operation.position.line]
-			state._textLines[operation.position.line] = mergeAnnotatedStrings(
+			state._textLines[operation.position.line] = spanManager.mergeAnnotatedStrings(
 				original = line,
 				start = operation.position.char,
 				newText = operation.text
@@ -60,7 +62,7 @@ class TextEditManager(private val state: TextEditorState) {
 		line: AnnotatedString,
 		start: Int,
 		end: Int
-	): AnnotatedString = mergeAnnotatedStrings(
+	): AnnotatedString = spanManager.mergeAnnotatedStrings(
 		original = line,
 		start = start,
 		end = end
@@ -71,7 +73,7 @@ class TextEditManager(private val state: TextEditorState) {
 		start: Int,
 		end: Int,
 		newText: AnnotatedString
-	): AnnotatedString = mergeAnnotatedStrings(
+	): AnnotatedString = spanManager.mergeAnnotatedStrings(
 		original = line,
 		start = start,
 		end = end,
@@ -86,7 +88,7 @@ class TextEditManager(private val state: TextEditorState) {
 		// Split current line content
 		val prefixEndIndex = operation.position.char.coerceIn(0, currentLine.length)
 		val prefix = currentLine.subSequence(0, prefixEndIndex)
-		state._textLines[operation.position.line] = mergeAnnotatedStrings(
+		state._textLines[operation.position.line] = spanManager.mergeAnnotatedStrings(
 			original = prefix,
 			start = prefix.length,
 			newText = insertLines.first()
@@ -108,7 +110,7 @@ class TextEditManager(private val state: TextEditorState) {
 				endIndex = currentLine.length
 			)
 
-			val newLastLine = mergeAnnotatedStrings(
+			val newLastLine = spanManager.mergeAnnotatedStrings(
 				original = lastInsertedLine,
 				start = lastInsertedLine.length,
 				newText = suffix
@@ -268,13 +270,13 @@ class TextEditManager(private val state: TextEditorState) {
 			}
 
 			buildList {
-				add(appendAnnotatedStrings(prefix, newLines.first()))
+				add(spanManager.appendAnnotatedStrings(prefix, newLines.first()))
 
 				(1..<newLines.lastIndex).forEach { newLineIndex ->
 					add(newLines[newLineIndex])
 				}
 
-				add(appendAnnotatedStrings(newLines.last(), suffix))
+				add(spanManager.appendAnnotatedStrings(newLines.last(), suffix))
 			}
 		} else {
 			listOf(
@@ -608,101 +610,6 @@ class TextEditManager(private val state: TextEditorState) {
 			)
 
 			state.addRichSpan(startPos, endPos, preserved.style)
-		}
-	}
-
-	private fun buildAnnotatedStringWithSpans(
-		block: AnnotatedString.Builder.(addSpan: (SpanStyle, Int, Int) -> Unit) -> Unit
-	): AnnotatedString {
-		return buildAnnotatedString {
-			// Track spans by style to detect overlaps
-			val spansByStyle = mutableMapOf<Any, MutableSet<IntRange>>()
-
-			fun addSpanIfNew(item: SpanStyle, start: Int, end: Int) {
-				val ranges = spansByStyle.getOrPut(item) { mutableSetOf() }
-
-				// Check for overlaps
-				val overlapping = ranges.filter { range ->
-					start <= range.last + 1 && end >= range.first - 1
-				}
-
-				if (overlapping.isNotEmpty()) {
-					// Remove overlapping ranges
-					ranges.removeAll(overlapping.toSet())
-
-					// Create one merged range
-					val newStart = minOf(start, overlapping.minOf { it.first })
-					val newEnd = maxOf(end, overlapping.maxOf { it.last })
-
-					ranges.add(newStart..newEnd)
-					addStyle(item, newStart, newEnd)
-				} else {
-					// No overlap - add new range
-					ranges.add(start..end)
-					addStyle(item, start, end)
-				}
-			}
-
-			block(::addSpanIfNew)
-		}
-	}
-
-	@VisibleForTesting
-	internal fun combineAnnotatedStrings(
-		prefix: AnnotatedString,
-		center: AnnotatedString,
-		suffix: AnnotatedString,
-	): AnnotatedString {
-		val temp = appendAnnotatedStrings(prefix, center)
-		return appendAnnotatedStrings(temp, suffix)
-	}
-
-	@VisibleForTesting
-	internal fun appendAnnotatedStrings(
-		original: AnnotatedString,
-		newText: AnnotatedString
-	): AnnotatedString = mergeAnnotatedStrings(
-		original = original,
-		start = original.length,
-		end = original.length,
-		newText = newText
-	)
-
-	@VisibleForTesting
-	internal fun prependAnnotatedStrings(
-		original: AnnotatedString,
-		newText: AnnotatedString
-	): AnnotatedString = mergeAnnotatedStrings(
-		original = original,
-		start = 0,
-		end = 0,
-		newText = newText
-	)
-
-	@VisibleForTesting
-	internal fun mergeAnnotatedStrings(
-		original: AnnotatedString,
-		start: Int,
-		end: Int = start, // For insertions, start == end
-		newText: AnnotatedString? = null
-	): AnnotatedString = buildAnnotatedString {
-		// Add text outside the affected range
-		append(original.text.substring(0, start))
-		if (newText != null) append(newText.text)
-		append(original.text.substring(end))
-
-		// Process spans with SpanManager
-		val processedSpans = spanManager.processSpans(
-			originalText = original,
-			insertionPoint = if (newText != null) start else -1,
-			insertedText = newText,
-			deletionStart = if (end > start) start else -1,
-			deletionEnd = if (end > start) end else -1
-		)
-
-		// Add processed spans to the result
-		processedSpans.forEach { span ->
-			addStyle(span.item, span.start, span.end)
 		}
 	}
 
