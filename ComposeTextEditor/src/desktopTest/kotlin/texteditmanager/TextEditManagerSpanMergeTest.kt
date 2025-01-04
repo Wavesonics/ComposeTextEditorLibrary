@@ -3,25 +3,20 @@ package texteditmanager
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.buildAnnotatedString
-import com.darkrockstudios.texteditor.state.TextEditManager
-import com.darkrockstudios.texteditor.state.TextEditorState
-import io.mockk.mockk
-import kotlinx.coroutines.test.TestScope
+import com.darkrockstudios.texteditor.state.SpanManager
+import com.darkrockstudios.texteditor.utils.mergeAnnotatedStrings
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
 class TextEditManagerSpanMergeTest {
-	private lateinit var state: TextEditorState
-	private lateinit var manager: TextEditManager
+	private lateinit var manager: SpanManager
 
 	@Before
 	fun setup() {
-		state = createTestEditorState()
-		manager = TextEditManager(state)
+		manager = SpanManager()
 	}
 
 	@Test
@@ -302,15 +297,4 @@ class TextEditManagerSpanMergeTest {
 		val blueSpan = result.spanStyles.first { it.start == 12 && it.end == 15 }
 		assertEquals(Color.Blue, blueSpan.item.color)
 	}
-
-	private fun createTestEditorState(): TextEditorState {
-		// Create a mock TextMeasurer or use a test double
-		return TextEditorState(
-			scope = TestScope(),
-			measurer = createTestTextMeasurer(),
-			initialText = null
-		)
-	}
-
-	private fun createTestTextMeasurer(): TextMeasurer = mockk(relaxed = true)
 }
