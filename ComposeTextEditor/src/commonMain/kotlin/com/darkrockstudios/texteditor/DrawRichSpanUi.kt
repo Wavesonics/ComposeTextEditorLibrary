@@ -33,20 +33,18 @@ internal fun DrawScope.drawRichSpans(lineWrap: LineWrap, state: TextEditorState)
 		) {
 
 			// Calculate position adjustment based on whether this is a wrapped line
-			val positionAdjustment = if (isWrappedLine) 1 else 0
-
 			// Calculate the local range within this wrapped segment
 			val localStart = if (spanStartAbsChar <= lineStartAbsChar) {
-				wrapVisibleStart + positionAdjustment
+				wrapVisibleStart
 			} else {
-				(spanStartAbsChar - lineStartAbsChar) + wrapVisibleStart + positionAdjustment
+				(spanStartAbsChar - lineStartAbsChar) + wrapVisibleStart
 			}
 
 			val localEnd = if (spanEndAbsChar >= lineEnd.toCharacterIndex(state)) {
-				wrapVisibleEnd + positionAdjustment
+				wrapVisibleEnd
 			} else {
-				((spanEndAbsChar - lineStartAbsChar) + wrapVisibleStart + positionAdjustment)
-					.coerceAtMost(wrapVisibleEnd + positionAdjustment)
+				((spanEndAbsChar - lineStartAbsChar) + wrapVisibleStart)
+					.coerceAtMost(wrapVisibleEnd)
 			}
 
 			val localRange = androidx.compose.ui.text.TextRange(

@@ -19,7 +19,7 @@ class HighlightSpanStyle(
 	) {
 		val lineHeight = layoutResult.multiParagraph.getLineHeight(lineWrap.virtualLineIndex)
 
-		val lineStartOffset = layoutResult.getLineStart(lineWrap.virtualLineIndex) + 1
+		val lineStartOffset = layoutResult.getLineStart(lineWrap.virtualLineIndex)
 		val startX = if (textRange.start <= lineStartOffset) {
 			layoutResult.getLineLeft(lineWrap.virtualLineIndex)
 		} else {
@@ -36,17 +36,6 @@ class HighlightSpanStyle(
 		} else {
 			layoutResult.getHorizontalPosition(textRange.end, usePrimaryDirection = true)
 		}
-
-//		println("Line Count: ${layoutResult.multiParagraph.lineCount}")
-//		println("textRange: $textRange")
-//		println("lineIndex: $lineIndex")
-//		println("lineEndOffset: $lineEndOffset")
-//		println("lineTop: $lineTop")
-//		println("lineStartOffset: $lineStartOffset")
-//		println("StartX $startX for: ${textRange.start}")
-//		println("endX $endX for: ${textRange.end}")
-//		println("width ${endX - startX}")
-//		println("lineHeight: $lineHeight")
 
 		drawRect(
 			color = color,
