@@ -16,17 +16,17 @@ actually work. It just needs some more time and attention.
 ### What is working:
 
 - Rich text rendering and editable
-  - Semi-efficient rendering for long form text (only renders what is visible)
+  - Semi-efficient rendering for long form text (_only renders what is visible_)
   - Semi-efficient data structure for text storage & editing. (but not nearly as efficient as the
     Gap Buffer BTF2 uses under the hood)
 - Cursor movement, clicking, keyboard short cuts, ect
-- Text selection (highlighting and edit ops)
+- Text selection (_highlighting and edit ops_)
 - copy/cut/paste
 - Exposed scroll state, so we can render scroll bars (BTF1 can't do this)
 - Doesn't copy and return full contents on each edit, so again better for longer form text. (BTF2
   also works this way, but BTF2 doesn't support AnnotatedString for rich content)
-- Support custom Rich Span drawing (this allows us to render the traditional Spell Check red
-  squiggle)
+- Support custom Rich Span drawing (_this allows us to render the traditional Spell Check red
+  squiggle_)
 - Emits edit events: so if a single character is inserted, you can collect a Flow, and know exactly
   what change was made. This makes managing Spell Check much more efficient as you can just
   respell-check the single word that was changed, rather than everything. Currently neither BTF1 or
@@ -34,19 +34,16 @@ actually work. It just needs some more time and attention.
 
 ### Work left to do:
 
-- Undo/Redo is very broken
-- Apply/Remove styles at runtime is partially implemented
 - Platform native text highlighting
-- Write lots of tests
-- I don't know, probably a lot of other things
-- The code is largely prototype quality, would need a lot of spit and polish
+- Spell Check doesn't seem to work on the WASM target
+- Copy/Paste of rich text always strips the formatting (_this is a Compose MP bug_)
 
 ## Want to try it?
 
-_Keep in mind that this is not well tested, likely has many bugs._
-
 Text Editor:
-`implementation("com.darkrockstudios:composetexteditor:0.1.0")`
+
+`implementation("com.darkrockstudios:composetexteditor:0.3.0")`
 
 Text Editor with Spell Checking:
-`implementation("com.darkrockstudios:composetexteditorspellcheck:0.1.0")`
+
+`implementation("com.darkrockstudios:composetexteditorspellcheck:0.3.0")`
