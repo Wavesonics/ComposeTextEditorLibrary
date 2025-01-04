@@ -1,5 +1,6 @@
 package com.darkrockstudios.texteditor.state
 
+import androidx.annotation.VisibleForTesting
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -407,19 +408,21 @@ class TextEditManager(private val state: TextEditorState) {
 	private fun applyStyleOperation(operation: TextEditOperation.StyleSpan): OperationMetadata? {
 		if (operation.range.isSingleLine()) {
 			if (operation.isAdd) {
-				applySingleLineSpanStyle(
-					lineIndex = operation.range.start.line,
+				val updatedLine = spanManager.applySingleLineSpanStyle(
+					line = state.textLines[operation.range.start.line],
 					start = operation.range.start.char,
 					end = operation.range.end.char,
 					spanStyle = operation.style
 				)
+				state.updateLine(operation.range.start.line, updatedLine)
 			} else {
-				removeSingleLineSpanStyle(
-					lineIndex = operation.range.start.line,
+				val updatedLine = spanManager.removeSingleLineSpanStyle(
+					line = state.textLines[operation.range.start.line],
 					start = operation.range.start.char,
 					end = operation.range.end.char,
 					spanStyle = operation.style
 				)
+				state.updateLine(operation.range.start.line, updatedLine)
 			}
 		} else {
 			// Handle multi-line case
@@ -434,76 +437,26 @@ class TextEditManager(private val state: TextEditorState) {
 					state.getLine(lineIndex).length
 
 				if (operation.isAdd) {
-					applySingleLineSpanStyle(lineIndex, lineStart, lineEnd, operation.style)
+					val updatedLine = spanManager.applySingleLineSpanStyle(
+						state.textLines[lineIndex],
+						lineStart,
+						lineEnd,
+						operation.style
+					)
+					state.updateLine(lineIndex, updatedLine)
 				} else {
-					removeSingleLineSpanStyle(lineIndex, lineStart, lineEnd, operation.style)
+					val updatedLine = spanManager.removeSingleLineSpanStyle(
+						state.textLines[lineIndex],
+						lineStart,
+						lineEnd,
+						operation.style
+					)
+					state.updateLine(lineIndex, updatedLine)
 				}
 			}
 		}
 
 		return null
-	}
-
-	private fun removeSingleLineSpanStyle(
-		lineIndex: Int,
-		start: Int,
-		end: Int,
-		spanStyle: SpanStyle
-	) {
-		val line = state.getLine(lineIndex)
-		val existingSpans = line.spanStyles
-
-		// Create new span list
-		val newSpans = mutableListOf<AnnotatedString.Range<SpanStyle>>()
-
-		// Handle existing spans
-		for (existing in existingSpans) {
-			when {
-				// Span is completely before or after the removal range - keep as is
-				existing.end <= start || existing.start >= end -> {
-					newSpans.add(existing)
-				}
-				// Span overlaps with removal range
-				else -> {
-					// If the styles don't match, keep the span
-					if (existing.item != spanStyle) {
-						newSpans.add(existing)
-						continue
-					}
-
-					// Keep portion before removal range
-					if (existing.start < start) {
-						newSpans.add(
-							AnnotatedString.Range(
-								existing.item,
-								existing.start,
-								start
-							)
-						)
-					}
-
-					// Keep portion after removal range
-					if (existing.end > end) {
-						newSpans.add(
-							AnnotatedString.Range(
-								existing.item,
-								end,
-								existing.end
-							)
-						)
-					}
-				}
-			}
-		}
-
-		// Create new AnnotatedString with updated spans
-		val newText = AnnotatedString(
-			text = line.text,
-			spanStyles = newSpans.sortedBy { it.start }
-		)
-
-		// Update the line in state
-		state.updateLine(lineIndex, newText)
 	}
 
 	fun undo() {
@@ -694,6 +647,7 @@ class TextEditManager(private val state: TextEditorState) {
 		}
 	}
 
+	@VisibleForTesting
 	internal fun combineAnnotatedStrings(
 		prefix: AnnotatedString,
 		center: AnnotatedString,
@@ -703,6 +657,7 @@ class TextEditManager(private val state: TextEditorState) {
 		return appendAnnotatedStrings(temp, suffix)
 	}
 
+	@VisibleForTesting
 	internal fun appendAnnotatedStrings(
 		original: AnnotatedString,
 		newText: AnnotatedString
@@ -713,6 +668,7 @@ class TextEditManager(private val state: TextEditorState) {
 		newText = newText
 	)
 
+	@VisibleForTesting
 	internal fun prependAnnotatedStrings(
 		original: AnnotatedString,
 		newText: AnnotatedString
@@ -723,6 +679,7 @@ class TextEditManager(private val state: TextEditorState) {
 		newText = newText
 	)
 
+	@VisibleForTesting
 	internal fun mergeAnnotatedStrings(
 		original: AnnotatedString,
 		start: Int,
@@ -769,77 +726,5 @@ class TextEditManager(private val state: TextEditorState) {
 			cursorAfter = state.cursorPosition // Keep cursor in same position
 		)
 		applyOperation(operation)
-	}
-
-	private fun applySingleLineSpanStyle(
-		lineIndex: Int,
-		start: Int,
-		end: Int,
-		spanStyle: SpanStyle
-	) {
-		val line = state.getLine(lineIndex)
-		val existingSpans = line.spanStyles
-
-		// Create new span list
-		val newSpans = mergeOverlaps(existingSpans, spanStyle, start, end)
-
-		// Sort spans by start position
-		val sortedSpans = newSpans.sortedBy { it.start }
-
-		// Create new AnnotatedString with updated spans
-		val newText = AnnotatedString(
-			text = line.text,
-			spanStyles = sortedSpans
-		)
-
-		// Update the line in state
-		state.updateLine(lineIndex, newText)
-	}
-
-	// TODO should be done in SpanManager, or it already is in proccessSpan?
-	private fun mergeOverlaps(
-		existingSpans: List<AnnotatedString.Range<SpanStyle>>,
-		spanStyle: SpanStyle,
-		start: Int,
-		end: Int
-	): List<AnnotatedString.Range<SpanStyle>> {
-		val result = mutableListOf<AnnotatedString.Range<SpanStyle>>()
-		val spanRanges = mutableListOf<Pair<Int, Int>>()
-
-		// First collect all ranges with matching style
-		existingSpans.forEach { span ->
-			if (span.item == spanStyle) {
-				spanRanges.add(span.start to span.end)
-			} else {
-				result.add(span)
-			}
-		}
-		// Add the new range
-		spanRanges.add(start to end)
-
-		// Sort ranges by start position
-		spanRanges.sortBy { it.first }
-
-		// Merge overlapping ranges in a single pass
-		var currentStart = spanRanges.firstOrNull()?.first ?: start
-		var currentEnd = spanRanges.firstOrNull()?.second ?: end
-
-		for (i in 1 until spanRanges.size) {
-			val (nextStart, nextEnd) = spanRanges[i]
-			if (nextStart <= currentEnd + 1) {
-				// Ranges overlap or are adjacent, extend current range
-				currentEnd = maxOf(currentEnd, nextEnd)
-			} else {
-				// Ranges don't overlap, add current range and start new one
-				result.add(AnnotatedString.Range(spanStyle, currentStart, currentEnd))
-				currentStart = nextStart
-				currentEnd = nextEnd
-			}
-		}
-
-		// Add final range
-		result.add(AnnotatedString.Range(spanStyle, currentStart, currentEnd))
-
-		return result.sortedBy { it.start }
 	}
 }
