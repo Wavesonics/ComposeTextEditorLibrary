@@ -1,7 +1,6 @@
 package com.darkrockstudios.texteditor.state
 
 import androidx.annotation.VisibleForTesting
-import androidx.compose.foundation.ScrollState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -18,7 +17,7 @@ class TextEditorScrollManager(
 	private val getLineOffsets: () -> List<LineWrap>,
 	private val getViewportSize: () -> Size,
 	private val getCursorPosition: () -> CharLineOffset,
-	val scrollState: ScrollState
+	val scrollState: TextEditorScrollState
 ) {
 	var totalContentHeight by mutableStateOf(0)
 		private set
@@ -27,7 +26,8 @@ class TextEditorScrollManager(
 		get() = getViewportSize().height.toInt()
 
 	fun updateContentHeight(height: Int) {
-		totalContentHeight = height
+		totalContentHeight = maxOf(height, viewportHeight)
+		scrollState.maxValue = height - viewportHeight
 	}
 
 	fun scrollToTop() {

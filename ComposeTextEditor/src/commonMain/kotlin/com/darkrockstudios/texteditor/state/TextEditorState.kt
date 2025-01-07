@@ -1,6 +1,5 @@
 package com.darkrockstudios.texteditor.state
 
-import androidx.compose.foundation.ScrollState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -78,11 +77,11 @@ class TextEditorState(
 	val canUndo: Boolean get() = _canUndo
 	val canRedo: Boolean get() = _canRedo
 
-	private var viewportSize: Size = Size(1f, 1f)
+	internal var viewportSize by mutableStateOf(Size(1f, 1f))
 
 	val scrollManager = TextEditorScrollManager(
 		scope = scope,
-		scrollState = ScrollState(0),
+		scrollState = TextEditorScrollState(0),
 		getLines = { textLines },
 		getViewportSize = { viewportSize },
 		getCursorPosition = { cursorPosition },
@@ -94,7 +93,6 @@ class TextEditorState(
 	val richSpanManager = RichSpanManager(this)
 
 	val scrollState get() = scrollManager.scrollState
-	val totalContentHeight get() = scrollManager.totalContentHeight
 
 	val editOperations = editManager.editOperations
 
@@ -351,6 +349,9 @@ class TextEditorState(
 	fun getOffsetAtPosition(offset: Offset): CharLineOffset {
 		if (_lineOffsets.isEmpty()) return CharLineOffset(0, 0)
 
+		// Add scroll offset to the input y coordinate
+		val adjustedOffset = offset.copy(y = offset.y + scrollState.value)
+
 		var curRealLine: LineWrap = _lineOffsets[0]
 
 		// Find the line that contains the offset
@@ -358,14 +359,13 @@ class TextEditorState(
 			if (lineWrap.line != curRealLine.line) {
 				curRealLine = lineWrap
 			}
-			//val textLayoutResult = lineWrap.textLayoutResult
 			val textLayoutResult = textMeasurer.measure(
 				textLines[lineWrap.line],
 				constraints = Constraints(maxWidth = viewportSize.width.toInt())
 			)
 
-			val relativeOffset = offset - lineWrap.offset
-			if (offset.y in curRealLine.offset.y..(curRealLine.offset.y + textLayoutResult.size.height)) {
+			val relativeOffset = adjustedOffset - lineWrap.offset
+			if (adjustedOffset.y in curRealLine.offset.y..(curRealLine.offset.y + textLayoutResult.size.height)) {
 				val charPos = textLayoutResult.multiParagraph.getOffsetForPosition(relativeOffset)
 				return CharLineOffset(lineWrap.line, min(charPos, textLines[lineWrap.line].length))
 			}

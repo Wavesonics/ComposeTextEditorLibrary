@@ -3,15 +3,15 @@ package com.darkrockstudios.texteditor
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.border
 import androidx.compose.foundation.focusable
+import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.scrollable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -21,6 +21,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalClipboardManager
@@ -67,15 +68,13 @@ fun TextEditor(
 		}
 	}
 
-	Surface {
+	Surface(modifier = modifier.focusBorder(state.isFocused && enabled, style)) {
 		TextEditorScrollbar(
-			modifier = modifier,
+			modifier = Modifier.padding(start = 8.dp),
 			scrollState = state.scrollState,
-		) {
-			BoxWithConstraints(
-				modifier = Modifier
-					.focusBorder(state.isFocused && enabled, style)
-					.padding(8.dp)
+		) { editorModifier ->
+			Box(
+				modifier = editorModifier
 					.then(
 						if (enabled) {
 							Modifier
@@ -91,42 +90,48 @@ fun TextEditor(
 						}
 					)
 					.onSizeChanged { size ->
-						state.onViewportSizeChange(size.toSize())
+						state.onViewportSizeChange(
+							size.toSize()
+						)
 					}
-					.verticalScroll(state.scrollState)
+					.fillMaxSize()
+					.scrollable(
+						orientation = Orientation.Vertical,
+						reverseDirection = false,
+						state = state.scrollState,
+					)
 			) {
-				Box(
+				Canvas(
 					modifier = Modifier
-						.fillMaxWidth()
-						.height(state.totalContentHeight.dp)
-				) {
-					Canvas(
-						modifier = Modifier
-							.fillMaxWidth()
-							.height(state.totalContentHeight.dp)
-							.then(
-								if (enabled) {
-									Modifier.textEditorPointerInputHandling(state, onRichSpanClick)
-								} else {
-									Modifier
-								}
-							)
-					) {
-						try {
-							if (state.isEmpty() && style.placeholderText.isNotEmpty()) {
-								DrawPlaceholderText(state, style)
-							}
-
-							DrawEditorText(state, style)
-
-							DrawSelection(state, style.selectionColor)
-
-							if (enabled && state.isFocused && state.isCursorVisible) {
-								DrawCursor(state, style.cursorColor)
-							}
-						} catch (e: IllegalArgumentException) {
-							// Handle resize exception gracefully
+						.size(
+							width = state.viewportSize.width.dp,
+							height = state.viewportSize.height.dp
+						)
+						.graphicsLayer {
+							clip = true
 						}
+						.then(
+							if (enabled) {
+								Modifier.textEditorPointerInputHandling(state, onRichSpanClick)
+							} else {
+								Modifier
+							}
+						)
+				) {
+					try {
+						if (state.isEmpty() && style.placeholderText.isNotEmpty()) {
+							DrawPlaceholderText(state, style)
+						}
+
+						DrawEditorText(state, style)
+
+						DrawSelection(state, style.selectionColor)
+
+						if (enabled && state.isFocused && state.isCursorVisible) {
+							DrawCursor(state, style.cursorColor)
+						}
+					} catch (e: IllegalArgumentException) {
+						// Handle resize exception gracefully
 					}
 				}
 			}

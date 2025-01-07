@@ -71,7 +71,7 @@ internal fun DrawScope.DrawSelection(
 
 				drawRect(
 					color = selectionColor,
-					topLeft = Offset(startX, wrap.offset.y),
+					topLeft = Offset(startX, wrap.offset.y - state.scrollState.value),
 					size = Size(
 						width = endX - startX,
 						height = lineHeight

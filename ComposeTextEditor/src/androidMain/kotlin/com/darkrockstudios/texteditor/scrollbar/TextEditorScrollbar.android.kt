@@ -1,6 +1,5 @@
 package com.darkrockstudios.texteditor.scrollbar
 
-import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -16,17 +15,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
+import com.darkrockstudios.texteditor.state.TextEditorScrollState
 
 @Composable
 actual fun TextEditorScrollbar(
 	modifier: Modifier,
-	scrollState: ScrollState,
-	content: @Composable () -> Unit
+	scrollState: TextEditorScrollState,
+	content: @Composable (modifier: Modifier) -> Unit
 ) {
 	Box(
 		modifier = modifier
 	) {
-		content()
+		content(Modifier)
 
 		// Only show scrollbar if content is scrollable
 		val showScrollbar by remember {

@@ -18,7 +18,7 @@ internal fun DrawScope.DrawEditorText(
 			drawText(
 				textMeasurer = state.textMeasurer,
 				text = line,
-				topLeft = virtualLine.offset,
+				topLeft = virtualLine.offset.copy(y = virtualLine.offset.y - state.scrollState.value),
 				style = TextStyle.Default.copy(
 					color = style.placeholderColor,
 				)

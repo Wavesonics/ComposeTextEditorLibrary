@@ -6,8 +6,6 @@ import com.darkrockstudios.texteditor.state.TextEditorState
 
 internal fun DrawScope.drawRichSpans(lineWrap: LineWrap, state: TextEditorState) {
 	val textLayoutResult = lineWrap.textLayoutResult
-	// Determine if this is a wrapped line by checking if it's not the first virtual line
-	val isWrappedLine = lineWrap.virtualLineIndex > 0
 
 	lineWrap.richSpans.forEach { richSpan ->
 		// Get the range of text visible in this wrap
@@ -31,7 +29,6 @@ internal fun DrawScope.drawRichSpans(lineWrap: LineWrap, state: TextEditorState)
 		if (spanStartAbsChar <= lineEnd.toCharacterIndex(state) &&
 			spanEndAbsChar >= lineStart.toCharacterIndex(state)
 		) {
-
 			// Calculate position adjustment based on whether this is a wrapped line
 			// Calculate the local range within this wrapped segment
 			val localStart = if (spanStartAbsChar <= lineStartAbsChar) {
@@ -53,7 +50,7 @@ internal fun DrawScope.drawRichSpans(lineWrap: LineWrap, state: TextEditorState)
 			)
 
 			with(richSpan.style) {
-				translate(top = lineWrap.offset.y) {
+				translate(top = lineWrap.offset.y - state.scrollState.value) {
 					drawCustomStyle(
 						layoutResult = textLayoutResult,
 						lineWrap = lineWrap,

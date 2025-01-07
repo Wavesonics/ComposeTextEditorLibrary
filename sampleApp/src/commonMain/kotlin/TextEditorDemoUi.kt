@@ -73,7 +73,7 @@ fun TextEditorDemoUi(
 		TextEditor(
 			state = state,
 			modifier = Modifier
-				.padding(16.dp)
+				.padding(8.dp)
 				.fillMaxSize(),
 			style = style,
 			onRichSpanClick = { span, clickType, _ ->
