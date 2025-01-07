@@ -10,23 +10,38 @@ internal fun DrawScope.DrawEditorText(
 	state: TextEditorState,
 	style: TextEditorStyle
 ) {
+	// Get current scroll position and viewport height
+	val scrollY = state.scrollState.value
+	val viewportHeight = size.height
+
+	// Calculate visible range with some padding to ensure smooth scrolling
+	val minY = (scrollY - viewportHeight * 0.5f).coerceAtLeast(0f)
+	val maxY = (scrollY + viewportHeight * 1.5f)
+
 	var lastLine = -1
 	state.lineOffsets.fastForEach { virtualLine ->
-		if (lastLine != virtualLine.line && state.textLines.size > virtualLine.line) {
-			val line = state.textLines[virtualLine.line]
+		// Check if this line could be visible
+		val lineTop = virtualLine.offset.y
+		val lineHeight = virtualLine.textLayoutResult.size.height
+		val lineBottom = lineTop + lineHeight
 
-			drawText(
-				textMeasurer = state.textMeasurer,
-				text = line,
-				topLeft = virtualLine.offset.copy(y = virtualLine.offset.y - state.scrollState.value),
-				style = TextStyle.Default.copy(
-					color = style.placeholderColor,
+		if (lineBottom >= minY && lineTop <= maxY) {
+			if (lastLine != virtualLine.line && state.textLines.size > virtualLine.line) {
+				val line = state.textLines[virtualLine.line]
+
+				drawText(
+					textMeasurer = state.textMeasurer,
+					text = line,
+					topLeft = virtualLine.offset.copy(y = virtualLine.offset.y - scrollY),
+					style = TextStyle.Default.copy(
+						color = style.placeholderColor,
+					)
 				)
-			)
 
-			lastLine = virtualLine.line
+				lastLine = virtualLine.line
+			}
+
+			drawRichSpans(virtualLine, state)
 		}
-
-		drawRichSpans(virtualLine, state)
 	}
 }
