@@ -16,6 +16,8 @@ import kotlin.math.roundToInt
 class TextEditorScrollState(
 	initial: Int = 0
 ) : ScrollableState {
+	private val SCROLL_CONTENT_BUFFER = 32
+
 	private var _value by mutableStateOf(initial)
 	private var _maxValue by mutableStateOf(0)
 	private var _isScrollInProgress by mutableStateOf(false)
@@ -33,7 +35,7 @@ class TextEditorScrollState(
 	var maxValue: Int
 		get() = _maxValue
 		set(value) {
-			_maxValue = value.coerceAtLeast(0)
+			_maxValue = value.coerceAtLeast(0) + SCROLL_CONTENT_BUFFER
 			_value = _value.coerceIn(0, _maxValue)
 		}
 
