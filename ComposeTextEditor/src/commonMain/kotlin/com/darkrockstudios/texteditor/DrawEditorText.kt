@@ -15,8 +15,8 @@ internal fun DrawScope.DrawEditorText(
 	val viewportHeight = size.height
 
 	// Calculate visible range with some padding to ensure smooth scrolling
-	val minY = (scrollY - viewportHeight * 0.5f).coerceAtLeast(0f)
-	val maxY = (scrollY + viewportHeight * 1.5f)
+	val minY = (scrollY - viewportHeight * 0.1f).coerceAtLeast(0f)
+	val maxY = (scrollY + viewportHeight * 1.1f)
 
 	var lastLine = -1
 	state.lineOffsets.fastForEach { virtualLine ->
