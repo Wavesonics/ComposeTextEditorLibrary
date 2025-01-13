@@ -118,20 +118,20 @@ fun TextEditor(
 							}
 						)
 				) {
+					if (state.isEmpty() && style.placeholderText.isNotEmpty()) {
+						DrawPlaceholderText(state, style)
+					}
+
 					try {
-						if (state.isEmpty() && style.placeholderText.isNotEmpty()) {
-							DrawPlaceholderText(state, style)
-						}
-
 						DrawEditorText(state, style)
-
-						DrawSelection(state, style.selectionColor)
-
-						if (enabled && state.isFocused && state.isCursorVisible) {
-							DrawCursor(state, style.cursorColor)
-						}
 					} catch (e: IllegalArgumentException) {
 						// Handle resize exception gracefully
+					}
+
+					DrawSelection(state, style.selectionColor)
+
+					if (enabled && state.isFocused && state.isCursorVisible) {
+						DrawCursor(state, style.cursorColor)
 					}
 				}
 			}
