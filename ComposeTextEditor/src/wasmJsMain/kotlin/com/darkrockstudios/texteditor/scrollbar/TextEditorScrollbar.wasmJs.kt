@@ -15,7 +15,7 @@ actual fun TextEditorScrollbar(
 	Box(
 		modifier = modifier
 	) {
-		content()
+		content(Modifier)
 //		VerticalScrollbar(
 //			modifier = Modifier
 //				.align(Alignment.CenterEnd)
