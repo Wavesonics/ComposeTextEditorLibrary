@@ -87,4 +87,18 @@ class TextEditorSelectionManager(
 			else -> a.char < b.char
 		}
 	}
+
+	fun selectLineAt(position: CharLineOffset) {
+		val lineStart = CharLineOffset(position.line, 0)
+		val lineEnd = CharLineOffset(position.line, state.textLines[position.line].length)
+		state.updateCursorPosition(lineEnd)
+		updateSelection(lineStart, lineEnd)
+	}
+
+	fun selectWordAt(position: CharLineOffset) {
+		state.findWordSegmentAt(position)?.let { wordSegment ->
+			state.updateCursorPosition(wordSegment.range.end)
+			updateSelection(wordSegment.range.start, wordSegment.range.end)
+		}
+	}
 }

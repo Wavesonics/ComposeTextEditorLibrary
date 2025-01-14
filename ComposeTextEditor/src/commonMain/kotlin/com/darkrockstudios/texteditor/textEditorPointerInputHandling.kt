@@ -85,11 +85,11 @@ internal fun Modifier.textEditorPointerInputHandling(
 			},
 			onDoubleTap = { offset: Offset ->
 				val position = state.getOffsetAtPosition(offset)
-				state.selectWordAt(position)
+				state.selector.selectWordAt(position)
 			},
 			onTripleTap = { offset: Offset ->
 				val position = state.getOffsetAtPosition(offset)
-				state.selectLineAt(position)
+				state.selector.selectLineAt(position)
 			}
 		)
 	}.pointerInput(Unit) {
@@ -118,49 +118,6 @@ internal fun Modifier.textEditorPointerInputHandling(
 			}
 		)
 	}
-}
-
-private fun TextEditorState.selectLineAt(position: CharLineOffset) {
-	val lineStart = CharLineOffset(position.line, 0)
-	val lineEnd = CharLineOffset(position.line, textLines[position.line].length)
-	updateCursorPosition(lineEnd)
-	selector.updateSelection(lineStart, lineEnd)
-}
-
-private fun TextEditorState.selectWordAt(position: CharLineOffset) {
-	val (wordStart, wordEnd) = findWordBoundary(position)
-	updateCursorPosition(wordEnd)
-	selector.updateSelection(wordStart, wordEnd)
-}
-
-private fun TextEditorState.findWordBoundary(position: CharLineOffset): Pair<CharLineOffset, CharLineOffset> {
-	val line = textLines[position.line]
-	var startChar = position.char
-	var endChar = position.char
-
-	// If we're at a word boundary or whitespace, try to find the nearest word
-	if (startChar >= line.length || !isWordChar(line, startChar)) {
-		// Look backward for the start of a word
-		startChar = (startChar - 1).coerceAtLeast(0)
-		while (startChar > 0 && !isWordChar(line, startChar)) {
-			startChar--
-		}
-	}
-
-	// Find start of word
-	while (startChar > 0 && isWordChar(line, startChar - 1)) {
-		startChar--
-	}
-
-	// Find end of word
-	while (endChar < line.length && isWordChar(line, endChar)) {
-		endChar++
-	}
-
-	return Pair(
-		CharLineOffset(position.line, startChar),
-		CharLineOffset(position.line, endChar)
-	)
 }
 
 suspend fun PointerInputScope.detectTapsImperatively(
