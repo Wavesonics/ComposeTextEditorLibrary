@@ -1,7 +1,7 @@
 [versions]
 android-compileSdk = "35"
 android-minSdk = "26"
-agp = "8.8.0"
+agp = "8.8.1"
 jvm = "17"
 androidx-lifecycle = "2.8.4"
 compose-multiplatform = "1.7.1"
