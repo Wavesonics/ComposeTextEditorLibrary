@@ -27,7 +27,8 @@ import com.darkrockstudios.texteditor.markdown.toMarkdown
 import com.darkrockstudios.texteditor.richstyle.RichSpan
 import com.darkrockstudios.texteditor.richstyle.RichSpanStyle
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlin.math.min
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
@@ -57,7 +58,20 @@ class TextEditorState(
 	private var _lineOffsets by mutableStateOf(emptyList<LineWrap>())
 	val lineOffsets: List<LineWrap> get() = _lineOffsets
 
-	val selectionRangeFlow: SharedFlow<TextEditorRange?> get() = selector.selectionRangeFlow
+	val cursorDataFlow: Flow<CursorData>
+		get() {
+			return cursor.stylesFlow
+				.combine(cursor.positionFlow) { styles, position ->
+					Pair(styles, position)
+				}
+				.combine(selector.selectionRangeFlow) { (styles, position), selectionRange ->
+					CursorData(
+						styles = styles,
+						position = position,
+						selection = selectionRange,
+					)
+				}
+		}
 
 	private var _canUndo by mutableStateOf(false)
 	private var _canRedo by mutableStateOf(false)

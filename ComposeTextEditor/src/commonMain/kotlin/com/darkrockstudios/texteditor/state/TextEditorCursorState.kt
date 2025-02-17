@@ -20,8 +20,17 @@ class TextEditorCursorState(
 	private var _isVisible by mutableStateOf(true)
 	val isVisible: Boolean get() = _isVisible
 
-	private var _styles by mutableStateOf<Set<SpanStyle>>(emptySet())
-	val styles: Set<SpanStyle> get() = _styles
+	var styles: Set<SpanStyle> = emptySet()
+		private set(value) {
+			field = value
+			_stylesFlow.tryEmit(value)
+		}
+
+	private val _stylesFlow = MutableSharedFlow<Set<SpanStyle>>(
+		extraBufferCapacity = 1,
+		onBufferOverflow = BufferOverflow.DROP_OLDEST
+	)
+	val stylesFlow: SharedFlow<Set<SpanStyle>> = _stylesFlow
 
 	private val _cursorPositionFlow = MutableSharedFlow<CharLineOffset>(
 		extraBufferCapacity = 1,
@@ -57,15 +66,15 @@ class TextEditorCursorState(
 	}
 
 	fun addStyle(style: SpanStyle) {
-		_styles = _styles + style
+		styles = styles + style
 	}
 
 	fun removeStyle(style: SpanStyle) {
-		_styles = _styles - style
+		styles = styles - style
 	}
 
 	fun toggleStyle(style: SpanStyle) {
-		if (_styles.contains(style)) {
+		if (styles.contains(style)) {
 			removeStyle(style)
 		} else {
 			addStyle(style)
@@ -73,7 +82,7 @@ class TextEditorCursorState(
 	}
 
 	fun clearStyles() {
-		_styles = emptySet()
+		styles = emptySet()
 	}
 
 	private fun updateStylesFromPosition(position: CharLineOffset) {
@@ -84,18 +93,17 @@ class TextEditorCursorState(
 			val previousLineLength = editorState.textLines[previousLine].length
 			if (previousLineLength > 0) {
 				val previousPosition = CharLineOffset(previousLine, previousLineLength)
-				_styles = editorState.getSpanStylesAtPosition(previousPosition)
-				return
+				styles = editorState.getSpanStylesAtPosition(previousPosition)
 			}
-		}
-
-		// If we're not at the start of the text, look at the character before the cursor
-		if (position.char > 0) {
-			val beforePosition = position.copy(char = position.char - 1)
-			_styles = editorState.getSpanStylesAtPosition(beforePosition)
 		} else {
-			// If we're at the start of text or there's no style before us, clear styles
-			_styles = emptySet()
+			// If we're not at the start of the text, look at the character before the cursor
+			if (position.char > 0) {
+				val beforePosition = position.copy(char = position.char - 1)
+				styles = editorState.getSpanStylesAtPosition(beforePosition)
+			} else {
+				// If we're at the start of text or there's no style before us, clear styles
+				styles = emptySet()
+			}
 		}
 	}
 
@@ -104,16 +112,16 @@ class TextEditorCursorState(
 	}
 
 	fun applyCursorStyle(string: String): AnnotatedString {
-		if (_styles.isEmpty()) {
+		if (styles.isEmpty()) {
 			return AnnotatedString(string)
 		}
 
 		return buildAnnotatedString {
-			_styles.forEach { style ->
+			styles.forEach { style ->
 				pushStyle(style)
 			}
 			append(string)
-			repeat(_styles.size) {
+			repeat(styles.size) {
 				pop()
 			}
 		}

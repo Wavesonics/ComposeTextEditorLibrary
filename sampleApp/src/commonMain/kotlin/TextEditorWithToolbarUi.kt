@@ -24,7 +24,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.focusProperties
@@ -46,31 +45,24 @@ fun TextEditorToolbar(
 	var isItalicActive by remember { mutableStateOf(false) }
 	var isHighlightActive by remember { mutableStateOf(false) }
 
-	LaunchedEffect(state.cursor.styles) {
-		snapshotFlow {
-			Triple(
-				state.cursor.position,
-				state.cursor.styles,
-				state.selector.selection
-			)
-		}
-			.collect { (position, cursorStyles, selection) ->
-				val styles = if (selection != null) {
-					state.getSpanStylesInRange(selection)
-				} else {
-					cursorStyles
-				}
-
-				val richSpans = if (selection != null) {
-					state.getRichSpansInRange(selection)
-				} else {
-					state.getRichSpansAtPosition(position)
-				}
-
-				isBoldActive = styles.contains(BOLD)
-				isItalicActive = styles.contains(ITALICS)
-				isHighlightActive = richSpans.any { it.style == HIGHLIGHT }
+	LaunchedEffect(Unit) {
+		state.cursorDataFlow.collect { (position, cursorStyles, selection) ->
+			val styles = if (selection != null) {
+				state.getSpanStylesInRange(selection)
+			} else {
+				cursorStyles
 			}
+
+			val richSpans = if (selection != null) {
+				state.getRichSpansInRange(selection)
+			} else {
+				state.getRichSpansAtPosition(position)
+			}
+
+			isBoldActive = styles.contains(BOLD)
+			isItalicActive = styles.contains(ITALICS)
+			isHighlightActive = richSpans.any { it.style == HIGHLIGHT }
+		}
 	}
 
 	Surface(
