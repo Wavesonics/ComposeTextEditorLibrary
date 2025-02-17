@@ -34,7 +34,7 @@ import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
 class TextEditorState(
-	scope: CoroutineScope,
+	val scope: CoroutineScope,
 	measurer: TextMeasurer,
 	initialText: AnnotatedString? = null
 ) {

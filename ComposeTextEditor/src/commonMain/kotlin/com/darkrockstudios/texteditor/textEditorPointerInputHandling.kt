@@ -11,8 +11,12 @@ import androidx.compose.ui.input.pointer.PointerType
 import androidx.compose.ui.input.pointer.isPrimaryPressed
 import androidx.compose.ui.input.pointer.isSecondaryPressed
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChanged
 import com.darkrockstudios.texteditor.state.SpanClickType
 import com.darkrockstudios.texteditor.state.TextEditorState
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 
 internal fun Modifier.textEditorPointerInputHandling(
@@ -22,6 +26,7 @@ internal fun Modifier.textEditorPointerInputHandling(
 	return this.pointerInput(Unit) {
 		awaitEachGesture {
 			var didHandlePress = false
+			var longPressJob: Job? = null
 
 			while (true) {
 				val event = awaitPointerEvent()
@@ -33,6 +38,13 @@ internal fun Modifier.textEditorPointerInputHandling(
 
 						when (eventChange.type) {
 							PointerType.Touch -> {
+								longPressJob = state.scope.launch {
+									delay(500)
+									val wordPosition = state.getOffsetAtPosition(position)
+									state.selector.selectWordAt(wordPosition)
+									didHandlePress = true
+								}
+
 								handleSpanInteraction(
 									state,
 									position,
@@ -62,14 +74,24 @@ internal fun Modifier.textEditorPointerInputHandling(
 								}
 							}
 
-							else -> { /* Ignore other pointer types */
-							}
+							else -> {}
 						}
 					}
 
 					PointerEventType.Release -> {
+						longPressJob?.cancel()
+						longPressJob = null
+
 						if (didHandlePress) {
 							break
+						}
+					}
+
+					PointerEventType.Move -> {
+						val movement = event.changes.first()
+						if (movement.positionChanged()) {
+							longPressJob?.cancel()
+							longPressJob = null
 						}
 					}
 				}
@@ -95,9 +117,7 @@ internal fun Modifier.textEditorPointerInputHandling(
 		var dragStartPosition: CharLineOffset? = null
 		detectDragGestures(
 			onDragStart = { offset ->
-				// Convert the initial click position to a TextOffset
 				dragStartPosition = state.getOffsetAtPosition(offset)
-				// Update cursor to drag start position
 				dragStartPosition?.let { pos ->
 					state.cursor.updatePosition(pos)
 				}
@@ -106,13 +126,10 @@ internal fun Modifier.textEditorPointerInputHandling(
 				dragStartPosition = null
 			},
 			onDrag = { change, _ ->
-				// Convert current drag position to TextOffset
 				val currentPosition = state.getOffsetAtPosition(change.position)
-				// Update selection between drag start and current position
 				dragStartPosition?.let { startPos ->
 					state.selector.updateSelection(startPos, currentPosition)
 				}
-				// Update cursor position to follow drag
 				state.cursor.updatePosition(currentPosition)
 			}
 		)
@@ -131,20 +148,16 @@ suspend fun PointerInputScope.detectTapsImperatively(
 		var secondLastTapPosition: Offset? = null
 
 		while (true) {
-			// Wait for tap down
 			val down = awaitFirstDown()
 			val downTime = Clock.System.now().toEpochMilliseconds()
 			val downPosition = down.position
 
-			// Handle single tap immediately
 			onTap(downPosition)
 
-			// Wait for tap up
 			do {
 				val event = awaitPointerEvent()
 			} while (event.changes.any { it.pressed })
 
-			// Check for triple tap first
 			val isTripleTap = lastTapPosition?.let { lastPos ->
 				secondLastTapPosition?.let { secondLastPos ->
 					val firstToSecondTimeDiff = lastTapTime - secondLastTapTime
@@ -159,7 +172,6 @@ suspend fun PointerInputScope.detectTapsImperatively(
 				}
 			} ?: false
 
-			// Check for double tap
 			val isDoubleTap = if (!isTripleTap) {
 				lastTapPosition?.let { lastPos ->
 					val timeDiff = downTime - lastTapTime
@@ -171,7 +183,6 @@ suspend fun PointerInputScope.detectTapsImperatively(
 			when {
 				isTripleTap -> {
 					onTripleTap(downPosition)
-					// Reset all tap tracking
 					lastTapTime = 0L
 					secondLastTapTime = 0L
 					lastTapPosition = null
@@ -180,16 +191,13 @@ suspend fun PointerInputScope.detectTapsImperatively(
 
 				isDoubleTap -> {
 					onDoubleTap(downPosition)
-					// Save second last tap info before resetting
 					secondLastTapTime = lastTapTime
 					secondLastTapPosition = lastTapPosition
-					// Update last tap info
 					lastTapTime = downTime
 					lastTapPosition = downPosition
 				}
 
 				else -> {
-					// Update tap tracking
 					secondLastTapTime = lastTapTime
 					secondLastTapPosition = lastTapPosition
 					lastTapTime = downTime
@@ -212,7 +220,6 @@ private fun handleSpanInteraction(
 	return if (clickedSpan != null && onSpanClick != null) {
 		onSpanClick.invoke(clickedSpan, clickType, offset)
 	} else {
-		// Only update cursor on primary clicks or taps
 		if (clickType == SpanClickType.PRIMARY_CLICK || clickType == SpanClickType.TAP) {
 			state.cursor.updatePosition(position)
 			state.selector.clearSelection()
