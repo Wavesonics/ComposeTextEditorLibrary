@@ -13,12 +13,9 @@ import androidx.compose.ui.input.key.utf16CodePoint
 import androidx.compose.ui.platform.ClipboardManager
 import com.darkrockstudios.texteditor.state.TextEditorState
 import com.darkrockstudios.texteditor.state.moveCursorDown
-import com.darkrockstudios.texteditor.state.moveCursorLeft
 import com.darkrockstudios.texteditor.state.moveCursorPageDown
 import com.darkrockstudios.texteditor.state.moveCursorPageUp
-import com.darkrockstudios.texteditor.state.moveCursorRight
 import com.darkrockstudios.texteditor.state.moveCursorToLineEnd
-import com.darkrockstudios.texteditor.state.moveCursorToLineStart
 import com.darkrockstudios.texteditor.state.moveCursorUp
 import com.darkrockstudios.texteditor.state.moveToNextWord
 import com.darkrockstudios.texteditor.state.moveToPreviousWord
@@ -109,14 +106,14 @@ internal fun Modifier.textEditorKeyboardInputHandler(
 						if (keyEvent.isCtrlPressed)
 							state.moveToPreviousWord()
 						else
-							state.moveCursorLeft()
+							state.cursor.moveLeft()
 						updateSelectionForCursorMovement(state, initialPosition)
 					} else {
 						state.selector.clearSelection()
 						if (keyEvent.isCtrlPressed)
 							state.moveToPreviousWord()
 						else
-							state.moveCursorLeft()
+							state.cursor.moveLeft()
 					}
 					true
 				}
@@ -127,14 +124,14 @@ internal fun Modifier.textEditorKeyboardInputHandler(
 						if (keyEvent.isCtrlPressed)
 							state.moveToNextWord()
 						else
-							state.moveCursorRight()
+							state.cursor.moveRight()
 						updateSelectionForCursorMovement(state, initialPosition)
 					} else {
 						state.selector.clearSelection()
 						if (keyEvent.isCtrlPressed)
 							state.moveToNextWord()
 						else
-							state.moveCursorRight()
+							state.cursor.moveRight()
 					}
 					true
 				}
@@ -166,11 +163,11 @@ internal fun Modifier.textEditorKeyboardInputHandler(
 				keyEvent.key == Key.MoveHome -> {
 					if (keyEvent.isShiftPressed) {
 						val initialPosition = state.cursorPosition
-						state.moveCursorToLineStart()
+						state.cursor.moveToLineStart()
 						updateSelectionForCursorMovement(state, initialPosition)
 					} else {
 						state.selector.clearSelection()
-						state.moveCursorToLineStart()
+						state.cursor.moveToLineStart()
 					}
 					true
 				}

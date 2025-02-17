@@ -61,10 +61,10 @@ fun TextEditor(
 			return@LaunchedEffect
 		}
 
-		state.setCursorVisible()
+		state.cursor.setVisible()
 		while (state.isFocused) {
 			delay(CURSOR_BLINK_SPEED_MS)
-			state.toggleCursor()
+			state.cursor.toggleVisibility()
 		}
 	}
 
@@ -130,7 +130,7 @@ fun TextEditor(
 
 					DrawSelection(state, style.selectionColor)
 
-					if (enabled && state.isFocused && state.isCursorVisible) {
+					if (enabled && state.isFocused && state.cursor.isVisible) {
 						DrawCursor(state, style.cursorColor)
 					}
 				}

@@ -3,20 +3,6 @@ package com.darkrockstudios.texteditor.state
 import com.darkrockstudios.texteditor.CharLineOffset
 import kotlin.math.min
 
-internal fun TextEditorState.moveCursorLeft(n: Int = 1) {
-	val currentCharIndex = getCharacterIndex(cursorPosition)
-	val newCharIndex = maxOf(currentCharIndex - n, 0)
-	updateCursorPosition(getOffsetAtCharacter(newCharIndex))
-}
-
-internal fun TextEditorState.moveCursorRight(n: Int = 1) {
-	val currentCharIndex = getCharacterIndex(cursorPosition)
-	val totalChars =
-		textLines.sumOf { it.length + 1 } - 1  // -1 since last line doesn't have newline
-	val newCharIndex = minOf(currentCharIndex + n, totalChars)
-	updateCursorPosition(getOffsetAtCharacter(newCharIndex))
-}
-
 internal fun TextEditorState.moveCursorUp() {
 	val currentWrappedIndex = getWrappedLineIndex(cursorPosition)
 	if (currentWrappedIndex > 0) {
@@ -28,7 +14,7 @@ internal fun TextEditorState.moveCursorUp() {
 			previousWrappedSegment.wrapStartsAtIndex + localCharIndex
 		)
 
-		updateCursorPosition(
+		cursor.updatePosition(
 			CharLineOffset(
 				line = previousWrappedSegment.line,
 				char = newCharIndex
@@ -49,18 +35,13 @@ internal fun TextEditorState.moveCursorDown() {
 			nextWrappedSegment.wrapStartsAtIndex + localCharIndex
 		)
 
-		updateCursorPosition(
+		cursor.updatePosition(
 			CharLineOffset(
 				line = nextWrappedSegment.line,
 				char = newCharIndex
 			)
 		)
 	}
-}
-
-internal fun TextEditorState.moveCursorToLineStart() {
-	val currentWrappedLine = getWrappedLine(cursorPosition)
-	updateCursorPosition(cursorPosition.copy(char = currentWrappedLine.wrapStartsAtIndex))
 }
 
 internal fun TextEditorState.moveCursorToLineEnd() {
@@ -72,13 +53,13 @@ internal fun TextEditorState.moveCursorToLineEnd() {
 		val nextWrappedLine = lineOffsets[currentWrappedLineIndex + 1]
 		if (nextWrappedLine.line == currentWrappedLine.line) {
 			// Go to the end of this virtual line
-			updateCursorPosition(cursorPosition.copy(char = nextWrappedLine.wrapStartsAtIndex - 1))
+			cursor.updatePosition(cursorPosition.copy(char = nextWrappedLine.wrapStartsAtIndex - 1))
 		} else {
 			// Go to the end of this real line
-			updateCursorPosition(cursorPosition.copy(char = textLines[line].length))
+			cursor.updatePosition(cursorPosition.copy(char = textLines[line].length))
 		}
 	} else {
-		updateCursorPosition(cursorPosition.copy(char = textLines[line].length))
+		cursor.updatePosition(cursorPosition.copy(char = textLines[line].length))
 	}
 }
 
@@ -112,7 +93,7 @@ fun TextEditorState.moveToNextWord() {
 		newPosition++
 	}
 
-	updateCursorPosition(getOffsetAtCharacter(newPosition))
+	cursor.updatePosition(getOffsetAtCharacter(newPosition))
 }
 
 fun TextEditorState.moveToPreviousWord() {
@@ -152,7 +133,7 @@ fun TextEditorState.moveToPreviousWord() {
 		newPosition--
 	}
 
-	updateCursorPosition(getOffsetAtCharacter(newPosition))
+	cursor.updatePosition(getOffsetAtCharacter(newPosition))
 }
 
 internal fun TextEditorState.moveCursorPageUp() {
@@ -179,7 +160,7 @@ internal fun TextEditorState.moveCursorPageUp() {
 		)
 
 		// Update cursor position
-		updateCursorPosition(
+		cursor.updatePosition(
 			CharLineOffset(
 				line = targetLine.line,
 				char = newCharIndex
@@ -216,7 +197,7 @@ internal fun TextEditorState.moveCursorPageDown() {
 		)
 
 		// Update cursor position
-		updateCursorPosition(
+		cursor.updatePosition(
 			CharLineOffset(
 				line = targetLine.line,
 				char = newCharIndex

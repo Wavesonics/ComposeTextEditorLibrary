@@ -55,15 +55,11 @@ class TextEditorState(
 	)
 	val cursorPositionFlow: SharedFlow<CharLineOffset> = _cursorPositionFlow
 
-	private var _cursorPosition by mutableStateOf(CharLineOffset(0, 0))
-	var cursorPosition: CharLineOffset
-		get() = _cursorPosition
-		private set(value) {
-			_cursorPosition = value
-			_cursorPositionFlow.tryEmit(value)
-		}
+	val cursor = TextEditorCursorState(this)
 
-	var isCursorVisible by mutableStateOf(true)
+	val cursorPosition: CharLineOffset
+		get() = cursor.position
+
 	var isFocused by mutableStateOf(false)
 
 	private var _lineOffsets by mutableStateOf(emptyList<LineWrap>())
@@ -114,25 +110,8 @@ class TextEditorState(
 		notifyContentChanged()
 	}
 
-	fun setCursorVisible() {
-		isCursorVisible = true
-	}
-
-	fun toggleCursor() {
-		isCursorVisible = !isCursorVisible
-	}
-
 	fun updateFocus(focused: Boolean) {
 		isFocused = focused
-	}
-
-	fun updateCursorPosition(position: CharLineOffset) {
-		val maxLine = (_textLines.size - 1).coerceAtLeast(0)
-		val line = position.line.coerceIn(0, maxLine)
-		val char = position.char.coerceIn(0, _textLines.getOrNull(line)?.length ?: 0)
-
-		cursorPosition = CharLineOffset(line, char)
-		scrollManager.ensureCursorVisible()
 	}
 
 	fun insertNewlineAtCursor() {
@@ -203,21 +182,22 @@ class TextEditorState(
 	}
 
 	fun insertCharacterAtCursor(char: Char) {
+		val text = cursor.applyCursorStyle(char.toString())
 		val operation = TextEditOperation.Insert(
 			position = cursorPosition,
-			text = AnnotatedString(char.toString()),
+			text = text,
 			cursorBefore = cursorPosition,
 			cursorAfter = CharLineOffset(cursorPosition.line, cursorPosition.char + 1)
 		)
 		editManager.applyOperation(operation)
 	}
 
-
 	fun insertStringAtCursor(string: String) = insertStringAtCursor(string.toAnnotatedString())
 	fun insertStringAtCursor(text: AnnotatedString) {
+		val styledText = cursor.applyCursorStyle(text)
 		val operation = TextEditOperation.Insert(
 			position = cursorPosition,
-			text = text,
+			text = styledText,
 			cursorBefore = cursorPosition,
 			cursorAfter = CharLineOffset(cursorPosition.line, cursorPosition.char + text.length)
 		)

@@ -13,7 +13,6 @@ import androidx.compose.ui.input.pointer.isSecondaryPressed
 import androidx.compose.ui.input.pointer.pointerInput
 import com.darkrockstudios.texteditor.state.SpanClickType
 import com.darkrockstudios.texteditor.state.TextEditorState
-import com.darkrockstudios.texteditor.state.isWordChar
 import kotlinx.datetime.Clock
 
 internal fun Modifier.textEditorPointerInputHandling(
@@ -80,7 +79,7 @@ internal fun Modifier.textEditorPointerInputHandling(
 		detectTapsImperatively(
 			onTap = { offset: Offset ->
 				val position = state.getOffsetAtPosition(offset)
-				state.updateCursorPosition(position)
+				state.cursor.updatePosition(position)
 				state.selector.clearSelection()
 			},
 			onDoubleTap = { offset: Offset ->
@@ -100,7 +99,7 @@ internal fun Modifier.textEditorPointerInputHandling(
 				dragStartPosition = state.getOffsetAtPosition(offset)
 				// Update cursor to drag start position
 				dragStartPosition?.let { pos ->
-					state.updateCursorPosition(pos)
+					state.cursor.updatePosition(pos)
 				}
 			},
 			onDragEnd = {
@@ -114,7 +113,7 @@ internal fun Modifier.textEditorPointerInputHandling(
 					state.selector.updateSelection(startPos, currentPosition)
 				}
 				// Update cursor position to follow drag
-				state.updateCursorPosition(currentPosition)
+				state.cursor.updatePosition(currentPosition)
 			}
 		)
 	}
@@ -215,7 +214,7 @@ private fun handleSpanInteraction(
 	} else {
 		// Only update cursor on primary clicks or taps
 		if (clickType == SpanClickType.PRIMARY_CLICK || clickType == SpanClickType.TAP) {
-			state.updateCursorPosition(position)
+			state.cursor.updatePosition(position)
 			state.selector.clearSelection()
 		}
 		true
