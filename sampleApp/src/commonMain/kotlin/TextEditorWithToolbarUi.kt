@@ -1,3 +1,4 @@
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -23,14 +24,16 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.unit.dp
 import com.darkrockstudios.texteditor.state.TextEditorState
 import com.darkrockstudios.texteditor.state.getRichSpansAtPosition
 import com.darkrockstudios.texteditor.state.getRichSpansInRange
-import com.darkrockstudios.texteditor.state.getSpanStylesAtPosition
 import com.darkrockstudios.texteditor.state.getSpanStylesInRange
 
 @Composable
@@ -38,29 +41,36 @@ fun TextEditorToolbar(
 	state: TextEditorState,
 	modifier: Modifier = Modifier,
 ) {
+
 	var isBoldActive by remember { mutableStateOf(false) }
 	var isItalicActive by remember { mutableStateOf(false) }
 	var isHighlightActive by remember { mutableStateOf(false) }
 
-	LaunchedEffect(Unit) {
-		state.cursorPositionFlow.collect { position ->
-			val selection = state.selector.selection
-			val styles = if (selection != null) {
-				state.getSpanStylesInRange(selection)
-			} else {
-				state.getSpanStylesAtPosition(position)
-			}
-
-			val richSpans = if (selection != null) {
-				state.getRichSpansInRange(selection)
-			} else {
-				state.getRichSpansAtPosition(position)
-			}
-
-			isBoldActive = styles.contains(BOLD)
-			isItalicActive = styles.contains(ITALICS)
-			isHighlightActive = richSpans.any { it.style == HIGHLIGHT }
+	LaunchedEffect(state.cursor.styles) {
+		snapshotFlow {
+			Triple(
+				state.cursor.position,
+				state.cursor.styles,
+				state.selector.selection
+			)
 		}
+			.collect { (position, cursorStyles, selection) ->
+				val styles = if (selection != null) {
+					state.getSpanStylesInRange(selection)
+				} else {
+					cursorStyles
+				}
+
+				val richSpans = if (selection != null) {
+					state.getRichSpansInRange(selection)
+				} else {
+					state.getRichSpansAtPosition(position)
+				}
+
+				isBoldActive = styles.contains(BOLD)
+				isItalicActive = styles.contains(ITALICS)
+				isHighlightActive = richSpans.any { it.style == HIGHLIGHT }
+			}
 	}
 
 	Surface(
@@ -101,36 +111,22 @@ fun TextEditorToolbar(
 			Row {
 				FormatButton(
 					onClick = {
-						state.selector.selection?.let { range ->
-							if (isBoldActive) {
-								state.removeStyleSpan(range, BOLD)
-							} else {
-								state.addStyleSpan(range, BOLD)
-							}
-						}
+						toggleStyle(state, isBoldActive, BOLD)
 					},
 					icon = Icons.Default.FormatBold,
 					contentDescription = "Bold",
 					isActive = isBoldActive,
-					enabled = state.selector.hasSelection()
 				)
 
 				Spacer(modifier = Modifier.width(4.dp))
 
 				FormatButton(
 					onClick = {
-						state.selector.selection?.let { range ->
-							if (isItalicActive) {
-								state.removeStyleSpan(range, ITALICS)
-							} else {
-								state.addStyleSpan(range, ITALICS)
-							}
-						}
+						toggleStyle(state, isItalicActive, ITALICS)
 					},
 					icon = Icons.Default.FormatItalic,
 					contentDescription = "Italic",
 					isActive = isItalicActive,
-					enabled = state.selector.selection != null
 				)
 
 				Spacer(modifier = Modifier.width(4.dp))
@@ -155,6 +151,27 @@ fun TextEditorToolbar(
 	}
 }
 
+private fun toggleStyle(
+	state: TextEditorState,
+	isActive: Boolean,
+	spanStyle: SpanStyle
+) {
+	val selection = state.selector.selection
+	if (selection != null) {
+		if (isActive) {
+			state.removeStyleSpan(selection, spanStyle)
+		} else {
+			state.addStyleSpan(selection, spanStyle)
+		}
+	} else {
+		if (isActive) {
+			state.cursor.removeStyle(spanStyle)
+		} else {
+			state.cursor.addStyle(spanStyle)
+		}
+	}
+}
+
 @Composable
 private fun ToolbarButton(
 	onClick: () -> Unit,
@@ -168,7 +185,11 @@ private fun ToolbarButton(
 		onClick = onClick,
 		enabled = enabled,
 		modifier = modifier
-			.size(32.dp),
+			.size(32.dp)
+			.focusable(false)
+			.focusProperties {
+				canFocus = false
+			},
 		colors = IconButtonDefaults.filledTonalIconButtonColors(
 			containerColor = if (isActive)
 				MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)

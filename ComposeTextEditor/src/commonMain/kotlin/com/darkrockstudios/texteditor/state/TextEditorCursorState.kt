@@ -27,7 +27,7 @@ class TextEditorCursorState(
 		extraBufferCapacity = 1,
 		onBufferOverflow = BufferOverflow.DROP_OLDEST
 	)
-	val cursorPositionFlow: SharedFlow<CharLineOffset> = _cursorPositionFlow
+	val positionFlow: SharedFlow<CharLineOffset> = _cursorPositionFlow
 
 	fun updatePosition(position: CharLineOffset) {
 		val maxLine = (editorState.textLines.size - 1).coerceAtLeast(0)
@@ -64,12 +64,39 @@ class TextEditorCursorState(
 		_styles = _styles - style
 	}
 
+	fun toggleStyle(style: SpanStyle) {
+		if (_styles.contains(style)) {
+			removeStyle(style)
+		} else {
+			addStyle(style)
+		}
+	}
+
 	fun clearStyles() {
 		_styles = emptySet()
 	}
 
 	private fun updateStylesFromPosition(position: CharLineOffset) {
-		_styles = editorState.getSpanStylesAtPosition(position)
+		// If we're at the start of the line and it's not the first line,
+		// check the end of the previous line
+		if (position.char == 0 && position.line > 0) {
+			val previousLine = position.line - 1
+			val previousLineLength = editorState.textLines[previousLine].length
+			if (previousLineLength > 0) {
+				val previousPosition = CharLineOffset(previousLine, previousLineLength)
+				_styles = editorState.getSpanStylesAtPosition(previousPosition)
+				return
+			}
+		}
+
+		// If we're not at the start of the text, look at the character before the cursor
+		if (position.char > 0) {
+			val beforePosition = position.copy(char = position.char - 1)
+			_styles = editorState.getSpanStylesAtPosition(beforePosition)
+		} else {
+			// If we're at the start of text or there's no style before us, clear styles
+			_styles = emptySet()
+		}
 	}
 
 	fun applyCursorStyle(text: AnnotatedString): AnnotatedString {
@@ -82,13 +109,13 @@ class TextEditorCursorState(
 		}
 
 		return buildAnnotatedString {
-			pushStyle(
-				_styles.fold(SpanStyle()) { acc, style ->
-					acc.merge(style)
-				}
-			)
+			_styles.forEach { style ->
+				pushStyle(style)
+			}
 			append(string)
-			pop()
+			repeat(_styles.size) {
+				pop()
+			}
 		}
 	}
 

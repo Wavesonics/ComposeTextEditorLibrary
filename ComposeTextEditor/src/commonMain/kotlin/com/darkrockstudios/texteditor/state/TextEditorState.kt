@@ -27,8 +27,6 @@ import com.darkrockstudios.texteditor.markdown.toMarkdown
 import com.darkrockstudios.texteditor.richstyle.RichSpan
 import com.darkrockstudios.texteditor.richstyle.RichSpanStyle
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.channels.BufferOverflow
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlin.math.min
 import kotlin.uuid.ExperimentalUuidApi
@@ -48,12 +46,6 @@ class TextEditorState(
 	private var _version by mutableStateOf(0)
 	internal val _textLines = mutableListOf<AnnotatedString>()
 	val textLines: List<AnnotatedString> get() = _textLines
-
-	private val _cursorPositionFlow = MutableSharedFlow<CharLineOffset>(
-		extraBufferCapacity = 1,
-		onBufferOverflow = BufferOverflow.DROP_OLDEST
-	)
-	val cursorPositionFlow: SharedFlow<CharLineOffset> = _cursorPositionFlow
 
 	val cursor = TextEditorCursorState(this)
 
