@@ -145,13 +145,14 @@ private fun handleSpanInteraction(
 	val position = state.getOffsetAtPosition(offset)
 	val clickedSpan = state.findSpanAtPosition(position)
 
+	if (clickType == SpanClickType.PRIMARY_CLICK || clickType == SpanClickType.TAP) {
+		state.cursor.updatePosition(position)
+		state.selector.clearSelection()
+	}
+
 	return if (clickedSpan != null && onSpanClick != null) {
 		onSpanClick.invoke(clickedSpan, clickType, offset)
 	} else {
-		if (clickType == SpanClickType.PRIMARY_CLICK || clickType == SpanClickType.TAP) {
-			state.cursor.updatePosition(position)
-			state.selector.clearSelection()
-		}
 		true
 	}
 }
