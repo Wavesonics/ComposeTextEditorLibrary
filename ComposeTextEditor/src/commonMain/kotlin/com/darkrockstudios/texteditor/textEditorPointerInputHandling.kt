@@ -5,7 +5,6 @@ import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.PointerEventType
-import androidx.compose.ui.input.pointer.PointerInputScope
 import androidx.compose.ui.input.pointer.PointerType
 import androidx.compose.ui.input.pointer.isPrimaryPressed
 import androidx.compose.ui.input.pointer.isSecondaryPressed
@@ -117,25 +116,23 @@ internal fun Modifier.textEditorPointerInputHandling(
 				}
 			}
 		}
-		.pointerInput(Unit) {
-			detectTapsImperatively(
-				onTap = { offset: Offset ->
-					val position = state.getOffsetAtPosition(offset)
-					state.cursor.updatePosition(position)
-					state.selector.clearSelection()
-				},
-				onDoubleTap = { offset: Offset ->
-					val position = state.getOffsetAtPosition(offset)
-					state.selector.startSelection(position, isTouch = true)
-					state.selector.selectWordAt(position)
-				},
-				onTripleTap = { offset: Offset ->
-					val position = state.getOffsetAtPosition(offset)
-					state.selector.startSelection(position, isTouch = true)
-					state.selector.selectLineAt(position)
-				}
-			)
-		}
+		.detectMouseClicksImperatively(
+			onClick = { offset: Offset ->
+				val position = state.getOffsetAtPosition(offset)
+				state.cursor.updatePosition(position)
+				state.selector.clearSelection()
+			},
+			onDoubleClick = { offset: Offset ->
+				val position = state.getOffsetAtPosition(offset)
+				state.selector.startSelection(position, isTouch = false)
+				state.selector.selectWordAt(position)
+			},
+			onTripleClick = { offset: Offset ->
+				val position = state.getOffsetAtPosition(offset)
+				state.selector.startSelection(position, isTouch = false)
+				state.selector.selectLineAt(position)
+			}
+		)
 }
 
 private fun Modifier.handleDragInput(state: TextEditorState): Modifier {
@@ -245,82 +242,84 @@ private fun handleSpanInteraction(
 	}
 }
 
-suspend fun PointerInputScope.detectTapsImperatively(
-	onTap: (Offset) -> Unit,
-	onDoubleTap: (Offset) -> Unit,
-	onTripleTap: (Offset) -> Unit,
-) {
-	awaitPointerEventScope {
-		var lastTapTime = 0L
-		var secondLastTapTime = 0L
-		var lastTapPosition: Offset? = null
-		var secondLastTapPosition: Offset? = null
+private fun Modifier.detectMouseClicksImperatively(
+	onClick: (Offset) -> Unit,
+	onDoubleClick: (Offset) -> Unit,
+	onTripleClick: (Offset) -> Unit,
+): Modifier {
+	return pointerInput(Unit) {
+		awaitPointerEventScope {
+			var lastTapTime = 0L
+			var secondLastTapTime = 0L
+			var lastTapPosition: Offset? = null
+			var secondLastTapPosition: Offset? = null
 
-		while (true) {
-			val down = awaitFirstDown()
+			while (true) {
+				val down = awaitFirstDown()
 
-			// Skip if not a mouse event
-			if (down.type != PointerType.Mouse) {
-				// Consume events until release
+				// Skip if not a mouse event
+				if (down.type != PointerType.Mouse) {
+					// Consume events until release
+					do {
+						val event = awaitPointerEvent()
+					} while (event.changes.any { it.pressed })
+					continue
+				}
+
+				val downTime = Clock.System.now().toEpochMilliseconds()
+				val downPosition = down.position
+
+				onClick(downPosition)
+
 				do {
 					val event = awaitPointerEvent()
 				} while (event.changes.any { it.pressed })
-				continue
-			}
 
-			val downTime = Clock.System.now().toEpochMilliseconds()
-			val downPosition = down.position
+				val isTripleTap = lastTapPosition?.let { lastPos ->
+					secondLastTapPosition?.let { secondLastPos ->
+						val firstToSecondTimeDiff = lastTapTime - secondLastTapTime
+						val secondToThirdTimeDiff = downTime - lastTapTime
+						val firstToSecondPosDiff = (lastPos - secondLastPos).getDistance()
+						val secondToThirdPosDiff = (downPosition - lastPos).getDistance()
 
-			onTap(downPosition)
-
-			do {
-				val event = awaitPointerEvent()
-			} while (event.changes.any { it.pressed })
-
-			val isTripleTap = lastTapPosition?.let { lastPos ->
-				secondLastTapPosition?.let { secondLastPos ->
-					val firstToSecondTimeDiff = lastTapTime - secondLastTapTime
-					val secondToThirdTimeDiff = downTime - lastTapTime
-					val firstToSecondPosDiff = (lastPos - secondLastPos).getDistance()
-					val secondToThirdPosDiff = (downPosition - lastPos).getDistance()
-
-					firstToSecondTimeDiff < 300L &&
-							secondToThirdTimeDiff < 300L &&
-							firstToSecondPosDiff < 20f &&
-							secondToThirdPosDiff < 20f
-				}
-			} ?: false
-
-			val isDoubleTap = if (!isTripleTap) {
-				lastTapPosition?.let { lastPos ->
-					val timeDiff = downTime - lastTapTime
-					val posDiff = (downPosition - lastPos).getDistance()
-					timeDiff < 300L && posDiff < 20f
+						firstToSecondTimeDiff < 300L &&
+								secondToThirdTimeDiff < 300L &&
+								firstToSecondPosDiff < 20f &&
+								secondToThirdPosDiff < 20f
+					}
 				} ?: false
-			} else false
 
-			when {
-				isTripleTap -> {
-					onTripleTap(downPosition)
-					lastTapTime = 0L
-					secondLastTapTime = 0L
-					lastTapPosition = null
-					secondLastTapPosition = null
-				}
+				val isDoubleTap = if (!isTripleTap) {
+					lastTapPosition?.let { lastPos ->
+						val timeDiff = downTime - lastTapTime
+						val posDiff = (downPosition - lastPos).getDistance()
+						timeDiff < 300L && posDiff < 20f
+					} ?: false
+				} else false
 
-				isDoubleTap -> {
-					onDoubleTap(downPosition)
-					secondLastTapTime = lastTapTime
-					secondLastTapPosition = lastTapPosition
-					lastTapTime = downTime
-					lastTapPosition = downPosition
-				}
+				when {
+					isTripleTap -> {
+						onTripleClick(downPosition)
+						lastTapTime = 0L
+						secondLastTapTime = 0L
+						lastTapPosition = null
+						secondLastTapPosition = null
+					}
 
-				else -> {
-					secondLastTapTime = lastTapTime
-					secondLastTapPosition = lastTapPosition
-					lastTapTime = downTime
-					lastTapPosition = downPosition
+					isDoubleTap -> {
+						onDoubleClick(downPosition)
+						secondLastTapTime = lastTapTime
+						secondLastTapPosition = lastTapPosition
+						lastTapTime = downTime
+						lastTapPosition = downPosition
+					}
+
+					else -> {
+						secondLastTapTime = lastTapTime
+						secondLastTapPosition = lastTapPosition
+						lastTapTime = downTime
+						lastTapPosition = downPosition
+					}
 				}
 			}
 		}
