@@ -60,14 +60,15 @@ class TextEditorSelectionManager(
 	}
 
 	fun updateSelection(start: CharLineOffset, end: CharLineOffset) {
-		_selection = if (start != end) {
-			if (isBeforeInDocument(start, end)) {
-				TextEditorRange(start, end)
-			} else {
-				TextEditorRange(end, start)
-			}
+		val range = makeRange(start, end)
+		updateSelectionRange(range)
+	}
+
+	private fun makeRange(start: CharLineOffset, end: CharLineOffset): TextEditorRange {
+		return if (isBeforeInDocument(start, end)) {
+			TextEditorRange(start, end)
 		} else {
-			null
+			TextEditorRange(end, start)
 		}
 	}
 

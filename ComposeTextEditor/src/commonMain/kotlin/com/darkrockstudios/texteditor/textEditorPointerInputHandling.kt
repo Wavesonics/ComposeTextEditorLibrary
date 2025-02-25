@@ -2,7 +2,6 @@ package com.darkrockstudios.texteditor
 
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.PointerEventType
@@ -30,35 +29,7 @@ internal fun Modifier.textEditorPointerInputHandling(
 	onSpanClick: RichSpanClickListener? = null,
 ): Modifier {
 	return this
-		.pointerInput(Unit) {
-			detectDragGestures(
-				onDragStart = { offset ->
-					val handle = findHandleAtPosition(offset, state)
-					if (handle != null) {
-						state.selector.setDraggingHandle(handle.isStart)
-					}
-				},
-				onDrag = { change, dragAmount ->
-					if (state.selector.isDraggingHandle()) {
-						val newPosition = state.getOffsetAtPosition(change.position)
-						val selection = state.selector.selection
-						if (selection != null) {
-							if (state.selector.isDraggingStartHandle()) {
-								state.selector.updateSelection(newPosition, selection.end)
-							} else {
-								state.selector.updateSelection(selection.start, newPosition)
-							}
-						}
-						change.consume()
-					} else if (change.type == PointerType.Touch) {
-						state.scrollState.scrollBy(-dragAmount.y)
-					}
-				},
-				onDragEnd = {
-					state.selector.clearDraggingHandle()
-				}
-			)
-		}
+		.handleDragInput(state)
 		.pointerInput(Unit) {
 			awaitEachGesture {
 				var didHandlePress = false
@@ -165,6 +136,64 @@ internal fun Modifier.textEditorPointerInputHandling(
 				}
 			)
 		}
+}
+
+private fun Modifier.handleDragInput(state: TextEditorState): Modifier {
+	return pointerInput(Unit) {
+		awaitEachGesture {
+			val down = awaitFirstDown()
+			val isTouch = down.type == PointerType.Touch
+			val isMouse = down.type == PointerType.Mouse
+
+			val initialPosition = down.position
+
+			var mouseSelectionAnchor: CharLineOffset? = null
+
+			if (isTouch) {
+				val handle = findHandleAtPosition(initialPosition, state)
+				if (handle != null) {
+					state.selector.setDraggingHandle(handle.isStart)
+				}
+			} else if (isMouse) {
+				mouseSelectionAnchor = state.getOffsetAtPosition(initialPosition)
+				state.selector.startSelection(position = mouseSelectionAnchor, isTouch = false)
+			}
+
+			val pointerId = down.id
+			var currentPosition: Offset
+
+			// Continue reading pointer events until release
+			while (true) {
+				val event = awaitPointerEvent()
+				val dragEvent = event.changes.firstOrNull { it.id == pointerId } ?: break
+
+				if (!dragEvent.pressed) {
+					state.selector.clearDraggingHandle()
+					break
+				}
+
+				currentPosition = dragEvent.position
+
+				if (state.selector.isDraggingHandle()) {
+					val newPosition = state.getOffsetAtPosition(currentPosition)
+					val selection = state.selector.selection
+					if (selection != null) {
+						if (state.selector.isDraggingStartHandle()) {
+							state.selector.updateSelection(newPosition, selection.end)
+						} else {
+							state.selector.updateSelection(selection.start, newPosition)
+						}
+					}
+					dragEvent.consume()
+				} else {
+					if (isMouse && mouseSelectionAnchor != null) {
+						val currentOffset = state.getOffsetAtPosition(currentPosition)
+						state.selector.updateSelection(mouseSelectionAnchor, currentOffset)
+					}
+				}
+			}
+		}
+	}
 }
 
 private fun findHandleAtPosition(
