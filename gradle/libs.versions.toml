@@ -13,12 +13,12 @@ markdown = "0.7.3"
 mockk = "1.13.13"
 kotlinx-coroutines-test = "1.9.0"
 
-activity-ktx = "1.9.3"
+activity-ktx = "1.10.0"
 lifecycleRuntimeKtx = "2.8.7"
-activityCompose = "1.9.3"
-composeBom = "2024.12.01"
+activityCompose = "1.10.0"
+composeBom = "2025.02.00"
 
-symspellkt = "3.1.0"
+symspellkt = "3.2.0"
 
 nexus-publish = "2.0.0"
 
