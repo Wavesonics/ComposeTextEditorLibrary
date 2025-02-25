@@ -29,93 +29,7 @@ internal fun Modifier.textEditorPointerInputHandling(
 ): Modifier {
 	return this
 		.handleDragInput(state)
-		.pointerInput(Unit) {
-			awaitEachGesture {
-				var didHandlePress = false
-				var longPressJob: Job? = null
-				var didLongPress = false
-
-				while (true) {
-					val event = awaitPointerEvent()
-					val eventChange = event.changes.first()
-
-					when (event.type) {
-						PointerEventType.Press -> {
-							val position = eventChange.position
-
-							val handle = findHandleAtPosition(position, state)
-							if (handle != null) {
-								didHandlePress = true
-								break
-							}
-
-							when (eventChange.type) {
-								PointerType.Touch -> {
-									didLongPress = false
-									longPressJob = state.scope.launch {
-										delay(500)
-										val wordPosition = state.getOffsetAtPosition(position)
-										state.selector.startSelection(wordPosition, isTouch = true)
-										state.selector.selectWordAt(wordPosition)
-										didLongPress = true
-										didHandlePress = true
-									}
-								}
-
-								PointerType.Mouse -> {
-									if (event.buttons.isPrimaryPressed) {
-										handleSpanInteraction(
-											state,
-											position,
-											SpanClickType.PRIMARY_CLICK,
-											onSpanClick
-										)
-										didHandlePress = true
-									} else if (event.buttons.isSecondaryPressed) {
-										handleSpanInteraction(
-											state,
-											position,
-											SpanClickType.SECONDARY_CLICK,
-											onSpanClick
-										)
-										didHandlePress = true
-									}
-								}
-
-								else -> {}
-							}
-						}
-
-						PointerEventType.Release -> {
-							if (eventChange.type == PointerType.Touch && !didLongPress) {
-								val position = eventChange.position
-								handleSpanInteraction(
-									state,
-									position,
-									SpanClickType.TAP,
-									onSpanClick
-								)
-							}
-
-							longPressJob?.cancel()
-							longPressJob = null
-
-							if (didHandlePress) {
-								break
-							}
-						}
-
-						PointerEventType.Move -> {
-							val movement = event.changes.first()
-							if (movement.positionChanged()) {
-								longPressJob?.cancel()
-								longPressJob = null
-							}
-						}
-					}
-				}
-			}
-		}
+		.handleTextInteractions(state, onSpanClick)
 		.detectMouseClicksImperatively(
 			onClick = { offset: Offset ->
 				val position = state.getOffsetAtPosition(offset)
@@ -239,6 +153,99 @@ private fun handleSpanInteraction(
 			state.selector.clearSelection()
 		}
 		true
+	}
+}
+
+private fun Modifier.handleTextInteractions(
+	state: TextEditorState,
+	onSpanClick: RichSpanClickListener?
+): Modifier {
+	return pointerInput(Unit) {
+		awaitEachGesture {
+			var didHandlePress = false
+			var longPressJob: Job? = null
+			var didLongPress = false
+
+			while (true) {
+				val event = awaitPointerEvent()
+				val eventChange = event.changes.first()
+
+				when (event.type) {
+					PointerEventType.Press -> {
+						val position = eventChange.position
+
+						val handle = findHandleAtPosition(position, state)
+						if (handle != null) {
+							didHandlePress = true
+							break
+						}
+
+						when (eventChange.type) {
+							PointerType.Touch -> {
+								didLongPress = false
+								longPressJob = state.scope.launch {
+									delay(500)
+									val wordPosition = state.getOffsetAtPosition(position)
+									state.selector.startSelection(wordPosition, isTouch = true)
+									state.selector.selectWordAt(wordPosition)
+									didLongPress = true
+									didHandlePress = true
+								}
+							}
+
+							PointerType.Mouse -> {
+								if (event.buttons.isPrimaryPressed) {
+									handleSpanInteraction(
+										state,
+										position,
+										SpanClickType.PRIMARY_CLICK,
+										onSpanClick
+									)
+									didHandlePress = true
+								} else if (event.buttons.isSecondaryPressed) {
+									handleSpanInteraction(
+										state,
+										position,
+										SpanClickType.SECONDARY_CLICK,
+										onSpanClick
+									)
+									didHandlePress = true
+								}
+							}
+
+							else -> {}
+						}
+					}
+
+					PointerEventType.Release -> {
+						if (eventChange.type == PointerType.Touch && !didLongPress) {
+							val position = eventChange.position
+							handleSpanInteraction(
+								state,
+								position,
+								SpanClickType.TAP,
+								onSpanClick
+							)
+						}
+
+						longPressJob?.cancel()
+						longPressJob = null
+
+						if (didHandlePress) {
+							break
+						}
+					}
+
+					PointerEventType.Move -> {
+						val movement = event.changes.first()
+						if (movement.positionChanged()) {
+							longPressJob?.cancel()
+							longPressJob = null
+						}
+					}
+				}
+			}
+		}
 	}
 }
 
