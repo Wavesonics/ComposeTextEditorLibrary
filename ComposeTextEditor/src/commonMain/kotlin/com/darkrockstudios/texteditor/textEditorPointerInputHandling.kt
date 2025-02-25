@@ -33,18 +33,13 @@ internal fun Modifier.textEditorPointerInputHandling(
 		.pointerInput(Unit) {
 			detectDragGestures(
 				onDragStart = { offset ->
-					println("Starting drag handle handling")
 					val handle = findHandleAtPosition(offset, state)
 					if (handle != null) {
-						println("Found drag handle!")
 						state.selector.setDraggingHandle(handle.isStart)
-						println("onDrag: start ${state.selector.draggingStartHandle} end ${state.selector.draggingEndHandle}")
 					}
 				},
-				onDrag = { change, _ ->
-					println("onDrag: start ${state.selector.draggingStartHandle} end ${state.selector.draggingEndHandle}")
+				onDrag = { change, dragAmount ->
 					if (state.selector.isDraggingHandle()) {
-						println("Dragging handle!")
 						val newPosition = state.getOffsetAtPosition(change.position)
 						val selection = state.selector.selection
 						if (selection != null) {
@@ -54,6 +49,9 @@ internal fun Modifier.textEditorPointerInputHandling(
 								state.selector.updateSelection(selection.start, newPosition)
 							}
 						}
+						change.consume()
+					} else if (change.type == PointerType.Touch) {
+						state.scrollState.scrollBy(-dragAmount.y)
 					}
 				},
 				onDragEnd = {
