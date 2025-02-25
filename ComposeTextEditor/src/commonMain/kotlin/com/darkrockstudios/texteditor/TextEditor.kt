@@ -130,6 +130,8 @@ fun TextEditor(
 
 					DrawSelection(state, style.selectionColor)
 
+					DrawSelectionHandles(state)
+
 					if (enabled && state.isFocused && state.cursor.isVisible) {
 						DrawCursor(state, style.cursorColor)
 					}

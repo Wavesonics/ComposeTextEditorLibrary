@@ -23,6 +23,8 @@ import com.darkrockstudios.texteditor.TextEditorRange
 import com.darkrockstudios.texteditor.annotatedstring.splitAnnotatedString
 import com.darkrockstudios.texteditor.annotatedstring.subSequence
 import com.darkrockstudios.texteditor.annotatedstring.toAnnotatedString
+import com.darkrockstudios.texteditor.cursor.CursorMetrics
+import com.darkrockstudios.texteditor.cursor.getWrappedLineIndex
 import com.darkrockstudios.texteditor.markdown.toMarkdown
 import com.darkrockstudios.texteditor.richstyle.RichSpan
 import com.darkrockstudios.texteditor.richstyle.RichSpanStyle
@@ -330,6 +332,27 @@ class TextEditorState(
 	fun onViewportSizeChange(size: Size) {
 		viewportSize = size
 		updateBookKeeping()
+	}
+
+	fun getPositionForOffset(position: CharLineOffset): CursorMetrics {
+		val (_, charIndex) = position
+
+		val currentWrappedLineIndex = lineOffsets.getWrappedLineIndex(position)
+		val currentWrappedLine = lineOffsets[currentWrappedLineIndex]
+		val startOfLineOffset = lineOffsets.first { it.line == currentWrappedLine.line }.offset
+
+		val layout = currentWrappedLine.textLayoutResult
+
+		val cursorX = layout.getHorizontalPosition(charIndex, usePrimaryDirection = true)
+		val cursorY =
+			startOfLineOffset.y + layout.multiParagraph.getLineTop(currentWrappedLine.virtualLineIndex) - scrollState.value
+
+		val lineHeight = layout.multiParagraph.getLineHeight(currentWrappedLine.virtualLineIndex)
+
+		return CursorMetrics(
+			position = Offset(cursorX, cursorY),
+			height = lineHeight
+		)
 	}
 
 	fun getOffsetAtPosition(offset: Offset): CharLineOffset {

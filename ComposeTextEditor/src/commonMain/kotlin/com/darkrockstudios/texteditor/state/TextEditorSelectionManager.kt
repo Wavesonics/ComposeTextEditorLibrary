@@ -16,28 +16,51 @@ class TextEditorSelectionManager(
 	private var _selection: TextEditorRange? by mutableStateOf(null)
 	val selection: TextEditorRange? get() = _selection
 
+	var draggingStartHandle = false
+	var draggingEndHandle = false
+	private var _isTouchSelection by mutableStateOf(false)
+	val isTouchSelection: Boolean get() = _isTouchSelection
+
 	private val _selectionRangeFlow = MutableSharedFlow<TextEditorRange?>(
 		extraBufferCapacity = 1,
 		onBufferOverflow = BufferOverflow.DROP_OLDEST
 	)
 	val selectionRangeFlow: SharedFlow<TextEditorRange?> = _selectionRangeFlow
 
+	fun setDraggingHandle(isStart: Boolean) {
+		if (isStart) {
+			draggingStartHandle = true
+			draggingEndHandle = false
+		} else {
+			draggingStartHandle = false
+			draggingEndHandle = true
+		}
+	}
+
+	fun clearDraggingHandle() {
+		draggingStartHandle = false
+		draggingEndHandle = false
+	}
+
+	fun isDraggingHandle() = draggingStartHandle || draggingEndHandle
+
+	fun isDraggingStartHandle() = draggingStartHandle
+
 	private fun updateSelectionRange(range: TextEditorRange?) {
 		if (range != null && !range.validate()) {
-			// Don't update with invalid ranges
 			return
 		}
 		_selection = range
 		_selectionRangeFlow.tryEmit(range)
 	}
 
-	fun startSelection(position: CharLineOffset) {
+	fun startSelection(position: CharLineOffset, isTouch: Boolean = false) {
+		_isTouchSelection = isTouch
 		updateSelectionRange(TextEditorRange(position, position))
 	}
 
 	fun updateSelection(start: CharLineOffset, end: CharLineOffset) {
 		_selection = if (start != end) {
-			// Ensure start is always before end in the document
 			if (isBeforeInDocument(start, end)) {
 				TextEditorRange(start, end)
 			} else {
@@ -49,6 +72,7 @@ class TextEditorSelectionManager(
 	}
 
 	fun clearSelection() {
+		_isTouchSelection = false
 		updateSelectionRange(null)
 	}
 

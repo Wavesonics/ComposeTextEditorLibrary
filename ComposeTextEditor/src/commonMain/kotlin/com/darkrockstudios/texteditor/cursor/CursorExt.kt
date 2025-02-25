@@ -25,7 +25,7 @@ fun TextEditorState.calculateCursorPosition(): CursorMetrics {
 	)
 }
 
-private fun List<LineWrap>.getWrappedLineIndex(position: CharLineOffset): Int {
+internal fun List<LineWrap>.getWrappedLineIndex(position: CharLineOffset): Int {
 	return indexOfLast { lineOffset ->
 		lineOffset.line == position.line && lineOffset.wrapStartsAtIndex <= position.char
 	}
