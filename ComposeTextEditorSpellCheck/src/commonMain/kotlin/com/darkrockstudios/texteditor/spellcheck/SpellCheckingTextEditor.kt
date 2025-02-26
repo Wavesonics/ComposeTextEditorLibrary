@@ -58,8 +58,7 @@ fun SpellCheckingTextEditor(
 				return@TextEditor if (type == SpanClickType.SECONDARY_CLICK || type == SpanClickType.TAP) {
 					val correction = state.handleSpanClick(span)
 					if (correction != null) {
-						val menuPos =
-							offset.copy(y = offset.y - state.textState.scrollState.value + wordVisibilityBuffer)
+						val menuPos = offset.copy(y = offset.y + wordVisibilityBuffer)
 						menuState.missSpelling.value =
 							SpellCheckMenuState.MissSpelling(correction, menuPos)
 						true
