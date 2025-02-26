@@ -10,7 +10,6 @@ import androidx.compose.foundation.gestures.ScrollableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import kotlin.math.abs
 import kotlin.math.roundToInt
 
 class TextEditorScrollState(
@@ -24,10 +23,7 @@ class TextEditorScrollState(
 
 	private val scrollScope: ScrollScope = object : ScrollScope {
 		override fun scrollBy(pixels: Float): Float {
-			if (pixels.isNaN()) return 0f
-
-			// Delegate to dispatchRawDelta like before, but with negated pixels
-			return dispatchRawDelta(-pixels)
+			return dispatchRawDelta(pixels)
 		}
 	}
 
@@ -58,16 +54,14 @@ class TextEditorScrollState(
 	}
 
 	override fun dispatchRawDelta(delta: Float): Float {
+		if (delta.isNaN()) return 0f
+
 		val oldValue = _value
+		val newValue = (oldValue - delta).roundToInt()
+		val coercedValue = newValue.coerceIn(0, maxValue)
 
-		// If we're at bounds and trying to scroll further, consume nothing
-		if (oldValue == 0 && delta < 0) return 0f
-		if (oldValue == maxValue && delta > 0) return 0f
-
-		// Calculate new value within bounds
-		val newValue = (oldValue + delta).roundToInt().coerceIn(0, maxValue)
-		val consumed = abs(newValue - oldValue).toFloat()
-		_value = newValue
+		val consumed = (oldValue - coercedValue).toFloat()
+		_value = coercedValue
 
 		return consumed
 	}
