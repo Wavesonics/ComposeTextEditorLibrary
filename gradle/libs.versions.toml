@@ -18,7 +18,7 @@ lifecycleRuntimeKtx = "2.8.7"
 activityCompose = "1.10.0"
 composeBom = "2025.02.00"
 
-symspellkt = "3.2.0"
+symspellkt = "3.3.0"
 
 nexus-publish = "2.0.0"
 
