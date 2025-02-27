@@ -10,8 +10,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.darkrockstudios.symspellkt.api.SpellChecker
+import com.darkrockstudios.texteditor.BasicTextEditor
 import com.darkrockstudios.texteditor.RichSpanClickListener
-import com.darkrockstudios.texteditor.TextEditor
 import com.darkrockstudios.texteditor.TextEditorRange
 import com.darkrockstudios.texteditor.spellcheck.utils.debounceUntilQuiescentWithBatch
 import com.darkrockstudios.texteditor.state.SpanClickType
@@ -50,12 +50,12 @@ fun SpellCheckingTextEditor(
 	SpellCheckTextContextMenuProvider(
 		spellCheckMenuState = menuState,
 	) {
-		TextEditor(
+		BasicTextEditor(
 			state = state.textState,
 			modifier = modifier,
 			enabled = enabled,
 			onRichSpanClick = { span, type, offset ->
-				return@TextEditor if (type == SpanClickType.SECONDARY_CLICK || type == SpanClickType.TAP) {
+				return@BasicTextEditor if (type == SpanClickType.SECONDARY_CLICK || type == SpanClickType.TAP) {
 					val correction = state.handleSpanClick(span)
 					if (correction != null) {
 						val menuPos = offset.copy(y = offset.y + wordVisibilityBuffer)
