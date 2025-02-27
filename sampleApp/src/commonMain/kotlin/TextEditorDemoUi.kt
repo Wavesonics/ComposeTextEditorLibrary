@@ -19,23 +19,36 @@ import com.darkrockstudios.texteditor.state.SpanClickType
 import com.darkrockstudios.texteditor.state.TextEditorState
 import com.darkrockstudios.texteditor.state.rememberTextEditorState
 
+enum class DemoContent {
+	Empty,
+	Rich,
+	Markdown
+}
+
 @Composable
 fun TextEditorDemoUi(
 	modifier: Modifier = Modifier,
 	navigateTo: (Destination) -> Unit,
-	demoContent: Boolean,
+	demoContent: DemoContent,
 ) {
-	val state: TextEditorState = if (demoContent) {
-		rememberTextEditorState(SIMPLE_MARKDOWN.toAnnotatedStringFromMarkdown())
-		//rememberTextEditorState(createRichTextDemo())
-		//rememberTextEditorState(createRichTextDemo2())
-		//rememberTextEditorState(alice_wounder_land.toAnnotatedStringFromMarkdown())
-	} else {
-		rememberTextEditorState()
+	val state: TextEditorState = when (demoContent) {
+		DemoContent.Rich -> {
+			rememberTextEditorState(createRichTextDemo())
+			//rememberTextEditorState(createRichTextDemo2())
+			//rememberTextEditorState(alice_wounder_land.toAnnotatedStringFromMarkdown())
+		}
+
+		DemoContent.Markdown -> {
+			rememberTextEditorState(SIMPLE_MARKDOWN.toAnnotatedStringFromMarkdown())
+		}
+
+		DemoContent.Empty -> {
+			rememberTextEditorState()
+		}
 	}
 
 	LaunchedEffect(Unit) {
-		if (demoContent) {
+		if (demoContent == DemoContent.Rich) {
 			//state.selector.updateSelection(CharLineOffset(0, 10), CharLineOffset(0, 20))
 			state.addRichSpan(6, 11, HIGHLIGHT)
 			state.addRichSpan(16, 31, SpellCheckStyle)
@@ -64,6 +77,7 @@ fun TextEditorDemoUi(
 
 		TextEditorToolbar(
 			state = state,
+			markdownControls = (demoContent != DemoContent.Rich)
 		)
 
 		val style = rememberTextEditorStyle(

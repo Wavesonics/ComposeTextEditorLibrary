@@ -40,6 +40,7 @@ fun SpellCheckingTextEditorDemoUi(
 
 		TextEditorToolbar(
 			state = state.textState,
+			markdownControls = true
 		)
 
 		SpellCheckingTextEditor(

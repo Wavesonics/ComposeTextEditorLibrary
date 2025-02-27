@@ -16,6 +16,7 @@ val HIGHLIGHT = HighlightSpanStyle(Color(0x40FF0000))
 enum class Destination {
 	Menu,
 	TextEditor,
+	MarkdownEditor,
 	EmptyTextEditor,
 	SpellChecking
 }
@@ -52,12 +53,17 @@ fun App() {
 
 				Destination.TextEditor -> TextEditorDemoUi(
 					navigateTo = ::navigateTo,
-					demoContent = true,
+					demoContent = DemoContent.Rich,
+				)
+
+				Destination.MarkdownEditor -> TextEditorDemoUi(
+					navigateTo = ::navigateTo,
+					demoContent = DemoContent.Markdown,
 				)
 
 				Destination.EmptyTextEditor -> TextEditorDemoUi(
 					navigateTo = ::navigateTo,
-					demoContent = false,
+					demoContent = DemoContent.Empty,
 				)
 
 				Destination.SpellChecking -> SpellCheckingTextEditorDemoUi(

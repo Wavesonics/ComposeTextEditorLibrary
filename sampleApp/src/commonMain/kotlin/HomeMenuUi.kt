@@ -33,11 +33,15 @@ fun HomeMenu(
 
 		Column(modifier = Modifier.widthIn(max = 512.dp).align(alignment = Alignment.Center)) {
 			Button(onClick = { navigateTo(Destination.TextEditor) }) {
-				Text("Text Editor")
+				Text("Rich Text Editor")
+			}
+
+			Button(onClick = { navigateTo(Destination.MarkdownEditor) }) {
+				Text("Markdown Text Editor")
 			}
 
 			Button(onClick = { navigateTo(Destination.EmptyTextEditor) }) {
-				Text("Text Editor (Blank)")
+				Text("Markdown Editor (Blank)")
 			}
 
 			Button(onClick = { navigateTo(Destination.SpellChecking) }) {

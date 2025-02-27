@@ -43,6 +43,7 @@ import com.darkrockstudios.texteditor.state.getSpanStylesInRange
 @Composable
 fun TextEditorToolbar(
 	state: TextEditorState,
+	markdownControls: Boolean,
 	modifier: Modifier = Modifier,
 ) {
 	var isBoldActive by remember { mutableStateOf(false) }
@@ -125,53 +126,55 @@ fun TextEditorToolbar(
 					isActive = isItalicActive,
 				)
 
-				Spacer(modifier = Modifier.width(4.dp))
+				if (markdownControls) {
+					Spacer(modifier = Modifier.width(12.dp))
 
-				FormatButton(
-					onClick = {
-						state.selector.selection?.let { range ->
-							if (isHighlightActive) {
-								state.removeRichSpan(range.start, range.end, HIGHLIGHT)
-							} else {
-								state.addRichSpan(range.start, range.end, HIGHLIGHT)
+					// Font size control group
+					VerticalDivider(modifier = Modifier.height(24.dp))
+
+					Spacer(modifier = Modifier.width(12.dp))
+
+					// Font size decrease button
+					ToolbarButton(
+						onClick = { decreaseFontSize(state) },
+						icon = Icons.Default.Remove,
+						contentDescription = "Decrease Font Size"
+					)
+
+					Icon(
+						imageVector = Icons.Default.FormatSize,
+						contentDescription = null,
+						modifier = Modifier
+							.size(20.dp)
+							.padding(horizontal = 4.dp),
+						tint = MaterialTheme.colorScheme.onSurfaceVariant
+					)
+
+					// Font size increase button
+					ToolbarButton(
+						onClick = { increaseFontSize(state) },
+						icon = Icons.Default.Add,
+						contentDescription = "Increase Font Size"
+					)
+				} else {
+					Spacer(modifier = Modifier.width(4.dp))
+
+					FormatButton(
+						onClick = {
+							state.selector.selection?.let { range ->
+								if (isHighlightActive) {
+									state.removeRichSpan(range.start, range.end, HIGHLIGHT)
+								} else {
+									state.addRichSpan(range.start, range.end, HIGHLIGHT)
+								}
 							}
-						}
-					},
-					icon = Icons.Default.Highlight,
-					contentDescription = "Highlight",
-					isActive = isHighlightActive,
-					enabled = state.selector.hasSelection()
-				)
-
-				Spacer(modifier = Modifier.width(12.dp))
-
-				// Font size control group
-				VerticalDivider(modifier = Modifier.height(24.dp))
-
-				Spacer(modifier = Modifier.width(12.dp))
-
-				// Font size decrease button
-				ToolbarButton(
-					onClick = { decreaseFontSize(state) },
-					icon = Icons.Default.Remove,
-					contentDescription = "Decrease Font Size"
-				)
-
-				Icon(
-					imageVector = Icons.Default.FormatSize,
-					contentDescription = null,
-					modifier = Modifier
-						.size(20.dp)
-						.padding(horizontal = 4.dp),
-					tint = MaterialTheme.colorScheme.onSurfaceVariant
-				)
-
-				// Font size increase button
-				ToolbarButton(
-					onClick = { increaseFontSize(state) },
-					icon = Icons.Default.Add,
-					contentDescription = "Increase Font Size"
-				)
+						},
+						icon = Icons.Default.Highlight,
+						contentDescription = "Highlight",
+						isActive = isHighlightActive,
+						enabled = state.selector.hasSelection()
+					)
+				}
 			}
 		}
 	}
