@@ -12,7 +12,9 @@ import androidx.compose.ui.unit.TextUnit
  * Converts an AnnotatedString to a markdown string, handling supported markdown styles.
  * Only converts styles that match our supported markdown styles, dropping any unsupported styles.
  */
-fun AnnotatedString.toMarkdown(): String {
+fun AnnotatedString.toMarkdown(
+	configuration: MarkdownConfiguration = MarkdownConfiguration.DEFAULT
+): String {
 	if (text.isEmpty()) return ""
 
 	// Create a list of style boundaries (start and end points)
@@ -27,7 +29,7 @@ fun AnnotatedString.toMarkdown(): String {
 
 	// Process each span and create boundaries
 	spanStyles.forEach { span ->
-		val marker = getStyleMarker(span.item) ?: return@forEach
+		val marker = getStyleMarker(span.item, configuration) ?: return@forEach
 		boundaries.add(StyleBoundary(span.start, true, marker, span))
 		boundaries.add(StyleBoundary(span.end, false, marker, span))
 	}
@@ -81,31 +83,38 @@ fun AnnotatedString.toMarkdown(): String {
 	return result.toString()
 }
 
-private data class StyleMarker(
-	val openMarker: String,
-	val closeMarker: String,
-	val startIndex: Int,
-	val endIndex: Int
-)
-
-private fun getStyleMarker(style: SpanStyle): StyleMarkerPair? {
-	return when {
-		style.fontWeight == FontWeight.Bold && style.fontSize != TextUnit.Unspecified -> {
-			when (style.fontSize.value) {
-				32f -> StyleMarkerPair("# ", "\n") // Header 1
-				24f -> StyleMarkerPair("## ", "\n") // Header 2
-				18.72f -> StyleMarkerPair("### ", "\n") // Header 3
-				16f -> StyleMarkerPair("#### ", "\n") // Header 4
-				13.28f -> StyleMarkerPair("##### ", "\n") // Header 5
-				12f -> StyleMarkerPair("###### ", "\n") // Header 6
-				else -> null
-			}
+private fun getStyleMarker(
+	style: SpanStyle,
+	config: MarkdownConfiguration = MarkdownConfiguration.DEFAULT
+): StyleMarkerPair? {
+	if (style.fontWeight == FontWeight.Bold && style.fontSize != TextUnit.Unspecified) {
+		return when (style.fontSize.value) {
+			config.header1Style.fontSize.value -> StyleMarkerPair("# ", "\n")
+			config.header2Style.fontSize.value -> StyleMarkerPair("## ", "\n")
+			config.header3Style.fontSize.value -> StyleMarkerPair("### ", "\n")
+			config.header4Style.fontSize.value -> StyleMarkerPair("#### ", "\n")
+			config.header5Style.fontSize.value -> StyleMarkerPair("##### ", "\n")
+			config.header6Style.fontSize.value -> StyleMarkerPair("###### ", "\n")
+			else -> null
 		}
-		style.fontWeight == FontWeight.Bold -> StyleMarkerPair("**", "**")
-		style.fontStyle == FontStyle.Italic -> StyleMarkerPair("*", "*")
-		style.fontFamily == FontFamily.Monospace -> StyleMarkerPair("`", "`")
-		style.textDecoration == TextDecoration.Underline -> StyleMarkerPair("[", "]()")
+	}
+
+	return when {
+		style.matches(config.boldStyle) -> StyleMarkerPair("**", "**")
+		style.matches(config.italicStyle) -> StyleMarkerPair("*", "*")
+		style.matches(config.codeStyle) -> StyleMarkerPair("`", "`")
+		style.matches(config.linkStyle) -> StyleMarkerPair("[", "]()")
 		else -> null
+	}
+}
+
+private fun SpanStyle.matches(other: SpanStyle): Boolean {
+	return when {
+		this.fontWeight == FontWeight.Bold && other.fontWeight == FontWeight.Bold -> true
+		this.fontStyle == FontStyle.Italic && other.fontStyle == FontStyle.Italic -> true
+		this.fontFamily == FontFamily.Monospace && other.fontFamily == FontFamily.Monospace -> true
+		this.textDecoration == TextDecoration.Underline && other.textDecoration == TextDecoration.Underline -> true
+		else -> false
 	}
 }
 

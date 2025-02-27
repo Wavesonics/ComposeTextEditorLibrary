@@ -1,6 +1,5 @@
 package scrollmanager
 
-import androidx.compose.foundation.ScrollState
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.text.AnnotatedString
@@ -9,6 +8,7 @@ import androidx.compose.ui.unit.IntSize
 import com.darkrockstudios.texteditor.CharLineOffset
 import com.darkrockstudios.texteditor.LineWrap
 import com.darkrockstudios.texteditor.state.TextEditorScrollManager
+import com.darkrockstudios.texteditor.state.TextEditorScrollState
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -27,7 +27,7 @@ import kotlin.test.assertTrue
 class TextEditorScrollManagerTest {
 	private val testScope = TestScope()
 
-	private fun createMockScrollState(): ScrollState {
+	private fun createMockScrollState(): TextEditorScrollState {
 		return mockk(relaxed = true) {
 			every { value } returns 0
 			every { maxValue } returns 1000

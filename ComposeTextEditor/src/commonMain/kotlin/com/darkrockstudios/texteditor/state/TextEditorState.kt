@@ -25,7 +25,10 @@ import com.darkrockstudios.texteditor.annotatedstring.subSequence
 import com.darkrockstudios.texteditor.annotatedstring.toAnnotatedString
 import com.darkrockstudios.texteditor.cursor.CursorMetrics
 import com.darkrockstudios.texteditor.cursor.getWrappedLineIndex
+import com.darkrockstudios.texteditor.markdown.MarkdownConfiguration
+import com.darkrockstudios.texteditor.markdown.MarkdownStyles
 import com.darkrockstudios.texteditor.markdown.toMarkdown
+import com.darkrockstudios.texteditor.markdown.updateMarkdownStyles
 import com.darkrockstudios.texteditor.richstyle.RichSpan
 import com.darkrockstudios.texteditor.richstyle.RichSpanStyle
 import kotlinx.coroutines.CoroutineScope
@@ -38,6 +41,7 @@ import kotlin.uuid.Uuid
 class TextEditorState(
 	val scope: CoroutineScope,
 	measurer: TextMeasurer,
+	private var markdownConfiguration: MarkdownConfiguration = MarkdownConfiguration.DEFAULT,
 	initialText: AnnotatedString? = null
 ) {
 	internal var textMeasurer: TextMeasurer = measurer
@@ -99,6 +103,22 @@ class TextEditorState(
 	val scrollState get() = scrollManager.scrollState
 
 	val editOperations = editManager.editOperations
+
+	var markdownStyles: MarkdownStyles = MarkdownStyles(markdownConfiguration)
+		private set
+
+	fun getCurrentMarkdownConfiguration(): MarkdownConfiguration = markdownConfiguration
+
+	fun updateMarkdownConfiguration(newConfig: MarkdownConfiguration) {
+		updateMarkdownStyles(
+			this,
+			oldConfig = markdownConfiguration,
+			newConfig = newConfig
+		)
+
+		markdownConfiguration = newConfig
+		markdownStyles = MarkdownStyles(markdownConfiguration)
+	}
 
 	internal fun notifyContentChanged() {
 		_version++
@@ -269,6 +289,10 @@ class TextEditorState(
 
 	internal fun updateLine(index: Int, text: String) =
 		updateLine(index, text.toAnnotatedString())
+
+	internal fun setLine(index: Int, text: AnnotatedString) {
+		_textLines[index] = text
+	}
 
 	internal fun updateLine(index: Int, text: AnnotatedString) {
 		_textLines[index] = text
@@ -498,6 +522,7 @@ class TextEditorState(
 				if (existing != null) {
 					existing
 				} else {
+					println("base font size" + markdownStyles.BASE_TEXT.fontSize)
 					textMeasurer.measure(
 						text = line,
 						constraints = Constraints(
@@ -719,7 +744,7 @@ class TextEditorState(
 	}
 
 	fun exportAsMarkdown(): String {
-		return getAllText().toMarkdown()
+		return getAllText().toMarkdown(markdownConfiguration)
 	}
 
 	fun computeTextHash(): Int {

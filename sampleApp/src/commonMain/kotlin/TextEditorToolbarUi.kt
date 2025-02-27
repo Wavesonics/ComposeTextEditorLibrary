@@ -9,9 +9,12 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Redo
 import androidx.compose.material.icons.automirrored.filled.Undo
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.FormatBold
 import androidx.compose.material.icons.filled.FormatItalic
+import androidx.compose.material.icons.filled.FormatSize
 import androidx.compose.material.icons.filled.Highlight
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
@@ -30,6 +33,8 @@ import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.unit.dp
+import com.darkrockstudios.texteditor.markdown.decreaseFontSize
+import com.darkrockstudios.texteditor.markdown.increaseFontSize
 import com.darkrockstudios.texteditor.state.TextEditorState
 import com.darkrockstudios.texteditor.state.getRichSpansAtPosition
 import com.darkrockstudios.texteditor.state.getRichSpansInRange
@@ -40,7 +45,6 @@ fun TextEditorToolbar(
 	state: TextEditorState,
 	modifier: Modifier = Modifier,
 ) {
-
 	var isBoldActive by remember { mutableStateOf(false) }
 	var isItalicActive by remember { mutableStateOf(false) }
 	var isHighlightActive by remember { mutableStateOf(false) }
@@ -59,8 +63,8 @@ fun TextEditorToolbar(
 				state.getRichSpansAtPosition(position)
 			}
 
-			isBoldActive = styles.contains(BOLD)
-			isItalicActive = styles.contains(ITALICS)
+			isBoldActive = styles.contains(state.markdownStyles.BOLD)
+			isItalicActive = styles.contains(state.markdownStyles.ITALICS)
 			isHighlightActive = richSpans.any { it.style == HIGHLIGHT }
 		}
 	}
@@ -103,7 +107,7 @@ fun TextEditorToolbar(
 			Row {
 				FormatButton(
 					onClick = {
-						toggleStyle(state, isBoldActive, BOLD)
+						toggleStyle(state, isBoldActive, state.markdownStyles.BOLD)
 					},
 					icon = Icons.Default.FormatBold,
 					contentDescription = "Bold",
@@ -114,7 +118,7 @@ fun TextEditorToolbar(
 
 				FormatButton(
 					onClick = {
-						toggleStyle(state, isItalicActive, ITALICS)
+						toggleStyle(state, isItalicActive, state.markdownStyles.ITALICS)
 					},
 					icon = Icons.Default.FormatItalic,
 					contentDescription = "Italic",
@@ -137,6 +141,36 @@ fun TextEditorToolbar(
 					contentDescription = "Highlight",
 					isActive = isHighlightActive,
 					enabled = state.selector.hasSelection()
+				)
+
+				Spacer(modifier = Modifier.width(12.dp))
+
+				// Font size control group
+				VerticalDivider(modifier = Modifier.height(24.dp))
+
+				Spacer(modifier = Modifier.width(12.dp))
+
+				// Font size decrease button
+				ToolbarButton(
+					onClick = { decreaseFontSize(state) },
+					icon = Icons.Default.Remove,
+					contentDescription = "Decrease Font Size"
+				)
+
+				Icon(
+					imageVector = Icons.Default.FormatSize,
+					contentDescription = null,
+					modifier = Modifier
+						.size(20.dp)
+						.padding(horizontal = 4.dp),
+					tint = MaterialTheme.colorScheme.onSurfaceVariant
+				)
+
+				// Font size increase button
+				ToolbarButton(
+					onClick = { increaseFontSize(state) },
+					icon = Icons.Default.Add,
+					contentDescription = "Increase Font Size"
 				)
 			}
 		}

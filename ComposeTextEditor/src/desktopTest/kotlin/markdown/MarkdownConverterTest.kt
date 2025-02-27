@@ -10,6 +10,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.sp
+import com.darkrockstudios.texteditor.markdown.MarkdownConfiguration
 import com.darkrockstudios.texteditor.markdown.toMarkdown
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -37,6 +38,23 @@ class MarkdownConverterTest {
 			append(" world")
 		}
 		assertEquals("Hello **bold** world", input.toMarkdown())
+	}
+
+	@Test
+	fun `test configurable bold style`() {
+		val customConfig = MarkdownConfiguration(
+			boldStyle = SpanStyle(fontWeight = FontWeight.Bold, color = Color.Red)
+		)
+
+		val input = buildAnnotatedString {
+			append("Hello ")
+			withStyle(customConfig.boldStyle) {
+				append("bold")
+			}
+			append(" world")
+		}
+
+		assertEquals("Hello **bold** world", input.toMarkdown(customConfig))
 	}
 
 	@Test
