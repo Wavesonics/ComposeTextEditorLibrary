@@ -8,6 +8,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
+import com.darkrockstudios.texteditor.markdown.MarkdownConfiguration
 import com.darkrockstudios.texteditor.richstyle.HighlightSpanStyle
 import org.jetbrains.compose.ui.tooling.preview.Preview
 
@@ -28,11 +29,17 @@ fun App() {
 	val darkColorScheme = remember { darkColorScheme(primary = Color(0xFF66ffc7)) }
 
 	var colorScheme by remember { mutableStateOf(lightColorScheme) }
+	var markdownScheme by remember { mutableStateOf(MarkdownConfiguration.DEFAULT) }
 	fun toggleDarkMode(on: Boolean) {
 		colorScheme = if (on) {
 			darkColorScheme
 		} else {
 			lightColorScheme
+		}
+		markdownScheme = if (on) {
+			MarkdownConfiguration.DEFAULT_DARK
+		} else {
+			MarkdownConfiguration.DEFAULT
 		}
 	}
 
@@ -54,16 +61,19 @@ fun App() {
 				Destination.TextEditor -> TextEditorDemoUi(
 					navigateTo = ::navigateTo,
 					demoContent = DemoContent.Rich,
+					configuration = markdownScheme,
 				)
 
 				Destination.MarkdownEditor -> TextEditorDemoUi(
 					navigateTo = ::navigateTo,
 					demoContent = DemoContent.Markdown,
+					configuration = markdownScheme,
 				)
 
 				Destination.EmptyTextEditor -> TextEditorDemoUi(
 					navigateTo = ::navigateTo,
 					demoContent = DemoContent.Empty,
+					configuration = markdownScheme,
 				)
 
 				Destination.SpellChecking -> SpellCheckingTextEditorDemoUi(

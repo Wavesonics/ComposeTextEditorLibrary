@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.darkrockstudios.texteditor.TextEditor
+import com.darkrockstudios.texteditor.markdown.MarkdownConfiguration
 import com.darkrockstudios.texteditor.markdown.toAnnotatedStringFromMarkdown
 import com.darkrockstudios.texteditor.markdown.withMarkdown
 import com.darkrockstudios.texteditor.rememberTextEditorStyle
@@ -32,6 +33,7 @@ fun TextEditorDemoUi(
 	modifier: Modifier = Modifier,
 	navigateTo: (Destination) -> Unit,
 	demoContent: DemoContent,
+	configuration: MarkdownConfiguration
 ) {
 	val state: TextEditorState = when (demoContent) {
 		DemoContent.Rich -> {
@@ -41,14 +43,14 @@ fun TextEditorDemoUi(
 		}
 
 		DemoContent.Markdown -> {
-			rememberTextEditorState(SIMPLE_MARKDOWN.toAnnotatedStringFromMarkdown())
+			rememberTextEditorState(SIMPLE_MARKDOWN.toAnnotatedStringFromMarkdown(configuration))
 		}
 
 		DemoContent.Empty -> {
 			rememberTextEditorState()
 		}
 	}
-	val markdownExtension = remember(state) { state.withMarkdown() }
+	val markdownExtension = remember(state, configuration) { state.withMarkdown(configuration) }
 
 	LaunchedEffect(Unit) {
 		if (demoContent == DemoContent.Rich) {

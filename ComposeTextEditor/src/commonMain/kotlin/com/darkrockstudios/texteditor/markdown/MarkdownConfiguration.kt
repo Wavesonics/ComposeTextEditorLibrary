@@ -38,6 +38,11 @@ data class MarkdownConfiguration(
 ) {
 	companion object {
 		val DEFAULT = MarkdownConfiguration()
+		val DEFAULT_DARK = DEFAULT.copy(
+			//linkStyle = DEFAULT.linkStyle.copy(color = Color.Blue),
+			codeStyle = DEFAULT.codeStyle.copy(background = Color.DarkGray),
+			//blockquoteStyle = DEFAULT.blockquoteStyle.copy(color = Color.DarkGray)
+		)
 	}
 
 	/**
