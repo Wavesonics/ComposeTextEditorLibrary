@@ -78,6 +78,7 @@ fun App() {
 
 				Destination.SpellChecking -> SpellCheckingTextEditorDemoUi(
 					navigateTo = ::navigateTo,
+					configuration = markdownScheme,
 				)
 			}
 		}
