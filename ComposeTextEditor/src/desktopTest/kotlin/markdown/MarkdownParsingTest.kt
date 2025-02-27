@@ -38,6 +38,6 @@ fun hello() {
 """.trimIndent()
 
 		assertEquals(expectedString, annotatedString.text)
-		assertEquals(6, annotatedString.spanStyles.size)
+		assertEquals(9, annotatedString.spanStyles.size)
 	}
 }
