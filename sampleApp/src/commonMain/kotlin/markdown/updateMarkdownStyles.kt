@@ -4,17 +4,17 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import com.darkrockstudios.texteditor.markdown.MarkdownConfiguration
+import com.darkrockstudios.texteditor.markdown.MarkdownExtension
 import com.darkrockstudios.texteditor.state.TextEditorState
 
-fun TextEditorState.updateMarkdownConfiguration(newConfig: MarkdownConfiguration) {
-	val oldConfig = getCurrentMarkdownConfiguration()
+fun MarkdownExtension.updateMarkdownConfiguration(newConfig: MarkdownConfiguration) {
+	val oldConfig = markdownConfiguration
 	updateMarkdownStyles(
-		this,
+		state = editorState,
 		oldConfig = oldConfig,
 		newConfig = newConfig
 	)
-
-	setMarkdownConfiguration(newConfig)
+	markdownConfiguration = newConfig
 }
 
 /**

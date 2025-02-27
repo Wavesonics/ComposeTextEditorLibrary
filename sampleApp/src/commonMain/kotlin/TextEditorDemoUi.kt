@@ -8,11 +8,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.darkrockstudios.texteditor.TextEditor
 import com.darkrockstudios.texteditor.markdown.toAnnotatedStringFromMarkdown
+import com.darkrockstudios.texteditor.markdown.withMarkdown
 import com.darkrockstudios.texteditor.rememberTextEditorStyle
 import com.darkrockstudios.texteditor.richstyle.SpellCheckStyle
 import com.darkrockstudios.texteditor.state.SpanClickType
@@ -46,6 +48,7 @@ fun TextEditorDemoUi(
 			rememberTextEditorState()
 		}
 	}
+	val markdownExtension = remember(state) { state.withMarkdown() }
 
 	LaunchedEffect(Unit) {
 		if (demoContent == DemoContent.Rich) {
@@ -76,7 +79,7 @@ fun TextEditorDemoUi(
 		}
 
 		TextEditorToolbar(
-			state = state,
+			mardkown = markdownExtension,
 			markdownControls = (demoContent != DemoContent.Rich)
 		)
 

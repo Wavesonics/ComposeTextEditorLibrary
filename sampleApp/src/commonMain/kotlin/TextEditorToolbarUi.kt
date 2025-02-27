@@ -33,6 +33,7 @@ import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.unit.dp
+import com.darkrockstudios.texteditor.markdown.MarkdownExtension
 import com.darkrockstudios.texteditor.state.TextEditorState
 import com.darkrockstudios.texteditor.state.getRichSpansAtPosition
 import com.darkrockstudios.texteditor.state.getRichSpansInRange
@@ -42,10 +43,12 @@ import markdown.increaseFontSize
 
 @Composable
 fun TextEditorToolbar(
-	state: TextEditorState,
+	mardkown: MarkdownExtension,
 	markdownControls: Boolean,
 	modifier: Modifier = Modifier,
 ) {
+	val state = remember(mardkown) { mardkown.editorState }
+
 	var isBoldActive by remember { mutableStateOf(false) }
 	var isItalicActive by remember { mutableStateOf(false) }
 	var isHighlightActive by remember { mutableStateOf(false) }
@@ -64,8 +67,8 @@ fun TextEditorToolbar(
 				state.getRichSpansAtPosition(position)
 			}
 
-			isBoldActive = styles.contains(state.markdownStyles.BOLD)
-			isItalicActive = styles.contains(state.markdownStyles.ITALICS)
+			isBoldActive = styles.contains(mardkown.markdownStyles.BOLD)
+			isItalicActive = styles.contains(mardkown.markdownStyles.ITALICS)
 			isHighlightActive = richSpans.any { it.style == HIGHLIGHT }
 		}
 	}
@@ -108,7 +111,7 @@ fun TextEditorToolbar(
 			Row {
 				FormatButton(
 					onClick = {
-						toggleStyle(state, isBoldActive, state.markdownStyles.BOLD)
+						toggleStyle(state, isBoldActive, mardkown.markdownStyles.BOLD)
 					},
 					icon = Icons.Default.FormatBold,
 					contentDescription = "Bold",
@@ -119,7 +122,7 @@ fun TextEditorToolbar(
 
 				FormatButton(
 					onClick = {
-						toggleStyle(state, isItalicActive, state.markdownStyles.ITALICS)
+						toggleStyle(state, isItalicActive, mardkown.markdownStyles.ITALICS)
 					},
 					icon = Icons.Default.FormatItalic,
 					contentDescription = "Italic",
@@ -136,7 +139,7 @@ fun TextEditorToolbar(
 
 					// Font size decrease button
 					ToolbarButton(
-						onClick = { decreaseFontSize(state) },
+						onClick = { decreaseFontSize(mardkown) },
 						icon = Icons.Default.Remove,
 						contentDescription = "Decrease Font Size"
 					)
@@ -152,7 +155,7 @@ fun TextEditorToolbar(
 
 					// Font size increase button
 					ToolbarButton(
-						onClick = { increaseFontSize(state) },
+						onClick = { increaseFontSize(mardkown) },
 						icon = Icons.Default.Add,
 						contentDescription = "Increase Font Size"
 					)
