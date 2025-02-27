@@ -1,7 +1,8 @@
-package com.darkrockstudios.texteditor.markdown
+package markdown
 
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.unit.sp
+import com.darkrockstudios.texteditor.markdown.MarkdownConfiguration
 import com.darkrockstudios.texteditor.state.TextEditorState
 
 private val FONT_SIZES = listOf(

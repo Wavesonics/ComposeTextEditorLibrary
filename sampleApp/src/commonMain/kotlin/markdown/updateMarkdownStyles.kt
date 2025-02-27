@@ -1,8 +1,21 @@
-package com.darkrockstudios.texteditor.markdown
+package markdown
 
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import com.darkrockstudios.texteditor.markdown.MarkdownConfiguration
 import com.darkrockstudios.texteditor.state.TextEditorState
+
+fun TextEditorState.updateMarkdownConfiguration(newConfig: MarkdownConfiguration) {
+	val oldConfig = getCurrentMarkdownConfiguration()
+	updateMarkdownStyles(
+		this,
+		oldConfig = oldConfig,
+		newConfig = newConfig
+	)
+
+	setMarkdownConfiguration(newConfig)
+}
 
 /**
  * Updates all text in the editor to use the new markdown configuration styles.
@@ -34,10 +47,8 @@ internal fun updateMarkdownStyles(
 		oldConfig.header6Style to newConfig.header6Style
 	)
 
-	for (i in state.textLines.indices) {
-		val line = state.textLines[i]
-
-		val updatedLine = buildAnnotatedString {
+	state.processLines { index: Int, line: AnnotatedString ->
+		buildAnnotatedString {
 			append(line.text)
 			if (line.spanStyles.isEmpty()) {
 				addStyle(newConfig.defaultTextStyle, 0, line.length)
@@ -56,12 +67,7 @@ internal fun updateMarkdownStyles(
 				}
 			}
 		}
-
-		state.setLine(i, updatedLine)
 	}
-	state.updateBookKeeping()
-
-	state.notifyContentChanged()
 }
 
 /**
@@ -80,7 +86,7 @@ private fun findMatchingStyle(
 	return null
 }
 
-fun deepCompareSpanStyles(style1: SpanStyle, style2: SpanStyle): Boolean {
+private fun deepCompareSpanStyles(style1: SpanStyle, style2: SpanStyle): Boolean {
 	if (style1 === style2) return true
 
 	if (style1.fontWeight != style2.fontWeight) return false

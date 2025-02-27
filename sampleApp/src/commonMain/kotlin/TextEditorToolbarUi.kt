@@ -33,12 +33,12 @@ import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.unit.dp
-import com.darkrockstudios.texteditor.markdown.decreaseFontSize
-import com.darkrockstudios.texteditor.markdown.increaseFontSize
 import com.darkrockstudios.texteditor.state.TextEditorState
 import com.darkrockstudios.texteditor.state.getRichSpansAtPosition
 import com.darkrockstudios.texteditor.state.getRichSpansInRange
 import com.darkrockstudios.texteditor.state.getSpanStylesInRange
+import markdown.decreaseFontSize
+import markdown.increaseFontSize
 
 @Composable
 fun TextEditorToolbar(

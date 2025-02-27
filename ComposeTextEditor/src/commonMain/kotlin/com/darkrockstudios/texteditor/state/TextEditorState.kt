@@ -28,7 +28,6 @@ import com.darkrockstudios.texteditor.cursor.getWrappedLineIndex
 import com.darkrockstudios.texteditor.markdown.MarkdownConfiguration
 import com.darkrockstudios.texteditor.markdown.MarkdownStyles
 import com.darkrockstudios.texteditor.markdown.toMarkdown
-import com.darkrockstudios.texteditor.markdown.updateMarkdownStyles
 import com.darkrockstudios.texteditor.richstyle.RichSpan
 import com.darkrockstudios.texteditor.richstyle.RichSpanStyle
 import kotlinx.coroutines.CoroutineScope
@@ -108,15 +107,8 @@ class TextEditorState(
 		private set
 
 	fun getCurrentMarkdownConfiguration(): MarkdownConfiguration = markdownConfiguration
-
-	fun updateMarkdownConfiguration(newConfig: MarkdownConfiguration) {
-		updateMarkdownStyles(
-			this,
-			oldConfig = markdownConfiguration,
-			newConfig = newConfig
-		)
-
-		markdownConfiguration = newConfig
+	fun setMarkdownConfiguration(markdownConfiguration: MarkdownConfiguration) {
+		this.markdownConfiguration = markdownConfiguration
 		markdownStyles = MarkdownStyles(markdownConfiguration)
 	}
 
@@ -290,13 +282,18 @@ class TextEditorState(
 	internal fun updateLine(index: Int, text: String) =
 		updateLine(index, text.toAnnotatedString())
 
-	internal fun setLine(index: Int, text: AnnotatedString) {
-		_textLines[index] = text
-	}
-
 	internal fun updateLine(index: Int, text: AnnotatedString) {
 		_textLines[index] = text
+		updateBookKeeping(index..index)
+	}
+
+	fun processLines(processor: (index: Int, line: AnnotatedString) -> AnnotatedString) {
+		for (i in textLines.indices) {
+			val line = textLines[i]
+			_textLines[i] = processor(i, line)
+		}
 		updateBookKeeping()
+		notifyContentChanged()
 	}
 
 	internal fun removeLines(startIndex: Int, count: Int) {
