@@ -2,7 +2,6 @@ package com.darkrockstudios.texteditor.markdown
 
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.unit.TextUnit
 import com.darkrockstudios.texteditor.state.TextEditorState
 
 /**
@@ -21,6 +20,7 @@ internal fun updateMarkdownStyles(
 	if (state.textLines.isEmpty()) return
 
 	val styleMapping = mapOf(
+		oldConfig.defaultTextStyle to newConfig.defaultTextStyle,
 		oldConfig.boldStyle to newConfig.boldStyle,
 		oldConfig.italicStyle to newConfig.italicStyle,
 		oldConfig.codeStyle to newConfig.codeStyle,
@@ -73,56 +73,27 @@ private fun findMatchingStyle(
 	styleMapping: Map<SpanStyle, SpanStyle>
 ): SpanStyle? {
 	for ((oldStyle, newStyle) in styleMapping) {
-		if (stylesMatch(oldStyle, style)) {
+		if (deepCompareSpanStyles(oldStyle, style)) {
 			return newStyle
 		}
 	}
 	return null
 }
 
-/**
- * Determine if two styles match semantically based on the type of markdown style represented by style2.
- * This focuses on the properties that define the markdown style type that style2 represents.
- */
-private fun stylesMatch(needle: SpanStyle, haystack: SpanStyle): Boolean {
-	// Determine what type of markdown style style2 represents
-	return when {
-		// Check if both are default text styles (no special styling properties)
-		isDefaultTextStyle(needle) && isDefaultTextStyle(haystack) -> true
+fun deepCompareSpanStyles(style1: SpanStyle, style2: SpanStyle): Boolean {
+	if (style1 === style2) return true
 
-		// If style2 has fontWeight set, it represents bold
-		needle.fontWeight != null ->
-			haystack.fontWeight != null && haystack.fontWeight == needle.fontWeight
-
-		// If style2 has fontStyle set, it represents italic
-		needle.fontStyle != null ->
-			haystack.fontStyle != null && haystack.fontStyle == needle.fontStyle
-
-		// If style2 has fontFamily set, it represents code
-		needle.fontFamily != null ->
-			haystack.fontFamily != null && haystack.fontFamily == needle.fontFamily
-
-		// If style2 has textDecoration set, it represents link
-		needle.textDecoration != null ->
-			haystack.textDecoration != null && haystack.textDecoration == needle.textDecoration
-
-		// If style2 has fontSize set, it might represent a header
-		needle.fontSize != TextUnit.Unspecified ->
-			haystack.fontSize != TextUnit.Unspecified && haystack.fontSize == needle.fontSize
-
-		// Default case - no match
-		else -> false
-	}
-}
-
-/**
- * Determines if the given style is a default text style without special formatting
- * properties. This helps identify plain text styles.
- */
-private fun isDefaultTextStyle(style: SpanStyle): Boolean {
-	return style.fontWeight == null &&
-			style.fontStyle == null &&
-			style.fontFamily == null &&
-			style.textDecoration == null &&
-			style.fontSize != TextUnit.Unspecified
+	if (style1.fontWeight != style2.fontWeight) return false
+	if (style1.fontStyle != style2.fontStyle) return false
+	if (style1.fontFamily != style2.fontFamily) return false
+	if (style1.textDecoration != style2.textDecoration) return false
+	if (style1.fontSize != style2.fontSize) return false
+	if (style1.color != style2.color) return false
+	if (style1.background != style2.background) return false
+	if (style1.letterSpacing != style2.letterSpacing) return false
+	if (style1.shadow != style2.shadow) return false
+	if (style1.baselineShift != style2.baselineShift) return false
+	if (style1.textGeometricTransform != style2.textGeometricTransform) return false
+	if (style1.localeList != style2.localeList) return false
+	return true
 }

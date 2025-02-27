@@ -522,7 +522,6 @@ class TextEditorState(
 				if (existing != null) {
 					existing
 				} else {
-					println("base font size" + markdownStyles.BASE_TEXT.fontSize)
 					textMeasurer.measure(
 						text = line,
 						constraints = Constraints(

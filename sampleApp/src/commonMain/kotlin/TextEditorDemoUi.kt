@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.darkrockstudios.texteditor.TextEditor
+import com.darkrockstudios.texteditor.markdown.toAnnotatedStringFromMarkdown
 import com.darkrockstudios.texteditor.rememberTextEditorStyle
 import com.darkrockstudios.texteditor.richstyle.SpellCheckStyle
 import com.darkrockstudios.texteditor.state.SpanClickType
@@ -25,8 +26,8 @@ fun TextEditorDemoUi(
 	demoContent: Boolean,
 ) {
 	val state: TextEditorState = if (demoContent) {
-		//rememberTextEditorState(SIMPLE_MARKDOWN.toAnnotatedStringFromMarkdown())
-		rememberTextEditorState(createRichTextDemo())
+		rememberTextEditorState(SIMPLE_MARKDOWN.toAnnotatedStringFromMarkdown())
+		//rememberTextEditorState(createRichTextDemo())
 		//rememberTextEditorState(createRichTextDemo2())
 		//rememberTextEditorState(alice_wounder_land.toAnnotatedStringFromMarkdown())
 	} else {
