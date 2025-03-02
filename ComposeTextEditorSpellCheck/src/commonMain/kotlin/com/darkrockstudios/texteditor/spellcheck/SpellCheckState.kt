@@ -66,7 +66,9 @@ class SpellCheckState(
 				}
 
 			misspelledWords.clear()
-			wordSegments().mapNotNullTo(misspelledWords) { segment ->
+			wordSegments()
+				.filter(::shouldSpellCheck)
+				.mapNotNullTo(misspelledWords) { segment ->
 				val suggestions = sp.lookup(segment.text)
 				if (suggestions.spellingIsCorrect(segment.text)) {
 					null
@@ -90,7 +92,9 @@ class SpellCheckState(
 		val misspelledSegments = mutableListOf<WordSegment>()
 		println("Spell Checking Range: $range")
 		removeMissSpellingsInRange(range)
-		textState.wordSegmentsInRange(range).mapNotNullTo(misspelledSegments) { segment ->
+		textState.wordSegmentsInRange(range)
+			.filter(::shouldSpellCheck)
+			.mapNotNullTo(misspelledSegments) { segment ->
 			println("Checking Segment: $segment")
 			val suggestions = sp.lookup(segment.text)
 			if (suggestions.spellingIsCorrect(segment.text)) {
@@ -142,6 +146,11 @@ class SpellCheckState(
 
 		// Word is spelled correctly
 		return false
+	}
+
+	private fun shouldSpellCheck(segment: WordSegment): Boolean {
+		// Skip segments that are purely numeric
+		return !segment.text.all { it.isDigit() }
 	}
 
 	fun invalidateSpellCheckSpans(operation: TextEditOperation) {
