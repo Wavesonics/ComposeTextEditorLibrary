@@ -65,12 +65,12 @@ class TextEditorWordSegmentationTest {
 	fun `test hyphenated words`() {
 		assertSegments(
 			"self-aware real-time",
-			listOf("self-aware", "real-time")
+			listOf("self", "aware", "real", "time")
 		)
 
 		assertSegments(
 			"up-to-date",
-			listOf("up-to-date")
+			listOf("up", "to", "date")
 		)
 
 		// Test invalid hyphenation
@@ -112,12 +112,12 @@ class TextEditorWordSegmentationTest {
 	fun `test mixed word types`() {
 		assertSegments(
 			"The U.S.A.'s self-aware Ph.D. student",
-			listOf("The", "U.S.A.'s", "self-aware", "Ph.D.", "student")
+			listOf("The", "U.S.A.'s", "self", "aware", "Ph.D.", "student")
 		)
 
 		assertSegments(
 			"It's a real-time e.g. don't-know-what",
-			listOf("It's", "a", "real-time", "e.g.", "don't-know-what")
+			listOf("It's", "a", "real", "time", "e.g.", "don't", "know", "what")
 		)
 	}
 
@@ -175,7 +175,7 @@ class TextEditorWordSegmentationTest {
             Line-two
             U.S.A.'s
             """.trimIndent(),
-			listOf("Line", "one", "Line-two", "U.S.A.'s")
+			listOf("Line", "one", "Line", "two", "U.S.A.'s")
 		)
 	}
 

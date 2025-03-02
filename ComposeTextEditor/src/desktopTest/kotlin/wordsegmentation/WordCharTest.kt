@@ -27,7 +27,8 @@ class WordCharTest {
 
 	@Test
 	fun `test hyphens`() {
-		assertTrue(isWordChar("self-aware", 4)) // Valid hyphenation
+		// Changed: hyphens are no longer part of words
+		assertFalse(isWordChar("self-aware", 4)) // No longer valid - hyphens are separators
 		assertFalse(isWordChar("-word", 0)) // Invalid at start
 		assertFalse(isWordChar("word-", 4)) // Invalid at end
 		assertFalse(isWordChar("self--aware", 5)) // Invalid double hyphen
@@ -47,6 +48,7 @@ class WordCharTest {
 		assertFalse(isWordChar("word ", 4)) // Space
 		assertFalse(isWordChar("word\n", 4)) // Newline
 		assertFalse(isWordChar("word\t", 4)) // Tab
+		assertFalse(isWordChar("pre-warm", 3)) // Hyphen
 	}
 
 	@Test
@@ -78,5 +80,19 @@ class WordCharTest {
 		assertFalse(isWordChar("'b", 0)) // Apostrophe at start
 		assertFalse(isWordChar(".b", 0)) // Period at start
 		assertFalse(isWordChar("-b", 0)) // Hyphen at start
+	}
+
+	@Test
+	fun `test hyphenated words split properly`() {
+		// New test to explicitly verify hyphenated words are treated as separate words
+		// "pre-warm" should be two separate words: "pre" and "warm"
+		assertTrue(isWordChar("pre-warm", 0)) // 'p' in "pre"
+		assertTrue(isWordChar("pre-warm", 1)) // 'r' in "pre"
+		assertTrue(isWordChar("pre-warm", 2)) // 'e' in "pre"
+		assertFalse(isWordChar("pre-warm", 3)) // '-' is a separator
+		assertTrue(isWordChar("pre-warm", 4)) // 'w' in "warm"
+		assertTrue(isWordChar("pre-warm", 5)) // 'a' in "warm"
+		assertTrue(isWordChar("pre-warm", 6)) // 'r' in "warm"
+		assertTrue(isWordChar("pre-warm", 7)) // 'm' in "warm"
 	}
 }

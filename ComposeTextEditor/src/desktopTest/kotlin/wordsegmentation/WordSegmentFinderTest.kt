@@ -93,12 +93,47 @@ class WordSegmentFinderTest {
 	}
 
 	@Test
-	fun `test word with hyphen`() {
+	fun `test hyphen splits words - left side`() {
 		textState.setText("well-known")
-		val result = textState.findWordSegmentAt(CharLineOffset(0, 5))
-		assertEquals("well-known", result?.text)
+		val result = textState.findWordSegmentAt(CharLineOffset(0, 2))
+		assertEquals("well", result?.text)
 		assertEquals(0, result?.range?.start?.char)
+		assertEquals(4, result?.range?.end?.char)
+	}
+
+	@Test
+	fun `test hyphen splits words - right side`() {
+		textState.setText("well-known")
+		val result = textState.findWordSegmentAt(CharLineOffset(0, 7))
+		assertEquals("known", result?.text)
+		assertEquals(5, result?.range?.start?.char)
 		assertEquals(10, result?.range?.end?.char)
+	}
+
+	@Test
+	fun `test position at hyphen selects left word`() {
+		textState.setText("well-known")
+		val result = textState.findWordSegmentAt(CharLineOffset(0, 4))
+		assertEquals("well", result?.text)
+		assertEquals(0, result?.range?.start?.char)
+		assertEquals(4, result?.range?.end?.char)
+	}
+
+	@Test
+	fun `test multiple hyphens treated as separate words`() {
+		textState.setText("twenty-first-century")
+		val result1 = textState.findWordSegmentAt(CharLineOffset(0, 3))
+		assertEquals("twenty", result1?.text)
+		assertEquals(0, result1?.range?.start?.char)
+		assertEquals(6, result1?.range?.end?.char)
+		val result2 = textState.findWordSegmentAt(CharLineOffset(0, 10))
+		assertEquals("first", result2?.text)
+		assertEquals(7, result2?.range?.start?.char)
+		assertEquals(12, result2?.range?.end?.char)
+		val result3 = textState.findWordSegmentAt(CharLineOffset(0, 16))
+		assertEquals("century", result3?.text)
+		assertEquals(13, result3?.range?.start?.char)
+		assertEquals(20, result3?.range?.end?.char)
 	}
 
 	@Test

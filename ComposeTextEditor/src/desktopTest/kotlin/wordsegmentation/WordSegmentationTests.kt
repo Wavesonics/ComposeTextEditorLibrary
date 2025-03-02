@@ -106,6 +106,32 @@ class WordSegmentationTests {
 	}
 
 	@Test
+	fun `words with hyphens`() {
+		state.setText("well-known pre-test user-friendly")
+		val segments = state.wordSegments().toList()
+
+		assertEquals(6, segments.size)
+		assertEquals("well", segments[0].text)
+		assertEquals("known", segments[1].text)
+		assertEquals("pre", segments[2].text)
+		assertEquals("test", segments[3].text)
+		assertEquals("user", segments[4].text)
+		assertEquals("friendly", segments[5].text)
+	}
+
+	@Test
+	fun `words with mixed hyphens and underscores`() {
+		state.setText("snake_case-separator dash-and_underscore")
+		val segments = state.wordSegments().toList()
+
+		assertEquals(4, segments.size)
+		assertEquals("snake_case", segments[0].text)
+		assertEquals("separator", segments[1].text)
+		assertEquals("dash", segments[2].text)
+		assertEquals("and_underscore", segments[3].text)
+	}
+
+	@Test
 	fun `words with numbers`() {
 		state.setText("word123 456test test789test")
 		val segments = state.wordSegments().toList()
@@ -139,6 +165,17 @@ class WordSegmentationTests {
 		assertEquals("is", segments[3].text)
 		assertEquals("a", segments[4].text)
 		assertEquals("test", segments[5].text)
+	}
+
+	@Test
+	fun `hyphens at start or end of words`() {
+		state.setText("-prefix suffix- -both-")
+		val segments = state.wordSegments().toList()
+
+		assertEquals(3, segments.size)
+		assertEquals("prefix", segments[0].text)
+		assertEquals("suffix", segments[1].text)
+		assertEquals("both", segments[2].text)
 	}
 
 	private fun createTestEditorState(scope: CoroutineScope): TextEditorState {

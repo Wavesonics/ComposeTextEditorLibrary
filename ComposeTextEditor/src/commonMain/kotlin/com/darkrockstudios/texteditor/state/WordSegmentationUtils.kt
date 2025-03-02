@@ -88,11 +88,6 @@ internal fun isWordChar(text: CharSequence, pos: Int): Boolean {
 					)
 		}
 
-		char == '-' -> {
-			hasLetterAt(text, pos - 1) && hasLetterAt(text, pos + 1)
-		}
-
-		// Handle letters after apostrophes or periods
 		char.isLetter() -> {
 			hasApostropheOrPeriodAt(text, pos - 1)
 		}
