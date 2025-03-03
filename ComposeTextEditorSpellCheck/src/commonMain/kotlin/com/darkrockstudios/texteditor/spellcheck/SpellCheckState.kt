@@ -28,6 +28,8 @@ class SpellCheckState(
 			field = value
 			if (runSpellcheck) {
 				runFullSpellCheck()
+			} else {
+				clearSpellCheck()
 			}
 		}
 
@@ -60,12 +62,25 @@ class SpellCheckState(
 		textState.replace(segment.range, correction, true)
 	}
 
+	private fun clearSpellCheck() {
+		textState.apply {
+			richSpanManager.getAllRichSpans()
+				.filter { it.style is SpellCheckStyle }
+				.forEach { span ->
+					removeRichSpan(span)
+				}
+		}
+
+		misspelledWords.clear()
+	}
+
 	/**
 	 * This is a very naive algorithm that just removes all spell check spans and
 	 * reruns the entire spell check again.
 	 */
 	fun runFullSpellCheck() {
 		val sp = spellChecker ?: return
+		if (spellCheckingEnabled.not()) return
 
 		println("Running full Spell Check")
 		textState.apply {
@@ -77,8 +92,6 @@ class SpellCheckState(
 				}
 
 			misspelledWords.clear()
-
-			if (spellCheckingEnabled.not()) return
 
 			wordSegments()
 				.filter(::shouldSpellCheck)
@@ -96,6 +109,7 @@ class SpellCheckState(
 
 	fun runPartialSpellCheck(range: TextEditorRange) {
 		val sp = spellChecker ?: return
+		if (spellCheckingEnabled.not()) return
 
 		// Remove existing spell check spans in the range
 		textState.richSpanManager.getSpansInRange(range)
@@ -106,7 +120,7 @@ class SpellCheckState(
 
 		// Check spelling in the range
 		val misspelledSegments = mutableListOf<WordSegment>()
-		println("Spell Checking Range: $range")
+
 		removeMissSpellingsInRange(range)
 		textState.wordSegmentsInRange(range)
 			.filter(::shouldSpellCheck)
