@@ -10,10 +10,11 @@ import com.darkrockstudios.texteditor.state.rememberTextEditorState
 @Composable
 fun rememberSpellCheckState(
 	spellChecker: SpellChecker?,
-	initialText: AnnotatedString? = null
+	initialText: AnnotatedString? = null,
+	enableSpellChecking: Boolean = true,
 ): SpellCheckState {
 	val richTextState = rememberTextEditorState(initialText)
-	val state = remember { SpellCheckState(richTextState, spellChecker) }
+	val state = remember { SpellCheckState(richTextState, spellChecker, enableSpellChecking) }
 
 	// Run SpellCheck as soon as it is ready
 	LaunchedEffect(spellChecker) {

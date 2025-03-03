@@ -29,7 +29,8 @@ fun SpellCheckingTextEditorDemoUi(
 	val state =
 		rememberSpellCheckState(
 			spellChecker,
-			SIMPLE_MARKDOWN.toAnnotatedStringFromMarkdown(configuration)
+			SIMPLE_MARKDOWN.toAnnotatedStringFromMarkdown(configuration),
+			true
 		)
 	val markdownExtension = remember(state) { state.withMarkdown(configuration) }
 

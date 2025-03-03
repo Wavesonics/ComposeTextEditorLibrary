@@ -19,8 +19,18 @@ import com.darkrockstudios.texteditor.state.wordSegmentsInRange
 
 class SpellCheckState(
 	val textState: TextEditorState,
-	var spellChecker: SpellChecker?
+	var spellChecker: SpellChecker?,
+	enableSpellChecking: Boolean = true,
 ) {
+	var spellCheckingEnabled: Boolean = enableSpellChecking
+		set(value) {
+			val runSpellcheck = (field != value && value == true)
+			field = value
+			if (runSpellcheck) {
+				runFullSpellCheck()
+			}
+		}
+
 	private var lastTextHash = -1
 	private val misspelledWords = mutableListOf<WordSegment>()
 
@@ -56,6 +66,7 @@ class SpellCheckState(
 	 */
 	fun runFullSpellCheck() {
 		val sp = spellChecker ?: return
+
 		println("Running full Spell Check")
 		textState.apply {
 			// Remove all existing spell checks
@@ -66,6 +77,9 @@ class SpellCheckState(
 				}
 
 			misspelledWords.clear()
+
+			if (spellCheckingEnabled.not()) return
+
 			wordSegments()
 				.filter(::shouldSpellCheck)
 				.mapNotNullTo(misspelledWords) { segment ->
@@ -87,6 +101,8 @@ class SpellCheckState(
 		textState.richSpanManager.getSpansInRange(range)
 			.filter { it.style is SpellCheckStyle }
 			.forEach { span -> textState.removeRichSpan(span) }
+
+		if (spellCheckingEnabled.not()) return
 
 		// Check spelling in the range
 		val misspelledSegments = mutableListOf<WordSegment>()
