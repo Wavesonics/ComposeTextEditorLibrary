@@ -12,6 +12,7 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.key.utf16CodePoint
 import androidx.compose.ui.platform.ClipboardManager
 import com.darkrockstudios.texteditor.state.TextEditorState
+import com.darkrockstudios.texteditor.state.insertTypedCharacter
 import com.darkrockstudios.texteditor.state.moveCursorDown
 import com.darkrockstudios.texteditor.state.moveCursorPageDown
 import com.darkrockstudios.texteditor.state.moveCursorPageUp
@@ -211,11 +212,7 @@ internal fun Modifier.textEditorKeyboardInputHandler(
 				else -> {
 					val char = keyEventToUTF8Character(keyEvent)
 					if (char != null) {
-						if (state.selector.selection != null) {
-							state.selector.deleteSelection()
-						}
-						state.insertCharacterAtCursor(char)
-						state.selector.clearSelection()
+						state.insertTypedCharacter(char)
 						true
 					} else {
 						false

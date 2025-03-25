@@ -9,6 +9,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.input.CommitTextCommand
 import androidx.compose.ui.text.input.ImeOptions
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
@@ -759,11 +760,11 @@ class TextEditorState(
 				keyboardType = KeyboardType.Text,
 			),
 			onEditCommand = { editCommands ->
-//					editCommands.forEach {
-//						if (it is CommitTextCommand) {
-//							state.insert(it.text)
-//						}
-//					}
+				editCommands.forEach {
+					if (it is CommitTextCommand) {
+						insertTypedString(it.text)
+					}
+				}
 			},
 			onImeActionPerformed = { action ->
 				println("onImeActionPerformed: $action")
