@@ -794,4 +794,32 @@ class TextEditorState(
 	init {
 		setText(initialText ?: AnnotatedString(""))
 	}
+
+	override fun equals(other: Any?): Boolean {
+		if (this === other) return true
+		if (other == null || this::class != other::class) return false
+
+		other as TextEditorState
+
+		if (compareLines(textLines, other.textLines).not()) return false
+
+		return true
+	}
+
+	private fun compareLines(list1: List<AnnotatedString>, list2: List<AnnotatedString>): Boolean {
+		if (list1 === list2) return true
+		if (list1.size != list2.size) return false
+		for (i in list1.indices) {
+			if (list1[i] != list2[i]) {
+				return false
+			}
+		}
+		return true
+	}
+
+	override fun hashCode(): Int {
+		var result = hashCode()
+		result = 31 * result + textLines.hashCode()
+		return result
+	}
 }
