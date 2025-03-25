@@ -9,6 +9,7 @@ import androidx.compose.ui.text.AnnotatedString
 import com.darkrockstudios.texteditor.CharLineOffset
 import com.darkrockstudios.texteditor.LineWrap
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 class TextEditorScrollManager(
@@ -19,6 +20,8 @@ class TextEditorScrollManager(
 	private val getCursorPosition: () -> CharLineOffset,
 	val scrollState: TextEditorScrollState
 ) {
+	private var scrollJob: Job? = null
+
 	var totalContentHeight by mutableStateOf(0)
 		private set
 
@@ -31,19 +34,22 @@ class TextEditorScrollManager(
 	}
 
 	fun scrollToTop() {
-		scope.launch {
+		scrollJob?.cancel()
+		scrollJob = scope.launch {
 			scrollState.animateScrollTo(0)
 		}
 	}
 
 	fun scrollToBottom() {
-		scope.launch {
+		scrollJob?.cancel()
+		scrollJob = scope.launch {
 			scrollState.animateScrollTo(totalContentHeight - viewportHeight)
 		}
 	}
 
 	fun scrollToPosition(position: Int, animated: Boolean = true) {
-		scope.launch {
+		scrollJob?.cancel()
+		scrollJob = scope.launch {
 			val scrollToY = position.coerceIn(0, totalContentHeight)
 			if (animated) {
 				scrollState.animateScrollTo(scrollToY)
@@ -74,7 +80,8 @@ class TextEditorScrollManager(
 		}
 
 		if(targetScroll != viewportTop) {
-			scope.launch {
+			scrollJob?.cancel()
+			scrollJob = scope.launch {
 				scrollState.animateScrollTo(targetScroll)
 			}
 		}
