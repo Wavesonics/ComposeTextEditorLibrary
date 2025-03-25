@@ -13,10 +13,10 @@ markdown = "0.7.3"
 mockk = "1.13.13"
 kotlinx-coroutines-test = "1.9.0"
 
-activity-ktx = "1.10.0"
+activity-ktx = "1.10.1"
 lifecycleRuntimeKtx = "2.8.7"
-activityCompose = "1.10.0"
-composeBom = "2025.02.00"
+activityCompose = "1.10.1"
+composeBom = "2025.03.00"
 
 symspellkt = "3.3.0"
 
