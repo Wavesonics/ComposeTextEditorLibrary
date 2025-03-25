@@ -8,6 +8,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextMeasurer
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.input.CommitTextCommand
 import androidx.compose.ui.text.input.ImeOptions
@@ -763,6 +764,16 @@ class TextEditorState(
 				editCommands.forEach {
 					if (it is CommitTextCommand) {
 						insertTypedString(it.text)
+
+						// TODO when TextInputSession is replaced, this should probably go away
+						val selection = selector.selection?.let { sel ->
+							TextRange(start = sel.start.char, end = sel.end.char)
+						} ?: TextRange.Zero
+						val value = TextFieldValue(
+							annotatedString = textLines[cursor.position.line],
+							selection = selection
+						)
+						inputSession?.updateState(oldValue = null, newValue = value)
 					}
 				}
 			},
