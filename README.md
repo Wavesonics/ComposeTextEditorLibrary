@@ -60,8 +60,8 @@ but I haven't had time to add the targets and test them.
 
 Text Editor:
 
-`implementation("com.darkrockstudios:composetexteditor:0.6.0")`
+`implementation("com.darkrockstudios:composetexteditor:0.7.0")`
 
 Text Editor with Spell Checking:
 
-`implementation("com.darkrockstudios:composetexteditorspellcheck:0.6.0")`
+`implementation("com.darkrockstudios:composetexteditorspellcheck:0.7.0")`
