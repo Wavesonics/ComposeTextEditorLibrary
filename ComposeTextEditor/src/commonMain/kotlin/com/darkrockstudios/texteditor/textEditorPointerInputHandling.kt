@@ -166,6 +166,7 @@ private fun Modifier.handleTextInteractions(
 			var didHandlePress = false
 			var longPressJob: Job? = null
 			var didLongPress = false
+			var wasDrag = false
 
 			while (true) {
 				val event = awaitPointerEvent()
@@ -183,6 +184,7 @@ private fun Modifier.handleTextInteractions(
 
 						when (eventChange.type) {
 							PointerType.Touch -> {
+								wasDrag = false
 								didLongPress = false
 								longPressJob = state.scope.launch {
 									delay(500)
@@ -227,6 +229,9 @@ private fun Modifier.handleTextInteractions(
 								SpanClickType.TAP,
 								onSpanClick
 							)
+							if (wasDrag.not()) {
+								state.showKeyboard()
+							}
 						}
 
 						longPressJob?.cancel()
@@ -240,6 +245,7 @@ private fun Modifier.handleTextInteractions(
 					PointerEventType.Move -> {
 						val movement = event.changes.first()
 						if (movement.positionChanged()) {
+							wasDrag = true
 							longPressJob?.cancel()
 							longPressJob = null
 						}
