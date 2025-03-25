@@ -9,6 +9,11 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.input.ImeOptions
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.input.TextInputService
+import androidx.compose.ui.text.input.TextInputSession
 import androidx.compose.ui.unit.Constraints
 import com.darkrockstudios.texteditor.CharLineOffset
 import com.darkrockstudios.texteditor.LineWrap
@@ -90,6 +95,8 @@ class TextEditorState(
 
 	val editOperations = editManager.editOperations
 
+	private var inputSession: TextInputSession? = null
+
 	internal fun notifyContentChanged() {
 		_version++
 	}
@@ -110,6 +117,20 @@ class TextEditorState(
 
 	fun updateFocus(focused: Boolean) {
 		isFocused = focused
+
+		if (isFocused) {
+			showKeyboard()
+		} else {
+			hideKeyboard()
+		}
+	}
+
+	fun showKeyboard() {
+		inputSession?.showSoftwareKeyboard()
+	}
+
+	fun hideKeyboard() {
+		inputSession?.hideSoftwareKeyboard()
 	}
 
 	fun insertNewlineAtCursor() {
@@ -724,6 +745,38 @@ class TextEditorState(
 			hash = multiplier * hash + line.hashCode()
 		}
 		return hash
+	}
+
+	fun establishInputSession(textInputService: TextInputService?) {
+		if (inputSession != null) {
+			destroyInputSession(textInputService)
+		}
+
+		inputSession = textInputService?.startInput(
+			value = TextFieldValue(""),
+			imeOptions = ImeOptions(
+				autoCorrect = false,
+				keyboardType = KeyboardType.Text,
+			),
+			onEditCommand = { editCommands ->
+//					editCommands.forEach {
+//						if (it is CommitTextCommand) {
+//							state.insert(it.text)
+//						}
+//					}
+			},
+			onImeActionPerformed = { action ->
+				println("onImeActionPerformed: $action")
+			},
+		)
+	}
+
+	fun destroyInputSession(textInputService: TextInputService?) {
+		inputSession?.apply {
+			hideKeyboard()
+			textInputService?.stopInput(this)
+		}
+		inputSession = null
 	}
 
 	init {

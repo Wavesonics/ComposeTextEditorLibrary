@@ -148,6 +148,7 @@ private fun handleSpanInteraction(
 	if (clickType == SpanClickType.PRIMARY_CLICK || clickType == SpanClickType.TAP) {
 		state.cursor.updatePosition(position)
 		state.selector.clearSelection()
+		state.showKeyboard()
 	}
 
 	return if (clickedSpan != null && onSpanClick != null) {
