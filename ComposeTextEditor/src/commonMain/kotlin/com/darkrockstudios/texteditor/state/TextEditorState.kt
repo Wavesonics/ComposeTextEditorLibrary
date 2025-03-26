@@ -818,8 +818,7 @@ class TextEditorState(
 	}
 
 	override fun hashCode(): Int {
-		var result = hashCode()
-		result = 31 * result + textLines.hashCode()
+		val result = 31 + textLines.hashCode()
 		return result
 	}
 }
