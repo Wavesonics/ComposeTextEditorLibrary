@@ -3,7 +3,7 @@
 [![Maven Central](https://img.shields.io/maven-central/v/com.darkrockstudios/composetexteditor.svg)](https://search.maven.org/artifact/com.darkrockstudios/composetexteditor)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 
-[![KMP](https://img.shields.io/badge/supported-platforms:-blue.svg?logo=kotlin)](http://kotlinlang.org)
+[![KMP](https://img.shields.io/badge/platforms:-blue.svg?logo=kotlin)](http://kotlinlang.org)
 ![badge-jvm] ![badge-android] ![badge-wasm]
 
 Compose has been missing a **Rich Text Editor** since its inception.
