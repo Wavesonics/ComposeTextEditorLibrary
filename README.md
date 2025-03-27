@@ -8,7 +8,7 @@
 
 Compose has been missing a **Rich Text Editor** since its inception.
 I've [taken a crack](https://github.com/Wavesonics/richtext-compose-multiplatform) at this
-previously, as are [others](https://github.com/MohamedRejeb/Compose-Rich-Editor).
+previously, as have [others](https://github.com/MohamedRejeb/Compose-Rich-Editor).
 
 However they have all suffered from fundamental limitations in `BasicTextField`, the foundation of
 all text entry in Compose.
