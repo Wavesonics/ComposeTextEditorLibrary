@@ -9,6 +9,10 @@ import org.intellij.markdown.ast.getTextInNode
 import org.intellij.markdown.flavours.commonmark.CommonMarkFlavourDescriptor
 import org.intellij.markdown.parser.MarkdownParser
 
+private fun String.removeMarkdownEscapes(): String {
+	return replace("""\\([*_`#\[\](){}+\-.!\\])""".toRegex(), "$1")
+}
+
 fun String.toAnnotatedStringFromMarkdown(
 	configuration: MarkdownConfiguration = MarkdownConfiguration.DEFAULT
 ): AnnotatedString {
@@ -82,10 +86,13 @@ private fun AnnotatedString.Builder.appendMarkdownNode(
 
 		MarkdownElementTypes.CODE_SPAN -> {
 			pushStyle(styles.CODE)
-			// Remove the backticks from code spans
 			val codeText = nodeText.removeSurrounding("`")
 			append(codeText)
 			pop()
+		}
+
+		MarkdownTokenTypes.ESCAPED_BACKTICKS -> {
+			append(nodeText.removeMarkdownEscapes())
 		}
 
 		MarkdownElementTypes.CODE_FENCE -> {
@@ -159,7 +166,11 @@ private fun AnnotatedString.Builder.appendMarkdownNode(
 			append("\n")
 		}
 
-		MarkdownTokenTypes.TEXT,
+		MarkdownTokenTypes.TEXT -> {
+			// Remove escape sequences from text content
+			append(nodeText.removeMarkdownEscapes())
+		}
+
 		MarkdownTokenTypes.EOL -> {
 			append(nodeText)
 		}
@@ -195,15 +206,18 @@ private fun AnnotatedString.Builder.handleHeader(
 			MarkdownTokenTypes.ATX_HEADER -> {
 				// Skip processing the actual `#` markers
 			}
+
 			MarkdownTokenTypes.WHITE_SPACE -> {
 				// Skip leading whitespace (if it's part of the `#` header)
 				if (startOffset == 0) return@forEach
 				append(child.getTextInNode(original))
 			}
+
 			MarkdownTokenTypes.ATX_CONTENT -> {
 				// Recursively process the header's content for nested styles
 				appendMarkdownChildren(original, child, startOffset, styles)
 			}
+
 			else -> {
 				// Process any other nested styles or text
 				appendMarkdownNode(original, child, startOffset, styles)
