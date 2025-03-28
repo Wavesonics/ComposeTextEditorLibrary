@@ -129,7 +129,7 @@ private data class StyleMarkerPair(
  */
 private fun escapeMarkdownChar(char: Char): String {
 	return when (char) {
-		'*', '_', '`', '#', '+', '-', '.', '!', '[', ']', '(', ')', '{', '}', '<', '>', '|', '\\' -> "\\$char"
+		'*', '_', '`', '#', '+', '-', '!', '[', ']', '(', ')', '{', '}', '<', '>', '|', '\\' -> "\\$char"
 		else -> char.toString()
 	}
 }

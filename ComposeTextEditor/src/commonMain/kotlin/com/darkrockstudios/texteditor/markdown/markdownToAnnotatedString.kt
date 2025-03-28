@@ -9,8 +9,8 @@ import org.intellij.markdown.ast.getTextInNode
 import org.intellij.markdown.flavours.commonmark.CommonMarkFlavourDescriptor
 import org.intellij.markdown.parser.MarkdownParser
 
-private fun String.removeMarkdownEscapes(): String {
-	return replace("""\\([*_`#\[\](){}+\-.!\\])""".toRegex(), "$1")
+private fun CharSequence.removeMarkdownEscapes(): String {
+	return replace("""\\([*_`#\[\](){}+\-!\\])""".toRegex(), "$1")
 }
 
 fun String.toAnnotatedStringFromMarkdown(
@@ -62,25 +62,13 @@ private fun AnnotatedString.Builder.appendMarkdownNode(
 
 		MarkdownElementTypes.EMPH -> {
 			pushStyle(styles.ITALICS)
-			// Get the content without the markdown characters
-			val content = node.children.find { it.type == MarkdownTokenTypes.TEXT }
-			if (content != null) {
-				append(content.getTextInNode(original))
-			} else {
-				appendMarkdownChildren(original, node, startOffset, styles)
-			}
+			appendStyledContent(node, original, startOffset, styles)
 			pop()
 		}
 
 		MarkdownElementTypes.STRONG -> {
 			pushStyle(styles.BOLD)
-			// Get the content without the markdown characters
-			val content = node.children.find { it.type == MarkdownTokenTypes.TEXT }
-			if (content != null) {
-				append(content.getTextInNode(original))
-			} else {
-				appendMarkdownChildren(original, node, startOffset, styles)
-			}
+			appendStyledContent(node, original, startOffset, styles)
 			pop()
 		}
 
@@ -187,6 +175,44 @@ private fun AnnotatedString.Builder.appendMarkdownNode(
 				appendMarkdownChildren(original, node, startOffset, styles)
 			}
 		}
+	}
+}
+
+private fun AnnotatedString.Builder.appendStyledContent(
+	node: ASTNode,
+	original: String,
+	startOffset: Int,
+	styles: MarkdownStyles
+) {
+	var currentText = StringBuilder()
+
+	node.children.forEach { child ->
+		// At this level we should only be dealing with tokens, not elements
+		when (child.type) {
+			// Accumulate actual content
+			MarkdownTokenTypes.TEXT,
+			MarkdownTokenTypes.WHITE_SPACE -> {
+				currentText.append(child.getTextInNode(original))
+			}
+			// Skip markdown syntax tokens
+			MarkdownTokenTypes.EMPH,
+			MarkdownTokenTypes.BACKTICK -> {
+			}
+			// Handle any nested elements by recursing
+			else -> {
+				// Flush accumulated text first
+				if (currentText.isNotEmpty()) {
+					append(currentText.toString().removeMarkdownEscapes())
+					currentText.clear()
+				}
+				appendMarkdownNode(original, child, startOffset, styles)
+			}
+		}
+	}
+
+	// Flush any remaining text
+	if (currentText.isNotEmpty()) {
+		append(currentText.toString().removeMarkdownEscapes())
 	}
 }
 

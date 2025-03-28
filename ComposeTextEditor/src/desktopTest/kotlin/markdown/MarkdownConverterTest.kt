@@ -169,7 +169,7 @@ class MarkdownConverterTest {
 	@Test
 	fun `test escaping single special characters`() {
 		val specialChars =
-			listOf('*', '_', '`', '#', '+', '-', '.', '!', '[', ']', '(', ')', '{', '}', '<', '>', '|', '\\')
+			listOf('*', '_', '`', '#', '+', '-', '!', '[', ']', '(', ')', '{', '}', '<', '>', '|', '\\')
 
 		specialChars.forEach { char ->
 			val input = AnnotatedString("Text with $char character")
