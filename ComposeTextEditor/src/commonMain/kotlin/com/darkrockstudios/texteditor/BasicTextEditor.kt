@@ -9,7 +9,6 @@ import androidx.compose.foundation.gestures.scrollable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -43,6 +42,7 @@ fun BasicTextEditor(
 	enabled: Boolean = true,
 	style: TextEditorStyle = rememberTextEditorStyle(),
 	onRichSpanClick: RichSpanClickListener? = null,
+	decorateLine: LineDecorator? = null,
 ) {
 	val focusRequester = remember { FocusRequester() }
 	val interactionSource = remember { MutableInteractionSource() }
@@ -79,7 +79,7 @@ fun BasicTextEditor(
 
 
 	TextEditorScrollbar(
-		modifier = modifier.padding(start = 8.dp),
+		modifier = modifier,
 		scrollState = state.scrollState,
 	) { editorModifier ->
 		Box(
@@ -117,7 +117,7 @@ fun BasicTextEditor(
 						height = state.viewportSize.height.dp
 					)
 					.graphicsLayer {
-						clip = true
+						clip = false
 					}
 					.then(
 						if (enabled) {
@@ -132,7 +132,7 @@ fun BasicTextEditor(
 				}
 
 				try {
-					DrawEditorText(state, style)
+					DrawEditorText(state, style, decorateLine)
 				} catch (e: IllegalArgumentException) {
 					// Handle resize exception gracefully
 				}

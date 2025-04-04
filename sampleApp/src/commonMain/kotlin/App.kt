@@ -2,11 +2,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.graphics.Color
 import com.darkrockstudios.texteditor.markdown.MarkdownConfiguration
 import com.darkrockstudios.texteditor.richstyle.HighlightSpanStyle
@@ -19,7 +15,8 @@ enum class Destination {
 	TextEditor,
 	MarkdownEditor,
 	EmptyTextEditor,
-	SpellChecking
+	SpellChecking,
+	CodeEditor
 }
 
 @Composable
@@ -79,6 +76,10 @@ fun App() {
 				Destination.SpellChecking -> SpellCheckingTextEditorDemoUi(
 					navigateTo = ::navigateTo,
 					configuration = markdownScheme,
+				)
+
+				Destination.CodeEditor -> CodeEditorDemoUi(
+					navigateTo = ::navigateTo,
 				)
 			}
 		}
