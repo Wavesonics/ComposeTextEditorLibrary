@@ -8,14 +8,8 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextMeasurer
-import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.input.CommitTextCommand
-import androidx.compose.ui.text.input.ImeOptions
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.TextFieldValue
-import androidx.compose.ui.text.input.TextInputService
-import androidx.compose.ui.text.input.TextInputSession
+import androidx.compose.ui.text.input.*
 import androidx.compose.ui.unit.Constraints
 import com.darkrockstudios.texteditor.CharLineOffset
 import com.darkrockstudios.texteditor.LineWrap
@@ -97,7 +91,7 @@ class TextEditorState(
 
 	val editOperations = editManager.editOperations
 
-	private var inputSession: TextInputSession? = null
+	internal var inputSession: TextInputSession? = null
 
 	internal fun notifyContentChanged() {
 		_version++
@@ -757,24 +751,12 @@ class TextEditorState(
 		inputSession = textInputService?.startInput(
 			value = TextFieldValue(""),
 			imeOptions = ImeOptions(
-				autoCorrect = false,
+				autoCorrect = true,
 				keyboardType = KeyboardType.Text,
 			),
 			onEditCommand = { editCommands ->
 				editCommands.forEach {
-					if (it is CommitTextCommand) {
-						insertTypedString(it.text)
-
-						// TODO when TextInputSession is replaced, this should probably go away
-						val selection = selector.selection?.let { sel ->
-							TextRange(start = sel.start.char, end = sel.end.char)
-						} ?: TextRange.Zero
-						val value = TextFieldValue(
-							annotatedString = textLines[cursor.position.line],
-							selection = selection
-						)
-						inputSession?.updateState(oldValue = null, newValue = value)
-					}
+					handleTextEditCommand(it)
 				}
 			},
 			onImeActionPerformed = { action ->
