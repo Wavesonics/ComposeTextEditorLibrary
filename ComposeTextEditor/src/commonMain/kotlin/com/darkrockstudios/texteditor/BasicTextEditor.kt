@@ -77,7 +77,6 @@ fun BasicTextEditor(
 		}
 	}
 
-
 	TextEditorScrollbar(
 		modifier = modifier,
 		scrollState = state.scrollState,

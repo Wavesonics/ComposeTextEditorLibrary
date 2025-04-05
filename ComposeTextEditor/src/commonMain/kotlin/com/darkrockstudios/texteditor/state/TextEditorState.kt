@@ -37,7 +37,6 @@ class TextEditorState(
 			updateBookKeeping()
 		}
 
-	private var _version by mutableStateOf(0)
 	internal val _textLines = mutableListOf<AnnotatedString>()
 	val textLines: List<AnnotatedString> get() = _textLines
 
@@ -93,22 +92,16 @@ class TextEditorState(
 
 	internal var inputSession: TextInputSession? = null
 
-	internal fun notifyContentChanged() {
-		_version++
-	}
-
 	fun setText(text: String) {
 		_textLines.clear()
 		_textLines.addAll(text.split("\n").map { it.toAnnotatedString() })
 		updateBookKeeping()
-		notifyContentChanged()
 	}
 
 	fun setText(text: AnnotatedString) {
 		_textLines.clear()
 		_textLines.addAll(text.splitAnnotatedString())
 		updateBookKeeping()
-		notifyContentChanged()
 	}
 
 	fun updateFocus(focused: Boolean) {
@@ -288,7 +281,6 @@ class TextEditorState(
 			_textLines[i] = processor(i, line)
 		}
 		updateBookKeeping()
-		notifyContentChanged()
 	}
 
 	internal fun removeLines(startIndex: Int, count: Int) {
@@ -800,7 +792,6 @@ class TextEditorState(
 	}
 
 	override fun hashCode(): Int {
-		val result = 31 + textLines.hashCode()
-		return result
+		return 31 + textLines.hashCode()
 	}
 }
