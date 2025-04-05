@@ -8,7 +8,8 @@ import com.darkrockstudios.texteditor.state.TextEditorState
 
 internal fun DrawScope.DrawEditorText(
 	state: TextEditorState,
-	style: TextEditorStyle
+	style: TextEditorStyle,
+	decorateLine: LineDecorator?,
 ) {
 	// Get current scroll position and viewport height
 	val scrollY = state.scrollState.value
@@ -29,10 +30,15 @@ internal fun DrawScope.DrawEditorText(
 			if (lastLine != virtualLine.line && state.textLines.size > virtualLine.line) {
 				val line = state.textLines[virtualLine.line]
 
+				val offset = virtualLine.offset.copy(y = virtualLine.offset.y - scrollY)
+				decorateLine?.let {
+					decorateLine(virtualLine.line, offset, state, style)
+				}
+
 				drawText(
 					textMeasurer = state.textMeasurer,
 					text = line,
-					topLeft = virtualLine.offset.copy(y = virtualLine.offset.y - scrollY),
+					topLeft = offset,
 					style = TextStyle.Default.copy(
 						color = style.placeholderColor,
 					)

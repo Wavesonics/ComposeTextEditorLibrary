@@ -38,7 +38,6 @@ class TextEditManager(private val state: TextEditorState) {
 		}
 
 		state.updateBookKeeping()
-		state.notifyContentChanged()
 
 		_editOperations.tryEmit(operation)
 	}
