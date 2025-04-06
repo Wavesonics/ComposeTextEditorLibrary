@@ -1,6 +1,6 @@
 package com.darkrockstudios.texteditor
 
-import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -19,17 +19,10 @@ fun TextEditor(
 	Surface(modifier = modifier.focusBorder(state.isFocused && enabled, style)) {
 		BasicTextEditor(
 			state = state,
-			modifier = Modifier,
+			modifier = Modifier.padding(start = 8.dp),
 			enabled = enabled,
 			style = style,
 			onRichSpanClick = onRichSpanClick,
 		)
 	}
-}
-
-private fun Modifier.focusBorder(isFocused: Boolean, style: TextEditorStyle): Modifier {
-	return this.border(
-		width = 1.dp,
-		color = if (isFocused) style.focusedBorderColor else style.unfocusedBorderColor
-	)
 }
