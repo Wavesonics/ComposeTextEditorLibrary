@@ -1,4 +1,4 @@
-package com.darkrockstudios.texteditor
+package com.darkrockstudios.texteditor.codeeditor
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Surface
@@ -10,7 +10,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
@@ -19,6 +18,10 @@ import androidx.compose.ui.text.drawText
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.darkrockstudios.texteditor.BasicTextEditor
+import com.darkrockstudios.texteditor.RichSpanClickListener
+import com.darkrockstudios.texteditor.TextEditorStyle
+import com.darkrockstudios.texteditor.focusBorder
 import com.darkrockstudios.texteditor.state.TextEditorState
 import com.darkrockstudios.texteditor.state.rememberTextEditorState
 import kotlin.math.absoluteValue
@@ -26,9 +29,6 @@ import kotlin.math.absoluteValue
 private val GUTTER_START_PADDING = 8.dp
 private val GUTTER_END_PADDING = 8.dp
 private val GUTTER_END_MARGIN = 8.dp
-
-private val gutterBackgroundColor: Color = Color.DarkGray
-private val gutterTextColor: Color = Color.White
 
 private fun numDigits(number: Int): Int {
 	if (number == 0) return 1
@@ -59,7 +59,7 @@ private fun DrawScope.drawLineNumbers(
 	line: Int,
 	offset: Offset,
 	state: TextEditorState,
-	style: TextEditorStyle,
+	style: CodeEditorStyle,
 	gutterWidth: Dp
 ) {
 	val x = offset.x - (gutterWidth.toPx() - GUTTER_START_PADDING.toPx()) - GUTTER_END_MARGIN.toPx()
@@ -70,7 +70,7 @@ private fun DrawScope.drawLineNumbers(
 		textMeasurer = state.textMeasurer,
 		text = lineNumberText,
 		style = TextStyle.Default.copy(
-			color = gutterTextColor,
+			color = style.gutterTextColor,
 		),
 		topLeft = lineNumberOffset
 	)
@@ -81,7 +81,7 @@ fun CodeEditor(
 	state: TextEditorState = rememberTextEditorState(),
 	modifier: Modifier = Modifier,
 	enabled: Boolean = true,
-	style: TextEditorStyle = rememberTextEditorStyle(),
+	style: CodeEditorStyle = rememberCodeEditorStyle(),
 	onRichSpanClick: RichSpanClickListener? = null,
 ) {
 	val density = LocalDensity.current
@@ -89,7 +89,7 @@ fun CodeEditor(
 		derivedStateOf { gutterWidth(state, density) }
 	}
 
-	Surface(modifier = modifier.focusBorder(state.isFocused && enabled, style)) {
+	Surface(modifier = modifier.focusBorder(state.isFocused && enabled, style.baseStyle)) {
 		BasicTextEditor(
 			state = state,
 			modifier = Modifier
@@ -97,15 +97,15 @@ fun CodeEditor(
 				.graphicsLayer { clip = false }
 				.drawBehind {
 					drawRect(
-						color = gutterBackgroundColor,
+						color = style.gutterBackgroundColor,
 						topLeft = Offset(-(gutterWidth.toPx() + GUTTER_END_MARGIN.toPx()), 0f),
 						size = Size(gutterWidth.toPx(), size.height)
 					)
 				},
 			enabled = enabled,
-			style = style,
+			style = style.baseStyle,
 			onRichSpanClick = onRichSpanClick,
-			decorateLine = { line: Int, offset: Offset, state: TextEditorState, style: TextEditorStyle ->
+			decorateLine = { line: Int, offset: Offset, state: TextEditorState, _: TextEditorStyle ->
 				drawLineNumbers(line, offset, state, style, gutterWidth)
 			}
 		)

@@ -8,8 +8,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.darkrockstudios.texteditor.CodeEditor
-import com.darkrockstudios.texteditor.rememberTextEditorStyle
+import com.darkrockstudios.texteditor.codeeditor.CodeEditor
+import com.darkrockstudios.texteditor.codeeditor.rememberCodeEditorStyle
 import com.darkrockstudios.texteditor.state.TextEditorState
 import com.darkrockstudios.texteditor.state.rememberTextEditorState
 
@@ -40,9 +40,8 @@ fun CodeEditorDemoUi(
 			}
 		}
 
-		val style = rememberTextEditorStyle(
+		val style = rememberCodeEditorStyle(
 			placeholderText = "Enter code here",
-			textColor = MaterialTheme.colorScheme.onSurface,
 		)
 
 		CodeEditor(
