@@ -24,25 +24,21 @@ import com.darkrockstudios.texteditor.focusBorder
 import com.darkrockstudios.texteditor.state.TextEditorState
 import com.darkrockstudios.texteditor.state.rememberTextEditorState
 import kotlin.math.absoluteValue
+import kotlin.math.log10
 
 
 private fun numDigits(number: Int): Int {
 	if (number == 0) return 1
-
-	var n = number.absoluteValue
-	var digits = 0
-	while (n > 0) {
-		digits++
-		n /= 10
-	}
-
-	return digits
+	return log10(number.absoluteValue.toFloat()).toInt() + 1
 }
 
-private fun gutterWidth(state: TextEditorState, density: Density, style: CodeEditorStyle): Dp {
-	val colWidth = with(density) {
+private fun calculateColWidth(state: TextEditorState, density: Density): Dp {
+	return with(density) {
 		state.textMeasurer.measure("0").size.width.toDp()
 	}
+}
+
+private fun gutterWidth(state: TextEditorState, style: CodeEditorStyle, colWidth: Dp): Dp {
 	val numLines = state.textLines.size
 
 	val maxLineNumber = numLines.coerceAtLeast(1)
@@ -58,9 +54,16 @@ private fun DrawScope.drawLineNumbers(
 	style: CodeEditorStyle,
 	gutterWidth: Dp
 ) {
-	val x = offset.x - (gutterWidth.toPx() - style.gutterStartPadding.toPx()) - style.gutterEndMargin.toPx()
-	val lineNumberOffset = offset.copy(x = x)
 	val lineNumberText = (line + 1).toString()
+
+	val textWidth = state.textMeasurer.measure(text = lineNumberText).size.width
+
+	val gutterRightEdge = offset.x - style.gutterEndMargin.toPx()
+	val x = gutterRightEdge - textWidth - style.gutterEndPadding.toPx()
+
+	val gutterLeftEdge = gutterRightEdge - gutterWidth.toPx()
+	val constrainedX = x.coerceAtLeast(gutterLeftEdge + style.gutterStartPadding.toPx())
+	val lineNumberOffset = offset.copy(x = constrainedX)
 
 	drawText(
 		textMeasurer = state.textMeasurer,
@@ -81,8 +84,13 @@ fun CodeEditor(
 	onRichSpanClick: RichSpanClickListener? = null,
 ) {
 	val density = LocalDensity.current
-	val gutterWidth by remember(state.lineOffsets, style) {
-		derivedStateOf { gutterWidth(state, density, style) }
+
+	val colWidth by remember(state.textMeasurer, density) {
+		derivedStateOf { calculateColWidth(state, density) }
+	}
+
+	val gutterWidth by remember(state.lineOffsets, style, colWidth) {
+		derivedStateOf { gutterWidth(state, style, colWidth) }
 	}
 
 	Surface(modifier = modifier.focusBorder(state.isFocused && enabled, style.baseStyle)) {
