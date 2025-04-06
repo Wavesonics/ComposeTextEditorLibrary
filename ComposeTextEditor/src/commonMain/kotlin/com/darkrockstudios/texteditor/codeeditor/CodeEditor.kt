@@ -17,7 +17,6 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.dp
 import com.darkrockstudios.texteditor.BasicTextEditor
 import com.darkrockstudios.texteditor.RichSpanClickListener
 import com.darkrockstudios.texteditor.TextEditorStyle
@@ -26,9 +25,6 @@ import com.darkrockstudios.texteditor.state.TextEditorState
 import com.darkrockstudios.texteditor.state.rememberTextEditorState
 import kotlin.math.absoluteValue
 
-private val GUTTER_START_PADDING = 8.dp
-private val GUTTER_END_PADDING = 8.dp
-private val GUTTER_END_MARGIN = 8.dp
 
 private fun numDigits(number: Int): Int {
 	if (number == 0) return 1
@@ -43,16 +39,16 @@ private fun numDigits(number: Int): Int {
 	return digits
 }
 
-private fun gutterWidth(state: TextEditorState, density: Density): Dp {
+private fun gutterWidth(state: TextEditorState, density: Density, style: CodeEditorStyle): Dp {
 	val colWidth = with(density) {
 		state.textMeasurer.measure("0").size.width.toDp()
 	}
 	val numLines = state.textLines.size
 
 	val maxLineNumber = numLines.coerceAtLeast(1)
-	val numDigits = maxOf(numDigits(maxLineNumber), 1)
+	val numDigits = maxOf(numDigits(maxLineNumber), 2)
 
-	return GUTTER_START_PADDING + (colWidth * numDigits) + GUTTER_END_PADDING
+	return style.gutterStartPadding + (colWidth * numDigits) + style.gutterEndPadding
 }
 
 private fun DrawScope.drawLineNumbers(
@@ -62,7 +58,7 @@ private fun DrawScope.drawLineNumbers(
 	style: CodeEditorStyle,
 	gutterWidth: Dp
 ) {
-	val x = offset.x - (gutterWidth.toPx() - GUTTER_START_PADDING.toPx()) - GUTTER_END_MARGIN.toPx()
+	val x = offset.x - (gutterWidth.toPx() - style.gutterStartPadding.toPx()) - style.gutterEndMargin.toPx()
 	val lineNumberOffset = offset.copy(x = x)
 	val lineNumberText = (line + 1).toString()
 
@@ -85,20 +81,20 @@ fun CodeEditor(
 	onRichSpanClick: RichSpanClickListener? = null,
 ) {
 	val density = LocalDensity.current
-	val gutterWidth by remember(state.lineOffsets) {
-		derivedStateOf { gutterWidth(state, density) }
+	val gutterWidth by remember(state.lineOffsets, style) {
+		derivedStateOf { gutterWidth(state, density, style) }
 	}
 
 	Surface(modifier = modifier.focusBorder(state.isFocused && enabled, style.baseStyle)) {
 		BasicTextEditor(
 			state = state,
 			modifier = Modifier
-				.padding(start = gutterWidth + GUTTER_END_MARGIN)
+				.padding(start = gutterWidth + style.gutterEndMargin)
 				.graphicsLayer { clip = false }
 				.drawBehind {
 					drawRect(
 						color = style.gutterBackgroundColor,
-						topLeft = Offset(-(gutterWidth.toPx() + GUTTER_END_MARGIN.toPx()), 0f),
+						topLeft = Offset(-(gutterWidth.toPx() + style.gutterEndMargin.toPx()), 0f),
 						size = Size(gutterWidth.toPx(), size.height)
 					)
 				},
