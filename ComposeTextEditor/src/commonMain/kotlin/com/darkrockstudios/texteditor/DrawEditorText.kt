@@ -40,7 +40,7 @@ internal fun DrawScope.DrawEditorText(
 					text = line,
 					topLeft = offset,
 					style = TextStyle.Default.copy(
-						color = style.placeholderColor,
+						color = style.textColor,
 					)
 				)
 
