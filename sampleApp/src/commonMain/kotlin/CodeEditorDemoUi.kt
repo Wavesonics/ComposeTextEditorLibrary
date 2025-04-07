@@ -8,8 +8,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.darkrockstudios.texteditor.codeeditor.CodeEditor
-import com.darkrockstudios.texteditor.codeeditor.rememberCodeEditorStyle
+import codeeditor.CodeEditor
+import codeeditor.rememberCodeEditorStyle
 import com.darkrockstudios.texteditor.state.TextEditorState
 import com.darkrockstudios.texteditor.state.rememberTextEditorState
 

@@ -1,4 +1,4 @@
-package com.darkrockstudios.texteditor.codeeditor
+package codeeditor
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable

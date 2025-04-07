@@ -31,8 +31,8 @@ class TextEditorState(
 	measurer: TextMeasurer,
 	initialText: AnnotatedString? = null
 ) {
-	internal var textMeasurer: TextMeasurer = measurer
-		set(value) {
+	var textMeasurer: TextMeasurer = measurer
+		internal set(value) {
 			field = value
 			updateBookKeeping()
 		}

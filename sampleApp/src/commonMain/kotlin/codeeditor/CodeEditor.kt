@@ -1,4 +1,4 @@
-package com.darkrockstudios.texteditor.codeeditor
+package codeeditor
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Surface
