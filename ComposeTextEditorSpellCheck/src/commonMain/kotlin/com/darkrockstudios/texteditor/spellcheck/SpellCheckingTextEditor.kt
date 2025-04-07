@@ -1,18 +1,13 @@
 package com.darkrockstudios.texteditor.spellcheck
 
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.material3.Surface
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.darkrockstudios.symspellkt.api.SpellChecker
-import com.darkrockstudios.texteditor.BasicTextEditor
-import com.darkrockstudios.texteditor.RichSpanClickListener
-import com.darkrockstudios.texteditor.TextEditorRange
+import com.darkrockstudios.texteditor.*
 import com.darkrockstudios.texteditor.spellcheck.utils.debounceUntilQuiescentWithBatch
 import com.darkrockstudios.texteditor.state.SpanClickType
 import com.darkrockstudios.texteditor.state.TextEditOperation
@@ -25,6 +20,7 @@ fun SpellCheckingTextEditor(
 	state: SpellCheckState = rememberSpellCheckState(spellChecker),
 	modifier: Modifier = Modifier,
 	enabled: Boolean = true,
+	style: TextEditorStyle = rememberTextEditorStyle(),
 	onRichSpanClick: RichSpanClickListener? = null,
 ) {
 	val menuState by remember(state) { mutableStateOf(SpellCheckMenuState(state)) }
@@ -47,31 +43,34 @@ fun SpellCheckingTextEditor(
 			}
 	}
 
-	SpellCheckTextContextMenuProvider(
-		spellCheckMenuState = menuState,
-	) {
-		BasicTextEditor(
-			state = state.textState,
-			modifier = modifier,
-			enabled = enabled,
-			onRichSpanClick = { span, type, offset ->
-				return@BasicTextEditor if (type == SpanClickType.SECONDARY_CLICK || type == SpanClickType.TAP) {
-					val correction = state.handleSpanClick(span)
-					if (correction != null) {
-						val menuPos = offset.copy(y = offset.y + wordVisibilityBuffer)
-						menuState.missSpelling.value =
-							SpellCheckMenuState.MissSpelling(correction, menuPos)
-						true
+	Surface(modifier = modifier.focusBorder(state.textState.isFocused && enabled, style)) {
+		SpellCheckTextContextMenuProvider(
+			spellCheckMenuState = menuState,
+		) {
+			BasicTextEditor(
+				state = state.textState,
+				modifier = Modifier,
+				enabled = enabled,
+				style = style,
+				onRichSpanClick = { span, type, offset ->
+					return@BasicTextEditor if (type == SpanClickType.SECONDARY_CLICK || type == SpanClickType.TAP) {
+						val correction = state.handleSpanClick(span)
+						if (correction != null) {
+							val menuPos = offset.copy(y = offset.y + wordVisibilityBuffer)
+							menuState.missSpelling.value =
+								SpellCheckMenuState.MissSpelling(correction, menuPos)
+							true
+						} else {
+							menuState.missSpelling.value = null
+							onRichSpanClick?.invoke(span, type, offset) ?: false
+						}
 					} else {
 						menuState.missSpelling.value = null
-						onRichSpanClick?.invoke(span, type, offset) ?: false
+						false
 					}
-				} else {
-					menuState.missSpelling.value = null
-					false
-				}
-			},
-		)
+				},
+			)
+		}
 	}
 }
 
