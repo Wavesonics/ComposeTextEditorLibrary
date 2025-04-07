@@ -1,6 +1,7 @@
 package com.darkrockstudios.texteditor
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -97,6 +98,7 @@ fun BasicTextEditor(
 						Modifier
 					}
 				)
+				.background(style.backgroundColor)
 				.onSizeChanged { size ->
 					state.onViewportSizeChange(
 						size.toSize()

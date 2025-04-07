@@ -7,6 +7,7 @@ import androidx.compose.ui.graphics.Color
 
 data class TextEditorStyle(
 	val textColor: Color = Color.Unspecified,
+	val backgroundColor: Color = Color.Unspecified,
 	val placeholderText: String = "",
 	val placeholderColor: Color = Color.Unspecified,
 	val cursorColor: Color = Color.Unspecified,
@@ -17,7 +18,8 @@ data class TextEditorStyle(
 
 @Composable
 fun rememberTextEditorStyle(
-	textColor: Color = MaterialTheme.colorScheme.onSurface,
+	textColor: Color = MaterialTheme.colorScheme.onBackground,
+	backgroundColor: Color = MaterialTheme.colorScheme.background,
 	placeholderText: String = "",
 	placeholderColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
 	cursorColor: Color = MaterialTheme.colorScheme.onSurface,
@@ -30,6 +32,7 @@ fun rememberTextEditorStyle(
 ) {
 	TextEditorStyle(
 		textColor = textColor,
+		backgroundColor = backgroundColor,
 		placeholderText = placeholderText,
 		placeholderColor = placeholderColor,
 		cursorColor = cursorColor,
