@@ -7,6 +7,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import com.darkrockstudios.texteditor.CharLineOffset
+import com.darkrockstudios.texteditor.annotatedstring.toAnnotatedString
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -118,21 +119,16 @@ class TextEditorCursorState(
 		}
 	}
 
-	fun applyCursorStyle(text: AnnotatedString): AnnotatedString {
-		// TODO don't call .text??
-		return applyCursorStyle(text.text)
+	fun applyCursorStyle(string: String): AnnotatedString {
+		return applyCursorStyle(string.toAnnotatedString(fontFamily = editorState.style.fontFamily))
 	}
 
-	fun applyCursorStyle(string: String): AnnotatedString {
-		if (styles.isEmpty()) {
-			return AnnotatedString(string)
-		}
-
+	fun applyCursorStyle(text: AnnotatedString): AnnotatedString {
 		return buildAnnotatedString {
 			styles.forEach { style ->
 				pushStyle(style)
 			}
-			append(string)
+			append(text)
 			repeat(styles.size) {
 				pop()
 			}
