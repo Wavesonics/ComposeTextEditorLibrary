@@ -1,5 +1,6 @@
 package wordsegmentation
 
+import com.darkrockstudios.texteditor.TextEditorStyle
 import com.darkrockstudios.texteditor.state.TextEditorState
 import com.darkrockstudios.texteditor.state.wordSegments
 import io.mockk.mockk
@@ -181,6 +182,7 @@ class WordSegmentationTests {
 	private fun createTestEditorState(scope: CoroutineScope): TextEditorState {
 		return TextEditorState(
 			scope = scope,
+			editorStyle = TextEditorStyle(),
 			measurer = mockk(relaxed = true)
 		)
 	}

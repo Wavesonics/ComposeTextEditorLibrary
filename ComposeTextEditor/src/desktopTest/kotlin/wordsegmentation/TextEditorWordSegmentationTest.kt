@@ -3,6 +3,7 @@ package wordsegmentation
 import androidx.compose.ui.text.AnnotatedString
 import com.darkrockstudios.texteditor.CharLineOffset
 import com.darkrockstudios.texteditor.TextEditorRange
+import com.darkrockstudios.texteditor.TextEditorStyle
 import com.darkrockstudios.texteditor.state.TextEditorState
 import com.darkrockstudios.texteditor.state.wordSegments
 import io.mockk.mockk
@@ -14,6 +15,7 @@ class TextEditorWordSegmentationTest {
 	private fun createEditorState(text: String): TextEditorState {
 		return TextEditorState(
 			scope = TestScope(),
+			editorStyle = TextEditorStyle(),
 			measurer = mockk(relaxed = true),
 			initialText = AnnotatedString(text)
 		)
