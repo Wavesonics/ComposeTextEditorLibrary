@@ -164,4 +164,35 @@ class SpanManagerTest {
 
 		assertEquals(expected, result)
 	}
+
+	@Test
+	fun `test inserting non-bold character in middle of bold text`() {
+		val spanManager = SpanManager()
+		val boldStyle = SpanStyle(fontWeight = FontWeight.Bold)
+
+		// Create text with a bold span
+		val originalText = AnnotatedString(
+			text = "HelloWorld",
+			spanStyles = listOf(
+				AnnotatedString.Range(boldStyle, 0, 10)
+			)
+		)
+
+		// Insert a character with a different style (normal weight) in the middle
+		val insertedText = AnnotatedString(
+			text = " ",
+			spanStyles = emptyList()
+		)
+
+		val result = spanManager.processSpans(originalText, insertionPoint = 5, insertedText = insertedText)
+
+		// Expected: Two bold spans with a non-bold space in between
+		val expected = listOf(
+			AnnotatedString.Range(boldStyle, 0, 5),  // "Hello"
+			AnnotatedString.Range(boldStyle, 6, 11)  // "World"
+		)
+
+		assertEquals(expected.size, result.size, "Should have three spans: two bold and one normal")
+		assertEquals(expected, result, "Bold spans should be split with normal text in between")
+	}
 }
