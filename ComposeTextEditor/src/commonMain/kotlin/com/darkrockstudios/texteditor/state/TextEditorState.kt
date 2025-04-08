@@ -205,7 +205,7 @@ class TextEditorState(
 	}
 
 	fun insertCharacterAtCursor(char: Char) {
-		val text = cursor.applyCursorStyle(char.toString().toAnnotatedString(fontFamily = style.fontFamily))
+		val text = cursor.applyCursorStyle(char.toString())
 		val operation = TextEditOperation.Insert(
 			position = cursorPosition,
 			text = text,
@@ -215,8 +215,10 @@ class TextEditorState(
 		editManager.applyOperation(operation)
 	}
 
-	fun insertStringAtCursor(string: String) =
-		insertStringAtCursor(string.toAnnotatedString(fontFamily = style.fontFamily))
+	fun insertStringAtCursor(string: String) {
+		insertStringAtCursor(cursor.applyCursorStyle(string))
+	}
+
 	fun insertStringAtCursor(text: AnnotatedString) {
 		val styledText = cursor.applyCursorStyle(text)
 		val operation = TextEditOperation.Insert(

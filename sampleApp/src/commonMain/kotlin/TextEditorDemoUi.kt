@@ -31,19 +31,29 @@ fun TextEditorDemoUi(
 	demoContent: DemoContent,
 	configuration: MarkdownConfiguration
 ) {
+	val style = rememberTextEditorStyle(
+		placeholderText = "Enter text here",
+		textColor = MaterialTheme.colorScheme.onSurface,
+	)
 	val state: TextEditorState = when (demoContent) {
 		DemoContent.Rich -> {
-			rememberTextEditorState(initialText = createRichTextDemo())
+			rememberTextEditorState(
+				initialText = createRichTextDemo(),
+				initialStyle = style
+			)
 			//rememberTextEditorState(createRichTextDemo2())
 			//rememberTextEditorState(alice_wounder_land.toAnnotatedStringFromMarkdown())
 		}
 
 		DemoContent.Markdown -> {
-			rememberTextEditorState(initialText = SIMPLE_MARKDOWN.toAnnotatedStringFromMarkdown(configuration))
+			rememberTextEditorState(
+				initialText = SIMPLE_MARKDOWN.toAnnotatedStringFromMarkdown(configuration),
+				initialStyle = style
+			)
 		}
 
 		DemoContent.Empty -> {
-			rememberTextEditorState()
+			rememberTextEditorState(initialStyle = style)
 		}
 	}
 	val markdownExtension = remember(state, configuration) { state.withMarkdown(configuration) }
@@ -79,11 +89,6 @@ fun TextEditorDemoUi(
 		TextEditorToolbar(
 			mardkown = markdownExtension,
 			markdownControls = (demoContent != DemoContent.Rich)
-		)
-
-		val style = rememberTextEditorStyle(
-			placeholderText = "Enter text here",
-			textColor = MaterialTheme.colorScheme.onSurface,
 		)
 
 		TextEditor(
