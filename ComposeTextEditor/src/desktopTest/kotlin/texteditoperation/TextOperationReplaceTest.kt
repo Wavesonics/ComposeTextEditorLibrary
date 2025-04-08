@@ -6,6 +6,7 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import com.darkrockstudios.texteditor.CharLineOffset
 import com.darkrockstudios.texteditor.TextEditorRange
+import com.darkrockstudios.texteditor.TextEditorStyle
 import com.darkrockstudios.texteditor.state.TextEditOperation
 import com.darkrockstudios.texteditor.state.TextEditorState
 import io.mockk.mockk
@@ -158,6 +159,7 @@ class TextOperationReplaceTest {
 	private fun createTestEditorState(): TextEditorState {
 		return TextEditorState(
 			scope = TestScope(),
+			editorStyle = TextEditorStyle(),
 			measurer = mockk(relaxed = true),
 			initialText = AnnotatedString("")
 		)

@@ -1,15 +1,12 @@
 package texteditoperation
 
 import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.TextLayoutResult
-import androidx.compose.ui.text.TextRange
-import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.*
 import androidx.compose.ui.text.font.FontWeight
 import com.darkrockstudios.texteditor.CharLineOffset
 import com.darkrockstudios.texteditor.LineWrap
 import com.darkrockstudios.texteditor.TextEditorRange
+import com.darkrockstudios.texteditor.TextEditorStyle
 import com.darkrockstudios.texteditor.richstyle.RichSpanStyle
 import com.darkrockstudios.texteditor.state.TextEditOperation
 import com.darkrockstudios.texteditor.state.TextEditorState
@@ -243,6 +240,7 @@ class TextOperationInsertTest {
 	private fun createTestEditorState(): TextEditorState {
 		return TextEditorState(
 			scope = TestScope(),
+			editorStyle = TextEditorStyle(),
 			measurer = mockk(relaxed = true),
 			initialText = AnnotatedString("")
 		)

@@ -1,6 +1,7 @@
 package wordsegmentation
 
 import com.darkrockstudios.texteditor.CharLineOffset
+import com.darkrockstudios.texteditor.TextEditorStyle
 import com.darkrockstudios.texteditor.state.TextEditorState
 import com.darkrockstudios.texteditor.state.findWordSegmentAt
 import io.mockk.mockk
@@ -17,6 +18,7 @@ class WordSegmentFinderTest {
 	fun setup() {
 		textState = TextEditorState(
 			scope = TestScope(),
+			editorStyle = TextEditorStyle(),
 			measurer = mockk(relaxed = true),
 			initialText = null
 		)

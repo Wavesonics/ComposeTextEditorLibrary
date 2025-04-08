@@ -5,6 +5,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import com.darkrockstudios.texteditor.CharLineOffset
+import com.darkrockstudios.texteditor.TextEditorStyle
 import com.darkrockstudios.texteditor.state.TextEditOperation
 import com.darkrockstudios.texteditor.state.TextEditorState
 import io.mockk.mockk
@@ -231,6 +232,7 @@ class InsertUndoTests {
 	private fun createTestEditorState(scope: TestScope): TextEditorState {
 		return TextEditorState(
 			scope = scope.backgroundScope,
+			editorStyle = TextEditorStyle(),
 			measurer = mockk(relaxed = true)
 		)
 	}

@@ -6,6 +6,7 @@ import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.unit.IntSize
 import com.darkrockstudios.texteditor.CharLineOffset
+import com.darkrockstudios.texteditor.TextEditorStyle
 import com.darkrockstudios.texteditor.richstyle.RichSpan
 import com.darkrockstudios.texteditor.state.RichSpanManager
 import com.darkrockstudios.texteditor.state.TextEditorState
@@ -27,6 +28,7 @@ class TextEditorWrapTest {
 
 		val state = TextEditorState(
 			scope = testScope,
+			editorStyle = TextEditorStyle(),
 			measurer = createMockTextMeasurer()
 		)
 

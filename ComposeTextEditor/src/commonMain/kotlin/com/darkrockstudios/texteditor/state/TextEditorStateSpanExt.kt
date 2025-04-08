@@ -10,23 +10,29 @@ import com.darkrockstudios.texteditor.TextEditorRange
 fun TextEditorState.getSpanStylesAtPosition(position: CharLineOffset): Set<SpanStyle> {
 	// Validate line index is within bounds
 	if (position.line < 0 || position.line >= textLines.size) {
-		return emptySet()
+		return defaultStyle()
 	}
 
 	val line = textLines[position.line]
 
 	// Validate character position is within bounds
 	if (position.char < 0 || position.char > line.length) {
-		return emptySet()
+		return defaultStyle()
 	}
 
 	// Find all unique spans that contain this position
-	return line.spanStyles
+	val foundSpands = line.spanStyles
 		.filter { span ->
 			// The position must be within the span's range (inclusive start, exclusive end)
 			position.char >= span.start && position.char < span.end
 		}
 		.mapTo(mutableSetOf()) { span -> span.item }
+
+	return if (foundSpands.isNotEmpty()) {
+		foundSpands
+	} else {
+		defaultStyle()
+	}
 }
 
 /**

@@ -1,21 +1,19 @@
 package texteditor.state
 
 import androidx.compose.ui.text.AnnotatedString
+import com.darkrockstudios.texteditor.TextEditorStyle
 import com.darkrockstudios.texteditor.state.TextEditorState
 import io.mockk.mockk
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertFalse
-import kotlin.test.assertNotEquals
-import kotlin.test.assertTrue
+import kotlin.test.*
 
 class TextEditorStateEqualityTest {
 
 	private fun TestScope.createState(initialText: String?) =
 		TextEditorState(
 			scope = this,
+			editorStyle = TextEditorStyle(),
 			measurer = mockk(relaxed = true),
 			initialText = initialText?.let { AnnotatedString(it) },
 		)

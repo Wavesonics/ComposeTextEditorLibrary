@@ -5,15 +5,12 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import com.darkrockstudios.texteditor.CharLineOffset
 import com.darkrockstudios.texteditor.TextEditorRange
+import com.darkrockstudios.texteditor.TextEditorStyle
 import com.darkrockstudios.texteditor.state.TextEditOperation
 import com.darkrockstudios.texteditor.state.TextEditorState
 import io.mockk.mockk
 import kotlinx.coroutines.test.TestScope
-import kotlin.test.BeforeTest
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertFalse
-import kotlin.test.assertTrue
+import kotlin.test.*
 
 class StyleSpanUndoTests {
 	private lateinit var scope: TestScope
@@ -26,6 +23,7 @@ class StyleSpanUndoTests {
 		scope = TestScope()
 		state = TextEditorState(
 			scope = scope.backgroundScope,
+			editorStyle = TextEditorStyle(),
 			measurer = mockk(relaxed = true)
 		)
 	}

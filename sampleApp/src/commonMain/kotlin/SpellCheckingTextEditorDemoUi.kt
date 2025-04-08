@@ -1,8 +1,4 @@
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -28,9 +24,9 @@ fun SpellCheckingTextEditorDemoUi(
 	val spellChecker by rememberSampleSpellChecker()
 	val state =
 		rememberSpellCheckState(
-			spellChecker,
-			SIMPLE_MARKDOWN.toAnnotatedStringFromMarkdown(configuration),
-			true
+			spellChecker = spellChecker,
+			initialText = SIMPLE_MARKDOWN.toAnnotatedStringFromMarkdown(configuration),
+			enableSpellChecking = true
 		)
 	val markdownExtension = remember(state) { state.withMarkdown(configuration) }
 

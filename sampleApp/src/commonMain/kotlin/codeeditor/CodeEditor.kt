@@ -77,10 +77,10 @@ private fun DrawScope.drawLineNumbers(
 
 @Composable
 fun CodeEditor(
-	state: TextEditorState = rememberTextEditorState(),
+	style: CodeEditorStyle = rememberCodeEditorStyle(),
+	state: TextEditorState = rememberTextEditorState(style.baseStyle),
 	modifier: Modifier = Modifier,
 	enabled: Boolean = true,
-	style: CodeEditorStyle = rememberCodeEditorStyle(),
 	onRichSpanClick: RichSpanClickListener? = null,
 ) {
 	val density = LocalDensity.current

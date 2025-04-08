@@ -38,10 +38,10 @@ private const val CURSOR_BLINK_SPEED_MS = 500L
 
 @Composable
 fun BasicTextEditor(
-	state: TextEditorState = rememberTextEditorState(),
+	style: TextEditorStyle = rememberTextEditorStyle(),
+	state: TextEditorState = rememberTextEditorState(style),
 	modifier: Modifier = Modifier,
 	enabled: Boolean = true,
-	style: TextEditorStyle = rememberTextEditorStyle(),
 	onRichSpanClick: RichSpanClickListener? = null,
 	decorateLine: LineDecorator? = null,
 ) {

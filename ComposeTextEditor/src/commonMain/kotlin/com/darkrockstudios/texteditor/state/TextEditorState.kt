@@ -9,11 +9,13 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.*
 import androidx.compose.ui.unit.Constraints
 import com.darkrockstudios.texteditor.CharLineOffset
 import com.darkrockstudios.texteditor.LineWrap
 import com.darkrockstudios.texteditor.TextEditorRange
+import com.darkrockstudios.texteditor.TextEditorStyle
 import com.darkrockstudios.texteditor.annotatedstring.splitAnnotatedString
 import com.darkrockstudios.texteditor.annotatedstring.subSequence
 import com.darkrockstudios.texteditor.annotatedstring.toAnnotatedString
@@ -28,9 +30,16 @@ import kotlin.math.min
 
 class TextEditorState(
 	val scope: CoroutineScope,
+	editorStyle: TextEditorStyle,
 	measurer: TextMeasurer,
 	initialText: AnnotatedString? = null
 ) {
+	var style: TextEditorStyle = editorStyle
+		internal set(value) {
+			field = value
+			updateBookKeeping()
+		}
+
 	var textMeasurer: TextMeasurer = measurer
 		internal set(value) {
 			field = value
@@ -94,7 +103,7 @@ class TextEditorState(
 
 	fun setText(text: String) {
 		_textLines.clear()
-		_textLines.addAll(text.split("\n").map { it.toAnnotatedString() })
+		_textLines.addAll(text.split("\n").map { it.toAnnotatedString(fontFamily = style.fontFamily) })
 		updateBookKeeping()
 	}
 
@@ -125,7 +134,7 @@ class TextEditorState(
 	fun insertNewlineAtCursor() {
 		val operation = TextEditOperation.Insert(
 			position = cursorPosition,
-			text = AnnotatedString("\n"),
+			text = "\n".toAnnotatedString(fontFamily = style.fontFamily),
 			cursorBefore = cursorPosition,
 			cursorAfter = CharLineOffset(cursorPosition.line + 1, 0)
 		)
@@ -159,6 +168,12 @@ class TextEditorState(
 			)
 			editManager.applyOperation(operation)
 		}
+	}
+
+	internal fun defaultStyle() = if (style.fontFamily != FontFamily.Default) {
+		setOf(SpanStyle(fontFamily = style.fontFamily))
+	} else {
+		emptySet()
 	}
 
 	fun deleteAtCursor() {
@@ -200,7 +215,10 @@ class TextEditorState(
 		editManager.applyOperation(operation)
 	}
 
-	fun insertStringAtCursor(string: String) = insertStringAtCursor(string.toAnnotatedString())
+	fun insertStringAtCursor(string: String) {
+		insertStringAtCursor(cursor.applyCursorStyle(string))
+	}
+
 	fun insertStringAtCursor(text: AnnotatedString) {
 		val styledText = cursor.applyCursorStyle(text)
 		val operation = TextEditOperation.Insert(
@@ -222,7 +240,7 @@ class TextEditorState(
 	}
 
 	fun replace(range: TextEditorRange, newText: String, inheritStyle: Boolean = false) =
-		replace(range, newText.toAnnotatedString(), inheritStyle)
+		replace(range, newText.toAnnotatedString(fontFamily = style.fontFamily), inheritStyle)
 
 	fun replace(range: TextEditorRange, newText: AnnotatedString, inheritStyle: Boolean = false) {
 		val operation = TextEditOperation.Replace(
@@ -268,7 +286,7 @@ class TextEditorState(
 	}
 
 	internal fun updateLine(index: Int, text: String) =
-		updateLine(index, text.toAnnotatedString())
+		updateLine(index, text.toAnnotatedString(fontFamily = style.fontFamily))
 
 	internal fun updateLine(index: Int, text: AnnotatedString) {
 		_textLines[index] = text
@@ -305,7 +323,8 @@ class TextEditorState(
 		updateBookKeeping()
 	}
 
-	internal fun insertLine(index: Int, text: String) = insertLine(index, text.toAnnotatedString())
+	internal fun insertLine(index: Int, text: String) =
+		insertLine(index, text.toAnnotatedString(fontFamily = style.fontFamily))
 	internal fun insertLine(index: Int, text: AnnotatedString) {
 		_textLines.add(index, text)
 		updateBookKeeping()

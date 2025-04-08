@@ -1,9 +1,20 @@
 package com.darkrockstudios.texteditor.annotatedstring
 
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontFamily
 
-internal fun String.toAnnotatedString() = AnnotatedString(this)
+fun String.toAnnotatedString(fontFamily: FontFamily? = null): AnnotatedString {
+	return if (fontFamily != null && fontFamily != FontFamily.Default) {
+		buildAnnotatedString {
+			append(this@toAnnotatedString)
+			addStyle(SpanStyle(fontFamily = fontFamily), 0, length)
+		}
+	} else {
+		AnnotatedString(this)
+	}
+}
 
 internal fun AnnotatedString.subSequence(startIndex: Int = 0, endIndex: Int = length) =
 	subSequence(startIndex = startIndex, endIndex = endIndex)

@@ -7,6 +7,7 @@ import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.unit.IntSize
 import com.darkrockstudios.texteditor.CharLineOffset
 import com.darkrockstudios.texteditor.TextEditorRange
+import com.darkrockstudios.texteditor.TextEditorStyle
 import com.darkrockstudios.texteditor.state.TextEditOperation
 import com.darkrockstudios.texteditor.state.TextEditorState
 import io.mockk.every
@@ -68,6 +69,7 @@ class TextEditOperationTest {
 		// Initialize test state with mock
 		testState = TextEditorState(
 			scope = testScope,
+			editorStyle = TextEditorStyle(),
 			measurer = mockTextMeasurer,
 		).apply {
 			setText("line1\nline2\nline3\nline4")
