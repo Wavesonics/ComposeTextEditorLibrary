@@ -92,7 +92,7 @@ class TextEditorCursorState(
 		// check the end of the previous line
 		if (position.char == 0 && position.line > 0) {
 			val previousLine = position.line - 1
-			val previousLineLength = editorState.textLines[previousLine].length
+			val previousLineLength = editorState.textLines[previousLine].length - 1
 			if (previousLineLength > 0) {
 				val previousPosition = CharLineOffset(previousLine, previousLineLength)
 				styles = editorState.getSpanStylesAtPosition(previousPosition)

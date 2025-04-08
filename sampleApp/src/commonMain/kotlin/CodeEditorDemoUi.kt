@@ -5,11 +5,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import codeeditor.CodeEditor
 import codeeditor.rememberCodeEditorStyle
+import com.darkrockstudios.texteditor.annotatedstring.toAnnotatedString
 import com.darkrockstudios.texteditor.state.TextEditorState
 import com.darkrockstudios.texteditor.state.rememberTextEditorState
 
@@ -18,7 +19,11 @@ fun CodeEditorDemoUi(
 	modifier: Modifier = Modifier,
 	navigateTo: (Destination) -> Unit,
 ) {
-	val state: TextEditorState = rememberTextEditorState(AnnotatedString(SAMPLE_CODE))
+	val style = rememberCodeEditorStyle(
+		placeholderText = "Enter code here",
+	)
+	val state: TextEditorState =
+		rememberTextEditorState(SAMPLE_CODE.toAnnotatedString(FontFamily.Monospace))
 
 	LaunchedEffect(Unit) {
 		state.editOperations.collect { operation ->
@@ -39,10 +44,6 @@ fun CodeEditorDemoUi(
 				Text("X")
 			}
 		}
-
-		val style = rememberCodeEditorStyle(
-			placeholderText = "Enter code here",
-		)
 
 		CodeEditor(
 			state = state,
