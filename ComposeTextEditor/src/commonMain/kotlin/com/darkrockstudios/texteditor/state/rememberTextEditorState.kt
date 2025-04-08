@@ -8,12 +8,17 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.rememberTextMeasurer
+import com.darkrockstudios.texteditor.TextEditorStyle
+import com.darkrockstudios.texteditor.rememberTextEditorStyle
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
 @OptIn(ExperimentalUuidApi::class)
 @Composable
-fun rememberTextEditorState(initialText: AnnotatedString? = null): TextEditorState {
+fun rememberTextEditorState(
+	initialStyle: TextEditorStyle = rememberTextEditorStyle(),
+	initialText: AnnotatedString? = null,
+): TextEditorState {
 	val scope = rememberCoroutineScope()
 	val density = LocalDensity.current
 	val windowInfo = LocalWindowInfo.current
@@ -25,6 +30,7 @@ fun rememberTextEditorState(initialText: AnnotatedString? = null): TextEditorSta
 	val state = remember {
 		TextEditorState(
 			scope = scope,
+			editorStyle = initialStyle,
 			measurer = textMeasurer,
 			initialText = initialText,
 		)

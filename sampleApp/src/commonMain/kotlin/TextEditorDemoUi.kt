@@ -1,8 +1,4 @@
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -37,13 +33,13 @@ fun TextEditorDemoUi(
 ) {
 	val state: TextEditorState = when (demoContent) {
 		DemoContent.Rich -> {
-			rememberTextEditorState(createRichTextDemo())
+			rememberTextEditorState(initialText = createRichTextDemo())
 			//rememberTextEditorState(createRichTextDemo2())
 			//rememberTextEditorState(alice_wounder_land.toAnnotatedStringFromMarkdown())
 		}
 
 		DemoContent.Markdown -> {
-			rememberTextEditorState(SIMPLE_MARKDOWN.toAnnotatedStringFromMarkdown(configuration))
+			rememberTextEditorState(initialText = SIMPLE_MARKDOWN.toAnnotatedStringFromMarkdown(configuration))
 		}
 
 		DemoContent.Empty -> {

@@ -20,7 +20,7 @@ class TextEditorCursorState(
 	private var _isVisible by mutableStateOf(true)
 	val isVisible: Boolean get() = _isVisible
 
-	var styles: Set<SpanStyle> = emptySet()
+	var styles: Set<SpanStyle> = editorState.defaultStyle()
 		private set(value) {
 			field = value
 			_stylesFlow.tryEmit(value)
@@ -84,32 +84,42 @@ class TextEditorCursorState(
 	}
 
 	fun clearStyles() {
-		styles = emptySet()
+		styles = editorState.defaultStyle()
 	}
 
 	private fun updateStylesFromPosition(position: CharLineOffset) {
 		// If we're at the start of the line and it's not the first line,
 		// check the end of the previous line
-		if (position.char == 0 && position.line > 0) {
+		styles = if (position.char == 0 && position.line > 0) {
 			val previousLine = position.line - 1
-			val previousLineLength = editorState.textLines[previousLine].length
+			val previousLineLength = editorState.textLines[previousLine].length - 1
 			if (previousLineLength > 0) {
 				val previousPosition = CharLineOffset(previousLine, previousLineLength)
-				styles = editorState.getSpanStylesAtPosition(previousPosition)
+				editorState.getSpanStylesAtPosition(previousPosition)
+			} else {
+				// If the previous line is empty, we still want to maintain the fontFamily style
+				// Get styles from the previous line or use default style with fontFamily
+				val previousStyles = editorState.getSpanStylesAtPosition(CharLineOffset(previousLine, 0))
+				if (previousStyles.isNotEmpty()) {
+					previousStyles
+				} else {
+					editorState.defaultStyle()
+				}
 			}
 		} else {
 			// If we're not at the start of the text, look at the character before the cursor
 			if (position.char > 0) {
 				val beforePosition = position.copy(char = position.char - 1)
-				styles = editorState.getSpanStylesAtPosition(beforePosition)
+				editorState.getSpanStylesAtPosition(beforePosition)
 			} else {
 				// If we're at the start of text or there's no style before us, clear styles
-				styles = emptySet()
+				editorState.defaultStyle()
 			}
 		}
 	}
 
 	fun applyCursorStyle(text: AnnotatedString): AnnotatedString {
+		// TODO don't call .text??
 		return applyCursorStyle(text.text)
 	}
 

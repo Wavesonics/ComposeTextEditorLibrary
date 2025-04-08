@@ -4,8 +4,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontFamily
 
 data class TextEditorStyle(
+	val fontFamily: FontFamily = FontFamily.Default,
 	val textColor: Color = Color.Unspecified,
 	val backgroundColor: Color = Color.Unspecified,
 	val placeholderText: String = "",
@@ -18,6 +20,7 @@ data class TextEditorStyle(
 
 @Composable
 fun rememberTextEditorStyle(
+	fontFamily: FontFamily = FontFamily.Default,
 	textColor: Color = MaterialTheme.colorScheme.onBackground,
 	backgroundColor: Color = MaterialTheme.colorScheme.background,
 	placeholderText: String = "",
@@ -31,6 +34,7 @@ fun rememberTextEditorStyle(
 	cursorColor, selectionColor, focusedBorderColor, unfocusedBorderColor
 ) {
 	TextEditorStyle(
+		fontFamily = fontFamily,
 		textColor = textColor,
 		backgroundColor = backgroundColor,
 		placeholderText = placeholderText,

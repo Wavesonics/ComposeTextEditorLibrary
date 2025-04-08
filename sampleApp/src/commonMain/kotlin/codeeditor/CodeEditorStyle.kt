@@ -4,6 +4,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.darkrockstudios.texteditor.TextEditorStyle
@@ -19,6 +20,7 @@ data class CodeEditorStyle(
 
 @Composable
 fun rememberCodeEditorStyle(
+	fontFamily: FontFamily = FontFamily.Monospace,
 	textColor: Color = MaterialTheme.colorScheme.onSurface,
 	placeholderText: String = "",
 	placeholderColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -39,6 +41,7 @@ fun rememberCodeEditorStyle(
 ) {
 	CodeEditorStyle(
 		baseStyle = TextEditorStyle(
+			fontFamily = fontFamily,
 			textColor = textColor,
 			placeholderText = placeholderText,
 			placeholderColor = placeholderColor,

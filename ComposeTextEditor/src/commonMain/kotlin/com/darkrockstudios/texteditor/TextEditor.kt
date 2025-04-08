@@ -10,18 +10,18 @@ import com.darkrockstudios.texteditor.state.rememberTextEditorState
 
 @Composable
 fun TextEditor(
-	state: TextEditorState = rememberTextEditorState(),
+	style: TextEditorStyle = rememberTextEditorStyle(),
+	state: TextEditorState = rememberTextEditorState(style),
 	modifier: Modifier = Modifier,
 	enabled: Boolean = true,
-	style: TextEditorStyle = rememberTextEditorStyle(),
 	onRichSpanClick: RichSpanClickListener? = null,
 ) {
 	Surface(modifier = modifier.focusBorder(state.isFocused && enabled, style)) {
 		BasicTextEditor(
+			style = style,
 			state = state,
 			modifier = Modifier.padding(start = 8.dp),
 			enabled = enabled,
-			style = style,
 			onRichSpanClick = onRichSpanClick,
 		)
 	}
