@@ -15,6 +15,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import com.darkrockstudios.texteditor.BasicTextEditor
@@ -34,7 +35,12 @@ private fun numDigits(number: Int): Int {
 
 private fun calculateColWidth(state: TextEditorState, density: Density): Dp {
 	return with(density) {
-		state.textMeasurer.measure("0").size.width.toDp()
+		state.textMeasurer.measure(
+			text = "0",
+			style = TextStyle.Default.copy(
+				fontFamily = FontFamily.Monospace
+			)
+		).size.width.toDp()
 	}
 }
 
@@ -63,13 +69,14 @@ private fun DrawScope.drawLineNumbers(
 
 	val gutterLeftEdge = gutterRightEdge - gutterWidth.toPx()
 	val constrainedX = x.coerceAtLeast(gutterLeftEdge + style.gutterStartPadding.toPx())
-	val lineNumberOffset = offset.copy(x = constrainedX)
+	val lineNumberOffset = Offset(constrainedX, offset.y)
 
 	drawText(
 		textMeasurer = state.textMeasurer,
 		text = lineNumberText,
 		style = TextStyle.Default.copy(
 			color = style.gutterTextColor,
+			fontFamily = FontFamily.Monospace,
 		),
 		topLeft = lineNumberOffset
 	)
