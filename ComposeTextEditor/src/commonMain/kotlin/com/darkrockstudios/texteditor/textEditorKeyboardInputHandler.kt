@@ -1,25 +1,9 @@
 package com.darkrockstudios.texteditor
 
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.key.Key
-import androidx.compose.ui.input.key.KeyEvent
-import androidx.compose.ui.input.key.KeyEventType
-import androidx.compose.ui.input.key.isCtrlPressed
-import androidx.compose.ui.input.key.isShiftPressed
-import androidx.compose.ui.input.key.key
-import androidx.compose.ui.input.key.onPreviewKeyEvent
-import androidx.compose.ui.input.key.type
-import androidx.compose.ui.input.key.utf16CodePoint
+import androidx.compose.ui.input.key.*
 import androidx.compose.ui.platform.ClipboardManager
-import com.darkrockstudios.texteditor.state.TextEditorState
-import com.darkrockstudios.texteditor.state.insertTypedCharacter
-import com.darkrockstudios.texteditor.state.moveCursorDown
-import com.darkrockstudios.texteditor.state.moveCursorPageDown
-import com.darkrockstudios.texteditor.state.moveCursorPageUp
-import com.darkrockstudios.texteditor.state.moveCursorToLineEnd
-import com.darkrockstudios.texteditor.state.moveCursorUp
-import com.darkrockstudios.texteditor.state.moveToNextWord
-import com.darkrockstudios.texteditor.state.moveToPreviousWord
+import com.darkrockstudios.texteditor.state.*
 
 internal fun Modifier.textEditorKeyboardInputHandler(
 	state: TextEditorState,
@@ -92,7 +76,7 @@ internal fun Modifier.textEditorKeyboardInputHandler(
 					true
 				}
 
-				keyEvent.key == Key.Enter -> {
+				keyEvent.key == Key.Enter || keyEvent.key == Key.NumPadEnter -> {
 					if (state.selector.selection != null) {
 						state.selector.deleteSelection()
 					}
@@ -101,7 +85,6 @@ internal fun Modifier.textEditorKeyboardInputHandler(
 				}
 
 				keyEvent.key == Key.DirectionLeft -> {
-
 					if (keyEvent.isShiftPressed) {
 						val initialPosition = state.cursorPosition
 						if (keyEvent.isCtrlPressed)
