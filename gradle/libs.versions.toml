@@ -6,12 +6,10 @@ jvm = "17"
 androidx-lifecycle = "2.8.4"
 compose-multiplatform = "1.7.3"
 kotlin = "2.1.20"
-kotlinx-coroutines = "1.9.0"
-kotlinx-coroutines-test-jvm = "1.10.2"
+kotlinx-coroutines = "1.10.2"
 kotlinxDatetime = "0.6.1"
 markdown = "0.7.3"
 mockk = "1.14.2"
-kotlinx-coroutines-test = "1.9.0"
 
 activity-ktx = "1.10.1"
 lifecycleRuntimeKtx = "2.9.0"
@@ -28,8 +26,8 @@ jetbrains-kotlin-test-junit = { module = "org.jetbrains.kotlin:kotlin-test-junit
 androidx-lifecycle-viewmodel = { group = "org.jetbrains.androidx.lifecycle", name = "lifecycle-viewmodel", version.ref = "androidx-lifecycle" }
 androidx-lifecycle-runtime-compose = { group = "org.jetbrains.androidx.lifecycle", name = "lifecycle-runtime-compose", version.ref = "androidx-lifecycle" }
 kotlinx-coroutines-swing = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-swing", version.ref = "kotlinx-coroutines" }
-kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinx-coroutines-test" }
-kotlinx-coroutines-test-jvm = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test-jvm", version.ref = "kotlinx-coroutines-test-jvm" }
+kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinx-coroutines" }
+kotlinx-coroutines-test-jvm = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test-jvm", version.ref = "kotlinx-coroutines" }
 kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinxDatetime" }
 markdown = { module = "org.jetbrains:markdown", version.ref = "markdown" }
 mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
