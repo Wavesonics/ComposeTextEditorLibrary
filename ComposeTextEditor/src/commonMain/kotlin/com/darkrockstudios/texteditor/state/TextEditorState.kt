@@ -743,7 +743,7 @@ class TextEditorState(
 		inputSession = textInputService?.startInput(
 			value = TextFieldValue(""),
 			imeOptions = ImeOptions(
-				autoCorrect = true,
+				autoCorrect = false,
 				keyboardType = KeyboardType.Text,
 			),
 			onEditCommand = { editCommands ->
