@@ -347,13 +347,11 @@ class TextEditorState(
 
 		val currentWrappedLineIndex = lineOffsets.getWrappedLineIndex(position)
 		val currentWrappedLine = lineOffsets[currentWrappedLineIndex]
-		val startOfLineOffset = lineOffsets.first { it.line == currentWrappedLine.line }.offset
 
 		val layout = currentWrappedLine.textLayoutResult
 
 		val cursorX = layout.getHorizontalPosition(charIndex, usePrimaryDirection = true)
-		val cursorY =
-			startOfLineOffset.y + layout.multiParagraph.getLineTop(currentWrappedLine.virtualLineIndex) - scrollState.value
+		val cursorY = currentWrappedLine.offset.y - scrollState.value
 
 		val lineHeight = layout.multiParagraph.getLineHeight(currentWrappedLine.virtualLineIndex)
 
