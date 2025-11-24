@@ -4,18 +4,13 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.input.pointer.PointerEventType
-import androidx.compose.ui.input.pointer.PointerType
-import androidx.compose.ui.input.pointer.isPrimaryPressed
-import androidx.compose.ui.input.pointer.isSecondaryPressed
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.input.pointer.positionChanged
+import androidx.compose.ui.input.pointer.*
 import com.darkrockstudios.texteditor.state.SpanClickType
 import com.darkrockstudios.texteditor.state.TextEditorState
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.datetime.Clock
+import kotlin.time.ExperimentalTime
 
 data class SelectionHandle(
 	val position: CharLineOffset,
@@ -229,9 +224,6 @@ private fun Modifier.handleTextInteractions(
 								SpanClickType.TAP,
 								onSpanClick
 							)
-							if (wasDrag.not()) {
-								state.showKeyboard()
-							}
 						}
 
 						longPressJob?.cancel()
@@ -256,6 +248,7 @@ private fun Modifier.handleTextInteractions(
 	}
 }
 
+@OptIn(ExperimentalTime::class)
 private fun Modifier.detectMouseClicksImperatively(
 	onClick: (Offset) -> Unit,
 	onDoubleClick: (Offset) -> Unit,
@@ -280,7 +273,7 @@ private fun Modifier.detectMouseClicksImperatively(
 					continue
 				}
 
-				val downTime = Clock.System.now().toEpochMilliseconds()
+				val downTime = kotlin.time.Clock.System.now().toEpochMilliseconds()
 				val downPosition = down.position
 
 				onClick(downPosition)

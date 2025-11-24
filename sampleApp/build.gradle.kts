@@ -1,4 +1,5 @@
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
 	alias(libs.plugins.kotlinMultiplatform)
@@ -11,14 +12,12 @@ kotlin {
 	applyDefaultHierarchyTemplate()
 	jvm("desktop")
 	androidTarget {
-		compilations.all {
-			kotlinOptions {
-				jvmTarget = libs.versions.jvm.get()
-			}
+		compilerOptions {
+			jvmTarget.set(JvmTarget.fromTarget(libs.versions.jvm.get()))
 		}
 	}
 	wasmJs {
-		moduleName = "sampleApp"
+		outputModuleName = "sampleApp"
 		browser {
 			commonWebpackConfig {
 				outputFileName = "sampleApp.js"

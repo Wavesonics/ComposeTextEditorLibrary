@@ -1,4 +1,5 @@
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
 	alias(libs.plugins.kotlinMultiplatform)
@@ -13,15 +14,13 @@ kotlin {
 	jvm("desktop")
 	androidTarget {
 		publishLibraryVariants("release")
-		compilations.all {
-			kotlinOptions {
-				jvmTarget = libs.versions.jvm.get()
-			}
+		compilerOptions {
+			jvmTarget.set(JvmTarget.fromTarget(libs.versions.jvm.get()))
 		}
 	}
 	@OptIn(ExperimentalWasmDsl::class)
 	wasmJs {
-		moduleName = "ComposeTextEditorSpellCheck"
+		outputModuleName = "ComposeTextEditorSpellCheck"
 		browser {
 			commonWebpackConfig {
 				outputFileName = "composeTextEditorSpellCheckLibrary.js"
@@ -44,7 +43,6 @@ kotlin {
 				implementation(compose.components.uiToolingPreview)
 				implementation(libs.androidx.lifecycle.viewmodel)
 				implementation(libs.androidx.lifecycle.runtime.compose)
-				implementation(libs.kotlinx.datetime)
 				implementation(libs.symspellkt)
 			}
 		}

@@ -9,7 +9,6 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.input.*
 import androidx.compose.ui.unit.Constraints
 import com.darkrockstudios.texteditor.CharLineOffset
 import com.darkrockstudios.texteditor.LineWrap
@@ -90,8 +89,6 @@ class TextEditorState(
 
 	val editOperations = editManager.editOperations
 
-	internal var inputSession: TextInputSession? = null
-
 	fun setText(text: String) {
 		_textLines.clear()
 		_textLines.addAll(text.split("\n").map { it.toAnnotatedString() })
@@ -106,20 +103,6 @@ class TextEditorState(
 
 	fun updateFocus(focused: Boolean) {
 		isFocused = focused
-
-		if (isFocused) {
-			showKeyboard()
-		} else {
-			hideKeyboard()
-		}
-	}
-
-	fun showKeyboard() {
-		inputSession?.showSoftwareKeyboard()
-	}
-
-	fun hideKeyboard() {
-		inputSession?.hideSoftwareKeyboard()
 	}
 
 	fun insertNewlineAtCursor() {
@@ -731,36 +714,6 @@ class TextEditorState(
 			hash = multiplier * hash + line.hashCode()
 		}
 		return hash
-	}
-
-	fun establishInputSession(textInputService: TextInputService?) {
-		if (inputSession != null) {
-			destroyInputSession(textInputService)
-		}
-
-		inputSession = textInputService?.startInput(
-			value = TextFieldValue(""),
-			imeOptions = ImeOptions(
-				autoCorrect = false,
-				keyboardType = KeyboardType.Text,
-			),
-			onEditCommand = { editCommands ->
-				editCommands.forEach {
-					handleTextEditCommand(it)
-				}
-			},
-			onImeActionPerformed = { action ->
-				//println("onImeActionPerformed: $action")
-			},
-		)
-	}
-
-	fun destroyInputSession(textInputService: TextInputService?) {
-		inputSession?.apply {
-			hideKeyboard()
-			textInputService?.stopInput(this)
-		}
-		inputSession = null
 	}
 
 	init {

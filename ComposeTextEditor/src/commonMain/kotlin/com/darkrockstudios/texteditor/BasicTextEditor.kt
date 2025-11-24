@@ -17,16 +17,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalClipboardManager
-import androidx.compose.ui.platform.LocalTextInputService
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.toSize
 import com.darkrockstudios.texteditor.cursor.DrawCursor
+import com.darkrockstudios.texteditor.input.TextEditorInputModifierElement
 import com.darkrockstudios.texteditor.richstyle.RichSpan
 import com.darkrockstudios.texteditor.scrollbar.TextEditorScrollbar
 import com.darkrockstudios.texteditor.state.SpanClickType
@@ -48,16 +47,11 @@ fun BasicTextEditor(
 	val focusRequester = remember { FocusRequester() }
 	val interactionSource = remember { MutableInteractionSource() }
 	val clipboardManager = LocalClipboardManager.current
-	val textInputService = LocalTextInputService.current
 
-	InputServiceEffect(
-		onStart = {
-			state.establishInputSession(textInputService)
-		},
-		onDispose = {
-			state.destroyInputSession(textInputService)
-		}
-	)
+	// Create the input modifier element for text input handling
+	val inputModifierElement = remember(state, clipboardManager, enabled) {
+		TextEditorInputModifierElement(state, clipboardManager, enabled)
+	}
 
 	LaunchedEffect(Unit) {
 		if (enabled) {
@@ -88,12 +82,9 @@ fun BasicTextEditor(
 					if (enabled) {
 						Modifier
 							.focusRequester(focusRequester)
-							.onFocusChanged { focusState ->
-								state.updateFocus(focusState.isFocused)
-							}
 							.requestFocusOnPress(focusRequester)
+							.then(inputModifierElement) // New unified input handling
 							.focusable(enabled = true, interactionSource = interactionSource)
-							.textEditorKeyboardInputHandler(state, clipboardManager)
 					} else {
 						Modifier
 					}
