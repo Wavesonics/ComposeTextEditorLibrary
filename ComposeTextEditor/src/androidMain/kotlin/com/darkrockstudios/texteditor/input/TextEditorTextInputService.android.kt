@@ -78,6 +78,10 @@ private class TextEditorInputConnection(
 	private var composingStart: Int = -1
 	private var composingEnd: Int = -1
 
+	// Track what position the IME thinks the cursor is at
+	// This helps us handle relative cursor movements correctly when IME has stale data
+	private var imeExpectedCursorPos: Int = state.getCharacterIndex(state.cursorPosition)
+
 	// ============ TEXT RETRIEVAL METHODS ============
 
 	override fun getTextBeforeCursor(n: Int, flags: Int): CharSequence? {
@@ -125,6 +129,9 @@ private class TextEditorInputConnection(
 		// Insert the committed text
 		state.insertStringAtCursor(text.toString())
 
+		// Update the expected cursor position for IME sync
+		imeExpectedCursorPos = state.getCharacterIndex(state.cursorPosition)
+
 		return true
 	}
 
@@ -152,6 +159,9 @@ private class TextEditorInputConnection(
 			composingEnd = composingStart + text.length
 		}
 
+		// Update the expected cursor position for IME sync
+		imeExpectedCursorPos = state.getCharacterIndex(state.cursorPosition)
+
 		return true
 	}
 
@@ -176,6 +186,9 @@ private class TextEditorInputConnection(
 			state.delete(range)
 		}
 
+		// Update the expected cursor position for IME sync
+		imeExpectedCursorPos = state.getCharacterIndex(state.cursorPosition)
+
 		return true
 	}
 
@@ -188,15 +201,36 @@ private class TextEditorInputConnection(
 	// ============ SELECTION METHODS ============
 
 	override fun setSelection(start: Int, end: Int): Boolean {
-		val startOffset = state.getOffsetAtCharacter(start)
-		val endOffset = state.getOffsetAtCharacter(end)
-
+		// For cursor movement (not selection), detect if IME is trying to move
+		// relative to a stale position and apply the delta to our actual position
 		if (start == end) {
-			state.cursor.updatePosition(startOffset)
+			val actualCursorPos = state.getCharacterIndex(state.cursorPosition)
+			val delta = start - imeExpectedCursorPos
+
+			// If this is a small relative move (like arrow key), apply delta to actual position
+			// This handles the case where IME has stale cursor position data
+			val newPos = if (delta != 0 && kotlin.math.abs(delta) <= 10) {
+				// Small delta - likely a cursor move command, apply to actual position
+				(actualCursorPos + delta).coerceIn(0, state.getTextLength())
+			} else {
+				// Large delta or zero - use as absolute position (like tapping to position)
+				start.coerceIn(0, state.getTextLength())
+			}
+
+			val offset = state.getOffsetAtCharacter(newPos)
+			state.cursor.updatePosition(offset)
 			state.selector.clearSelection()
+
+			// Update expected position to where IME thinks cursor is now
+			// For relative moves, IME thinks it's at 'start', for absolute it's also 'start'
+			imeExpectedCursorPos = start
 		} else {
+			// Selection (start != end) - use absolute positions
+			val startOffset = state.getOffsetAtCharacter(start.coerceIn(0, state.getTextLength()))
+			val endOffset = state.getOffsetAtCharacter(end.coerceIn(0, state.getTextLength()))
 			state.selector.updateSelection(startOffset, endOffset)
 			state.cursor.updatePosition(endOffset)
+			imeExpectedCursorPos = end
 		}
 
 		return true
@@ -252,7 +286,7 @@ private class TextEditorInputConnection(
 		// Only handle key down events
 		if (event.action != KeyEvent.ACTION_DOWN) return false
 
-		return when (event.keyCode) {
+		val handled = when (event.keyCode) {
 			KeyEvent.KEYCODE_DPAD_LEFT -> {
 				state.cursor.moveLeft()
 				true
@@ -313,6 +347,13 @@ private class TextEditorInputConnection(
 
 			else -> false
 		}
+
+		// Update the expected cursor position for IME sync after any handled key event
+		if (handled) {
+			imeExpectedCursorPos = state.getCharacterIndex(state.cursorPosition)
+		}
+
+		return handled
 	}
 
 	override fun performEditorAction(editorAction: Int): Boolean {
