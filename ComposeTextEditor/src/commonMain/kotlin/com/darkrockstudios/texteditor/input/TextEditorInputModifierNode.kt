@@ -11,7 +11,6 @@ import androidx.compose.ui.platform.PlatformTextInputModifierNode
 import androidx.compose.ui.platform.establishTextInputSession
 import com.darkrockstudios.texteditor.state.TextEditorState
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.launch
 
 /**
@@ -48,10 +47,10 @@ internal class TextEditorInputModifierNode(
 		inputSessionJob?.cancel()
 		inputSessionJob = coroutineScope.launch {
 			establishTextInputSession {
-				// The session is established - wait for platform text input
-				// This is a suspend function that never returns normally
-				// Platform-specific input handling will happen through PlatformTextInputMethodRequest
-				awaitCancellation()
+				// Start platform-specific input method
+				// On Android: Opens soft keyboard and establishes InputConnection
+				// On Desktop/WASM: Suspends indefinitely (keyboard input via KEY_TYPED)
+				TextEditorTextInputService(state).startInput(this)
 			}
 		}
 	}
