@@ -12,6 +12,9 @@ import androidx.compose.ui.platform.PlatformTextInputMethodRequest
 import androidx.compose.ui.platform.PlatformTextInputSession
 import com.darkrockstudios.texteditor.TextEditorRange
 import com.darkrockstudios.texteditor.state.TextEditorState
+import com.darkrockstudios.texteditor.state.moveCursorDown
+import com.darkrockstudios.texteditor.state.moveCursorToLineEnd
+import com.darkrockstudios.texteditor.state.moveCursorUp
 
 /**
  * Android implementation of TextEditorTextInputService.
@@ -244,9 +247,72 @@ private class TextEditorInputConnection(
 	override fun clearMetaKeyStates(states: Int): Boolean = true
 
 	override fun sendKeyEvent(event: KeyEvent?): Boolean {
-		// We could potentially forward key events here
-		// For now, return false to let the system handle it
-		return false
+		if (event == null) return false
+
+		// Only handle key down events
+		if (event.action != KeyEvent.ACTION_DOWN) return false
+
+		return when (event.keyCode) {
+			KeyEvent.KEYCODE_DPAD_LEFT -> {
+				state.cursor.moveLeft()
+				true
+			}
+
+			KeyEvent.KEYCODE_DPAD_RIGHT -> {
+				state.cursor.moveRight()
+				true
+			}
+
+			KeyEvent.KEYCODE_DPAD_UP -> {
+				state.moveCursorUp()
+				true
+			}
+
+			KeyEvent.KEYCODE_DPAD_DOWN -> {
+				state.moveCursorDown()
+				true
+			}
+
+			KeyEvent.KEYCODE_MOVE_HOME -> {
+				state.cursor.moveToLineStart()
+				true
+			}
+
+			KeyEvent.KEYCODE_MOVE_END -> {
+				state.moveCursorToLineEnd()
+				true
+			}
+
+			KeyEvent.KEYCODE_DEL -> {
+				// Backspace
+				if (state.selector.hasSelection()) {
+					state.selector.deleteSelection()
+				} else {
+					state.backspaceAtCursor()
+				}
+				true
+			}
+
+			KeyEvent.KEYCODE_FORWARD_DEL -> {
+				// Delete
+				if (state.selector.hasSelection()) {
+					state.selector.deleteSelection()
+				} else {
+					state.deleteAtCursor()
+				}
+				true
+			}
+
+			KeyEvent.KEYCODE_ENTER -> {
+				if (state.selector.hasSelection()) {
+					state.selector.deleteSelection()
+				}
+				state.insertNewlineAtCursor()
+				true
+			}
+
+			else -> false
+		}
 	}
 
 	override fun performEditorAction(editorAction: Int): Boolean {
