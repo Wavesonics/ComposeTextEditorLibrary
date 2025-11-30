@@ -40,8 +40,6 @@ kotlin {
 				implementation(compose.components.resources)
 				implementation(compose.components.uiToolingPreview)
 				implementation(compose.components.resources)
-				implementation(libs.symspellkt)
-				implementation(libs.symspellkt.fdic)
 			}
 		}
 
@@ -60,6 +58,7 @@ kotlin {
 				implementation(compose.ui)
 				implementation(compose.components.resources)
 				implementation(compose.components.uiToolingPreview)
+				implementation(libs.platform.spellchecker)
 			}
 		}
 
@@ -81,6 +80,14 @@ kotlin {
 				implementation(compose.material3)
 				implementation(compose.ui)
 				implementation(compose.components.resources)
+				implementation(libs.platform.spellchecker)
+			}
+		}
+
+		val wasmJsMain by getting {
+			dependencies {
+				implementation(libs.symspellkt)
+				implementation(libs.symspellkt.fdic)
 			}
 		}
 	}
@@ -108,11 +115,11 @@ compose.experimental {
 
 android {
 	namespace = "com.darkrockstudios.texteditor.sample"
-	compileSdk = 35
+	compileSdk = libs.versions.android.compileSdk.get().toInt()
 	defaultConfig {
 		applicationId = "com.darkrockstudios.texteditor.sample"
-		minSdk = 26
-		targetSdk = 35
+		minSdk = libs.versions.android.minSdk.get().toInt()
+		targetSdk = libs.versions.android.compileSdk.get().toInt()
 		versionCode = 1
 		versionName = "1.0"
 

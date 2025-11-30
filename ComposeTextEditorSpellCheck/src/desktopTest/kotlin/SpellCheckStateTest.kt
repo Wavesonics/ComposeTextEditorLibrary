@@ -4,14 +4,11 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.MultiParagraph
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextMeasurer
-import com.darkrockstudios.symspellkt.api.SpellChecker
-import com.darkrockstudios.symspellkt.common.Composition
-import com.darkrockstudios.symspellkt.common.SpellCheckSettings
-import com.darkrockstudios.symspellkt.common.SuggestionItem
-import com.darkrockstudios.symspellkt.common.Verbosity
 import com.darkrockstudios.texteditor.CharLineOffset
 import com.darkrockstudios.texteditor.TextEditorRange
 import com.darkrockstudios.texteditor.richstyle.SpellCheckStyle
+import com.darkrockstudios.texteditor.spellcheck.api.EditorSpellChecker
+import com.darkrockstudios.texteditor.spellcheck.api.Suggestion
 import com.darkrockstudios.texteditor.state.TextEditorState
 import com.darkrockstudios.texteditor.state.WordSegment
 import com.darkrockstudios.texteditor.state.getRichSpansInRange
@@ -27,7 +24,7 @@ import kotlin.test.assertTrue
 class SpellCheckStateTest {
 	private lateinit var textState: TextEditorState
 	private lateinit var spellCheckState: SpellCheckState
-	private lateinit var spellChecker: MockSpellChecker
+	private lateinit var spellChecker: MockEditorSpellChecker
 	private lateinit var textMeasurer: TextMeasurer
 
 	@Before
@@ -59,7 +56,7 @@ class SpellCheckStateTest {
 			measurer = textMeasurer,
 			initialText = null
 		)
-		spellChecker = MockSpellChecker()
+		spellChecker = MockEditorSpellChecker()
 		spellCheckState = SpellCheckState(textState, spellChecker)
 	}
 
@@ -75,7 +72,7 @@ class SpellCheckStateTest {
 				end = CharLineOffset(0, 5)
 			)
 		)
-		spellChecker.response = listOf(SuggestionItem(word, 1.0, 1.0))
+		spellChecker.correctWords = setOf(word)
 
 		// Act
 		val result = spellCheckState.checkWordSegment(segment)
@@ -99,7 +96,7 @@ class SpellCheckStateTest {
 			)
 		)
 
-		spellChecker.response = listOf(SuggestionItem("hello", 1.0, 1.0))
+		spellChecker.correctWords = emptySet()
 
 		// Act
 		val result = spellCheckState.checkWordSegment(segment)
@@ -128,7 +125,7 @@ class SpellCheckStateTest {
 		textState.addRichSpan(segment.range, SpellCheckStyle)
 
 		// Make the word correct for the second check
-		spellChecker.response = listOf(SuggestionItem(word, 1.0, 1.0))
+		spellChecker.correctWords = setOf(word)
 
 		// Act
 		val result = spellCheckState.checkWordSegment(segment)
@@ -139,32 +136,15 @@ class SpellCheckStateTest {
 	}
 }
 
-private class MockSpellChecker(
-	var response: List<SuggestionItem> = emptyList(),
-	var wordBreakResponse: Composition = Composition(),
-) : SpellChecker(
-	dictionary = mockk(),
-	stringDistance = mockk(),
-	spellCheckSettings = SpellCheckSettings(),
-) {
-	override fun createDictionaryEntry(word: String, frequency: Int): Boolean = true
-	override fun createDictionaryEntry(word: String, frequency: Double): Boolean = true
+private class MockEditorSpellChecker(
+	var correctWords: Set<String> = emptySet(),
+	var suggestionsResponse: List<Suggestion> = emptyList(),
+) : EditorSpellChecker {
+	override fun isCorrectWord(word: String): Boolean = correctWords.contains(word)
 
-	override fun lookup(
-		word: String,
-		verbosity: Verbosity,
-		editDistance: Double
-	): List<SuggestionItem> = response
-
-	override fun lookupCompound(
-		word: String,
-		editDistance: Double,
-		tokenizeOnWhiteSpace: Boolean
-	): List<SuggestionItem> = response
-
-	override fun wordBreakSegmentation(
-		phrase: String,
-		maxSegmentationWordLength: Int,
-		maxEditDistance: Double
-	): Composition = wordBreakResponse
+	override fun suggestions(
+		input: String,
+		scope: EditorSpellChecker.Scope,
+		closestOnly: Boolean
+	): List<Suggestion> = suggestionsResponse
 }

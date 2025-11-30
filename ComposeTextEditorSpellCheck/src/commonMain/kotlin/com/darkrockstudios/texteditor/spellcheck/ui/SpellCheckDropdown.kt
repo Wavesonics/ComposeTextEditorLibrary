@@ -5,17 +5,12 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.unit.IntOffset
-import com.darkrockstudios.symspellkt.common.SuggestionItem
 import com.darkrockstudios.texteditor.spellcheck.SpellCheckState
+import com.darkrockstudios.texteditor.spellcheck.api.Suggestion
 import com.darkrockstudios.texteditor.state.WordSegment
 import kotlin.math.roundToInt
 
@@ -27,7 +22,7 @@ internal fun SpellCheckDropdown(
 	dismiss: () -> Unit,
 	correctSpelling: (WordSegment, String) -> Unit
 ) {
-	var suggestionItems by remember { mutableStateOf(emptyList<SuggestionItem>()) }
+	var suggestionItems by remember { mutableStateOf(emptyList<Suggestion>()) }
 
 	LaunchedEffect(word, spellCheckState) {
 		word ?: return@LaunchedEffect

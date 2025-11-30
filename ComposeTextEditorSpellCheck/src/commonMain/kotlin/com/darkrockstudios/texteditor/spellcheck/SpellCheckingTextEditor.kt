@@ -6,8 +6,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.darkrockstudios.symspellkt.api.SpellChecker
 import com.darkrockstudios.texteditor.*
+import com.darkrockstudios.texteditor.spellcheck.api.EditorSpellChecker
 import com.darkrockstudios.texteditor.spellcheck.utils.debounceUntilQuiescentWithBatch
 import com.darkrockstudios.texteditor.state.SpanClickType
 import com.darkrockstudios.texteditor.state.TextEditOperation
@@ -16,7 +16,7 @@ import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun SpellCheckingTextEditor(
-	spellChecker: SpellChecker? = null,
+	spellChecker: EditorSpellChecker? = null,
 	state: SpellCheckState = rememberSpellCheckState(spellChecker),
 	modifier: Modifier = Modifier,
 	enabled: Boolean = true,

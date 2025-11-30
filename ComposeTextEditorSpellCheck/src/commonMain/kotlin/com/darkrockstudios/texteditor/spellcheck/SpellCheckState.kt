@@ -1,25 +1,18 @@
 package com.darkrockstudios.texteditor.spellcheck
 
 import androidx.compose.ui.util.fastForEach
-import com.darkrockstudios.symspellkt.api.SpellChecker
-import com.darkrockstudios.symspellkt.common.SuggestionItem
-import com.darkrockstudios.symspellkt.common.Verbosity
-import com.darkrockstudios.symspellkt.common.isSpelledCorrectly
-import com.darkrockstudios.symspellkt.common.spellingIsCorrect
 import com.darkrockstudios.texteditor.TextEditorRange
 import com.darkrockstudios.texteditor.richstyle.RichSpan
 import com.darkrockstudios.texteditor.richstyle.SpellCheckStyle
+import com.darkrockstudios.texteditor.spellcheck.api.EditorSpellChecker
+import com.darkrockstudios.texteditor.spellcheck.api.EditorSpellChecker.Scope
+import com.darkrockstudios.texteditor.spellcheck.api.Suggestion
 import com.darkrockstudios.texteditor.spellcheck.utils.applyCapitalizationStrategy
-import com.darkrockstudios.texteditor.state.TextEditOperation
-import com.darkrockstudios.texteditor.state.TextEditorState
-import com.darkrockstudios.texteditor.state.WordSegment
-import com.darkrockstudios.texteditor.state.getRichSpansInRange
-import com.darkrockstudios.texteditor.state.wordSegments
-import com.darkrockstudios.texteditor.state.wordSegmentsInRange
+import com.darkrockstudios.texteditor.state.*
 
 class SpellCheckState(
 	val textState: TextEditorState,
-	var spellChecker: SpellChecker?,
+	var spellChecker: EditorSpellChecker?,
 	enableSpellChecking: Boolean = true,
 ) {
 	var spellCheckingEnabled: Boolean = enableSpellChecking
@@ -96,14 +89,13 @@ class SpellCheckState(
 			wordSegments()
 				.filter(::shouldSpellCheck)
 				.mapNotNullTo(misspelledWords) { segment ->
-				val suggestions = sp.lookup(segment.text)
-				if (suggestions.spellingIsCorrect(segment.text)) {
-					null
-				} else {
-					addRichSpan(segment.range, SpellCheckStyle)
-					segment
+					if (sp.isCorrectWord(segment.text)) {
+						null
+					} else {
+						addRichSpan(segment.range, SpellCheckStyle)
+						segment
+					}
 				}
-			}
 		}
 	}
 
@@ -125,15 +117,14 @@ class SpellCheckState(
 		textState.wordSegmentsInRange(range)
 			.filter(::shouldSpellCheck)
 			.mapNotNullTo(misspelledSegments) { segment ->
-			println("Checking Segment: $segment")
-			val suggestions = sp.lookup(segment.text)
-			if (suggestions.spellingIsCorrect(segment.text)) {
-				null
-			} else {
-				textState.addRichSpan(segment.range, SpellCheckStyle)
-				segment
+				println("Checking Segment: $segment")
+				if (sp.isCorrectWord(segment.text)) {
+					null
+				} else {
+					textState.addRichSpan(segment.range, SpellCheckStyle)
+					segment
+				}
 			}
-		}
 
 		misspelledWords.addAll(misspelledSegments)
 	}
@@ -159,8 +150,7 @@ class SpellCheckState(
 				}
 
 			// Check if the word is misspelled
-			val suggestions = sp.lookup(segment.text)
-			val isSpelledCorrectly = suggestions.spellingIsCorrect(segment.text)
+			val isSpelledCorrectly = sp.isCorrectWord(segment.text)
 
 			if (!isSpelledCorrectly) {
 				// Add a new spell check span
@@ -226,34 +216,25 @@ class SpellCheckState(
 		}
 	}
 
-	fun getSuggestions(word: String): List<SuggestionItem> {
+	fun getSuggestions(word: String): List<Suggestion> {
 		val sp = spellChecker ?: return emptyList()
 
-		val suggestions = sp.lookup(word, verbosity = Verbosity.Closest)
-		val proposedSuggestions = if (word.isSpelledCorrectly(suggestions).not()) {
-			// If things are misspelled, see if it just needs to be broken up
-			val composition = sp.wordBreakSegmentation(word)
-			val segmentedWord = composition.segmentedString
-			if (segmentedWord != null
-				&& segmentedWord.equals(word, ignoreCase = true).not()
-				&& suggestions.find { it.term.equals(segmentedWord, ignoreCase = true) } == null
-			) {
-				// Add the segmented suggest as the last item
-				suggestions.toMutableList().apply { add(SuggestionItem(segmentedWord, 1.0, 0.1)) }
-			} else {
-				suggestions
-			}
-		} else {
-			emptyList()
-		}
+		val wordLevel = sp.suggestions(word, scope = Scope.Word, closestOnly = true)
+		val sentenceLevel = if (!sp.isCorrectWord(word)) {
+			sp.suggestions(word, scope = Scope.Sentence, closestOnly = false)
+		} else emptyList()
 
-		return proposedSuggestions.map { suggestionItem ->
-			suggestionItem.copy(
-				term = applyCapitalizationStrategy(
-					source = word,
-					target = suggestionItem.term
+		val combined = (wordLevel + sentenceLevel)
+			.distinctBy { it.term.lowercase() }
+			.map { suggestion ->
+				suggestion.copy(
+					term = applyCapitalizationStrategy(
+						source = word,
+						target = suggestion.term
+					)
 				)
-			)
-		}
+			}
+
+		return combined
 	}
 }

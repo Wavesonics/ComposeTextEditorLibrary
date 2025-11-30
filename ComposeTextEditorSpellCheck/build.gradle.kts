@@ -43,17 +43,36 @@ kotlin {
 				implementation(compose.components.uiToolingPreview)
 				implementation(libs.androidx.lifecycle.viewmodel)
 				implementation(libs.androidx.lifecycle.runtime.compose)
+			}
+		}
+
+		// SymSpell implementation (used by wasmJs, desktop, and android)
+		val symSpellMain by creating {
+			dependsOn(commonMain)
+			dependencies {
 				implementation(libs.symspellkt)
+			}
+		}
+		// Native/Platform spell checker implementation (desktop + android)
+		val platformSpellMain by creating {
+			dependsOn(commonMain)
+			dependencies {
+				implementation(libs.platform.spellchecker)
 			}
 		}
 
 		val desktopMain by getting {
+			dependsOn(symSpellMain)
+			dependsOn(platformSpellMain)
 			dependencies {
 				implementation(compose.desktop.currentOs)
 				implementation(libs.kotlinx.coroutines.swing)
 			}
 		}
-
+		val androidMain by getting {
+			dependsOn(symSpellMain)
+			dependsOn(platformSpellMain)
+		}
 		val desktopTest by getting {
 			dependencies {
 				implementation(libs.jetbrains.kotlin.test)
@@ -63,7 +82,11 @@ kotlin {
 				implementation(libs.kotlinx.coroutines.test.jvm)
 
 				implementation(libs.symspellkt)
+				implementation(libs.platform.spellchecker)
 			}
+		}
+		val wasmJsMain by getting {
+			dependsOn(symSpellMain)
 		}
 	}
 }
