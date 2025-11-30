@@ -1,21 +1,22 @@
 [versions]
-android-compileSdk = "35"
+android-compileSdk = "36"
 android-minSdk = "26"
-agp = "8.7.3"
+agp = "8.11.2"
 jvm = "17"
-androidx-lifecycle = "2.8.4"
+androidx-lifecycle = "2.9.6"
 compose-multiplatform = "1.9.3"
-kotlin = "2.2.0"
+kotlin = "2.2.21"
 kotlinx-coroutines = "1.10.2"
 markdown = "0.7.3"
-mockk = "1.14.2"
+mockk = "1.14.6"
 
-activity-ktx = "1.10.1"
-lifecycleRuntimeKtx = "2.9.0"
-activityCompose = "1.10.1"
+activity-ktx = "1.12.0"
+lifecycleRuntimeKtx = "2.10.0"
+activityCompose = "1.12.0"
 composeBom = "2025.11.01"
 
 symspellkt = "3.4.0"
+spellcheckerkt = "1.0.0"
 
 nexus-publish = "2.0.0"
 
@@ -29,6 +30,7 @@ kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-t
 kotlinx-coroutines-test-jvm = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test-jvm", version.ref = "kotlinx-coroutines" }
 markdown = { module = "org.jetbrains:markdown", version.ref = "markdown" }
 mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
+platform-spellchecker = { module = "com.darkrockstudios:platform-spellcheckerkt", version.ref = "spellcheckerkt" }
 
 lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycleRuntimeKtx" }
 activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
