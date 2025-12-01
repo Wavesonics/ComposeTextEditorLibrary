@@ -21,6 +21,7 @@ jobs:
   publish:
     needs: test
     runs-on: macos-latest
+    environment: Publish
 
     steps:
       - name: Checkout code
