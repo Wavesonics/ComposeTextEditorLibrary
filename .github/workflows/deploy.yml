@@ -1,65 +1,103 @@
 name: Deploy to central
 
-env:
-  OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
-  OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
-  SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
-  SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
-  SIGNING_USER: ${{ secrets.SIGNING_USER }}
-
 on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to publish (e.g., 1.0.0 or 1.0.0-SNAPSHOT)'
+        required: false
+        type: string
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  build:
+  test:
     uses: ./.github/workflows/ci-build.yml
-  deploy:
-    needs: build
-    environment: Publish
-    strategy:
-      matrix:
-        include:
-          - target: publishAndroidReleasePublicationToSonatypeRepository
-            os: ubuntu-latest
-          - target: publishDesktopPublicationToSonatypeRepository
-            os: ubuntu-latest
-          - target: publishWasmJsPublicationToSonatypeRepository
-            os: ubuntu-latest
-          - target: publishKotlinMultiplatformPublicationToSonatypeRepository
-            os: ubuntu-latest
-    runs-on: ${{ matrix.os }}
+
+  publish:
+    needs: test
+    runs-on: macos-latest
+
     steps:
-      - uses: actions/checkout@v6
-      - name: Validate Gradle Wrapper
-        uses: gradle/wrapper-validation-action@v3
-      - uses: actions/cache@v4
-        with:
-          path: |
-            ~/.konan
-          key: ${{ runner.os }}-${{ hashFiles('**/.lock') }}
-      - name: Import GPG key
-        uses: crazy-max/ghaction-import-gpg@v6
-        with:
-          gpg_private_key: ${{ secrets.SIGNING_KEY }}
-          passphrase: ${{ secrets.SIGNING_PASSWORD }}
+      - name: Checkout code
+        uses: actions/checkout@v6
+
       - name: Set up JDK 17
         uses: actions/setup-java@v5
         with:
-          java-version: '17'
           distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v5
+        with:
+          gradle-home-cache-cleanup: true
+
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
-      - name: Gradle publish
-        uses: gradle/gradle-build-action@ce999babab2de1c4b649dc15f0ee67e6246c994f
+
+      - name: Extract version from tag
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          TAG_VERSION=${GITHUB_REF#refs/tags/v}
+          echo "VERSION=$TAG_VERSION" >> $GITHUB_ENV
+          echo "Publishing version: $TAG_VERSION"
+
+      - name: Use manual version
+        if: github.event.inputs.version != ''
+        run: |
+          echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_ENV
+          echo "Publishing version: ${{ github.event.inputs.version }}"
+
+      - name: Set version in gradle.properties
+        if: env.VERSION != ''
+        run: |
+          echo "library.version=$VERSION" >> gradle.properties
+          cat gradle.properties | grep library.version
+
+      - name: Assemble libraries
+        run: ./gradlew :ComposeTextEditor:assemble :ComposeTextEditorSpellCheck:assemble --no-daemon --stacktrace
+
+      - name: Publish to Maven Central
+        env:
+          ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.OSSRH_USERNAME }}
+          ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.OSSRH_PASSWORD }}
+          ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.SIGNING_KEY }}
+          ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.SIGNING_PASSWORD }}
+        run: |
+          ./gradlew :ComposeTextEditor:publishAllPublicationsToMavenCentralRepository --no-daemon --stacktrace
+          ./gradlew :ComposeTextEditorSpellCheck:publishAllPublicationsToMavenCentralRepository --no-daemon --stacktrace
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
         with:
-          arguments: |
-            ${{ matrix.target }}
-            closeAndReleaseSonatypeStagingRepository
-            -Psigning.gnupg.passphrase='${{secrets.SIGNING_PASSWORD}}'
-            -PsonatypeUsername='${{secrets.OSSRH_USERNAME}}'
-            -PsonatypePassword='${{secrets.OSSRH_PASSWORD}}'
+          generate_release_notes: true
+          draft: false
+          prerelease: ${{ contains(github.ref, 'alpha') || contains(github.ref, 'beta') || contains(github.ref, 'rc') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish Summary
+        if: success()
+        run: |
+          echo "## :rocket: Published Successfully" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Group ID:** com.darkrockstudios" >> $GITHUB_STEP_SUMMARY
+          echo "**Artifacts:**" >> $GITHUB_STEP_SUMMARY
+          echo "- composetexteditor" >> $GITHUB_STEP_SUMMARY
+          echo "- composetexteditorspellcheck" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** $VERSION" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Next Steps" >> $GITHUB_STEP_SUMMARY
+          if [[ "$VERSION" == *"-SNAPSHOT" ]]; then
+            echo "- Snapshot published to Maven Central snapshots repository" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- Published to Maven Central Portal (https://central.sonatype.com/)" >> $GITHUB_STEP_SUMMARY
+            echo "- Wait 10-30 minutes for sync to Maven Central" >> $GITHUB_STEP_SUMMARY
+            echo "- Verify on [Maven Central Search](https://search.maven.org/search?q=g:com.darkrockstudios)" >> $GITHUB_STEP_SUMMARY
+          fi

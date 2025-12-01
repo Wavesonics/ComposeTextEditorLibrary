@@ -1,3 +1,4 @@
+import com.vanniktech.maven.publish.SonatypeHost
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
@@ -6,7 +7,7 @@ plugins {
 	alias(libs.plugins.composeMultiplatform)
 	alias(libs.plugins.composeCompiler)
 	alias(libs.plugins.android.library)
-	id("module.publication")
+	alias(libs.plugins.mavenPublish)
 }
 
 kotlin {
@@ -100,5 +101,42 @@ android {
 	compileOptions {
 		sourceCompatibility = JavaVersion.toVersion(libs.versions.jvm.get().toInt())
 		targetCompatibility = JavaVersion.toVersion(libs.versions.jvm.get().toInt())
+	}
+}
+
+group = "com.darkrockstudios"
+version = providers.gradleProperty("library.version").getOrElse("0.0.0-SNAPSHOT")
+
+mavenPublishing {
+	publishToMavenCentral(SonatypeHost.CENTRAL_PORTAL)
+	signAllPublications()
+
+	pom {
+		name.set("Compose Text Editor Spell Check")
+		description.set("Spell checking addon for Compose Text Editor.")
+		url.set("https://github.com/Wavesonics/ComposeTextEditorLibrary")
+
+		licenses {
+			license {
+				name.set("MIT")
+				url.set("https://opensource.org/licenses/MIT")
+			}
+		}
+		issueManagement {
+			system.set("Github")
+			url.set("https://github.com/Wavesonics/ComposeTextEditorLibrary/issues")
+		}
+		scm {
+			connection.set("scm:git:git://github.com/Wavesonics/ComposeTextEditorLibrary.git")
+			developerConnection.set("scm:git:ssh://github.com/Wavesonics/ComposeTextEditorLibrary.git")
+			url.set("https://github.com/Wavesonics/ComposeTextEditorLibrary")
+		}
+		developers {
+			developer {
+				name.set("Adam Brown")
+				id.set("Wavesonics")
+				email.set("adamwbrown@gmail.com")
+			}
+		}
 	}
 }

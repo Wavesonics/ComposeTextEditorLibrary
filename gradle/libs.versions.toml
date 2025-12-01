@@ -18,7 +18,7 @@ composeBom = "2025.11.01"
 symspellkt = "3.4.0"
 spellcheckerkt = "1.0.0"
 
-nexus-publish = "2.0.0"
+maven-publish = "0.35.0"
 
 [libraries]
 jetbrains-kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test" }
@@ -44,8 +44,6 @@ ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
 material3 = { group = "androidx.compose.material3", name = "material3" }
 activity-ktx = { group = "androidx.activity", name = "activity-ktx", version.ref = "activity-ktx" }
 
-nexus-publish = { module = "io.github.gradle-nexus.publish-plugin:io.github.gradle-nexus.publish-plugin.gradle.plugin", version.ref = "nexus-publish" }
-
 symspellkt = { module = "com.darkrockstudios:symspellkt", version.ref = "symspellkt" }
 symspellkt-fdic = { module = "com.darkrockstudios:symspellktfdic", version.ref = "symspellkt" }
 
@@ -55,3 +53,4 @@ composeCompiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "k
 kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
 android-application = { id = "com.android.application", version.ref = "agp" }
 android-library = { id = "com.android.library", version.ref = "agp" }
+mavenPublish = { id = "com.vanniktech.maven.publish", version.ref = "maven-publish" }
