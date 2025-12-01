@@ -1,5 +1,7 @@
 package com.darkrockstudios.texteditor.spellcheck
 
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -14,11 +16,14 @@ import com.darkrockstudios.texteditor.state.TextEditOperation
 import com.darkrockstudios.texteditor.state.TextEditorState
 import kotlin.time.Duration.Companion.milliseconds
 
+private val DefaultContentPadding = PaddingValues(start = 8.dp)
+
 @Composable
 fun SpellCheckingTextEditor(
 	spellChecker: EditorSpellChecker? = null,
 	state: SpellCheckState = rememberSpellCheckState(spellChecker),
 	modifier: Modifier = Modifier,
+	contentPadding: PaddingValues = DefaultContentPadding,
 	enabled: Boolean = true,
 	style: TextEditorStyle = rememberTextEditorStyle(),
 	onRichSpanClick: RichSpanClickListener? = null,
@@ -49,7 +54,7 @@ fun SpellCheckingTextEditor(
 		) {
 			BasicTextEditor(
 				state = state.textState,
-				modifier = Modifier,
+				modifier = Modifier.padding(contentPadding),
 				enabled = enabled,
 				style = style,
 				onRichSpanClick = { span, type, offset ->
