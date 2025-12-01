@@ -1,4 +1,3 @@
-import com.vanniktech.maven.publish.SonatypeHost
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
@@ -108,7 +107,7 @@ group = "com.darkrockstudios"
 version = providers.gradleProperty("library.version").getOrElse("0.0.0-SNAPSHOT")
 
 mavenPublishing {
-	publishToMavenCentral(SonatypeHost.CENTRAL_PORTAL)
+	publishToMavenCentral()
 	signAllPublications()
 
 	pom {
