@@ -80,7 +80,7 @@ group = "com.darkrockstudios"
 version = providers.gradleProperty("library.version").getOrElse("0.0.0-SNAPSHOT")
 
 mavenPublishing {
-	publishToMavenCentral()
+	publishToMavenCentral(automaticRelease = true)
 	signAllPublications()
 
 	pom {
