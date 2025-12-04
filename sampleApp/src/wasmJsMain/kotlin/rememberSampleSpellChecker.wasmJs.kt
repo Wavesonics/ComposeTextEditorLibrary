@@ -1,10 +1,10 @@
 import androidx.compose.runtime.*
-import com.darkrockstudios.sampleapp.generated.resources.Res
 import com.darkrockstudios.symspell.fdic.loadFdicFile
 import com.darkrockstudios.symspellkt.common.SpellCheckSettings
 import com.darkrockstudios.symspellkt.impl.SymSpell
 import com.darkrockstudios.texteditor.spellcheck.adapters.SymSpellEditorSpellChecker
 import com.darkrockstudios.texteditor.spellcheck.api.EditorSpellChecker
+import composetexteditorlibrary.sampleapp.generated.resources.Res
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jetbrains.compose.resources.ExperimentalResourceApi
