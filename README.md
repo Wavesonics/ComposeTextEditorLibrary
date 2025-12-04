@@ -65,11 +65,11 @@ but I haven't had time to add the targets and test them.
 
 Text Editor:
 
-`implementation("com.darkrockstudios:ComposeTextEditor:0.8.1")`
+`implementation("com.darkrockstudios:composetexteditor:0.9.0")`
 
 Text Editor with Spell Checking:
 
-`implementation("com.darkrockstudios:ComposeTextEditorSpellCheck:0.8.1")`
+`implementation("com.darkrockstudios:composetexteditor-spellcheck:0.9.0")`
 
 
 [badge-android]: http://img.shields.io/badge/-android-6EDB8D.svg?style=flat
