@@ -80,6 +80,7 @@ group = "com.darkrockstudios"
 version = providers.gradleProperty("library.version").getOrElse("0.0.0-SNAPSHOT")
 
 mavenPublishing {
+	coordinates(artifactId = "composetexteditor")
 	publishToMavenCentral(automaticRelease = true)
 	signAllPublications()
 
