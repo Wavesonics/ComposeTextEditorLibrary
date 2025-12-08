@@ -15,6 +15,7 @@ import com.darkrockstudios.texteditor.state.getRichSpansInRange
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.runTest
 import org.junit.Before
 import org.junit.Test
 import kotlin.test.assertEquals
@@ -61,7 +62,7 @@ class SpellCheckStateTest {
 	}
 
 	@Test
-	fun `test checkWordSegment with correct word`() {
+	fun `test checkWordSegment with correct word`() = runTest {
 		// Setup
 		val word = "hello"
 		textState.setText(word)
@@ -83,7 +84,7 @@ class SpellCheckStateTest {
 	}
 
 	@Test
-	fun `test checkWordSegment with incorrect word`() {
+	fun `test checkWordSegment with incorrect word`() = runTest {
 		// Setup
 		val word = "helllo"
 		textState.setText(word)
@@ -109,7 +110,7 @@ class SpellCheckStateTest {
 	}
 
 	@Test
-	fun `test checkWordSegment removes existing spell check spans`() {
+	fun `test checkWordSegment removes existing spell check spans`() = runTest {
 		// Setup
 		val word = "helllo"
 		textState.setText(word)
@@ -140,9 +141,9 @@ private class MockEditorSpellChecker(
 	var correctWords: Set<String> = emptySet(),
 	var suggestionsResponse: List<Suggestion> = emptyList(),
 ) : EditorSpellChecker {
-	override fun isCorrectWord(word: String): Boolean = correctWords.contains(word)
+	override suspend fun isCorrectWord(word: String): Boolean = correctWords.contains(word)
 
-	override fun suggestions(
+	override suspend fun suggestions(
 		input: String,
 		scope: EditorSpellChecker.Scope,
 		closestOnly: Boolean

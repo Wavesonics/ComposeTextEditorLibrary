@@ -16,15 +16,19 @@ class SpellCheckState(
 	enableSpellChecking: Boolean = true,
 ) {
 	var spellCheckingEnabled: Boolean = enableSpellChecking
-		set(value) {
-			val runSpellcheck = (field != value && value == true)
-			field = value
-			if (runSpellcheck) {
-				runFullSpellCheck()
-			} else {
-				clearSpellCheck()
-			}
+		private set
+
+	suspend fun setSpellCheckingEnabled(value: Boolean) {
+		spellCheckingEnabled = value
+
+		val runSpellcheck = (spellCheckingEnabled != value && value == true)
+		spellCheckingEnabled = value
+		if (runSpellcheck) {
+			runFullSpellCheck()
+		} else {
+			clearSpellCheck()
 		}
+	}
 
 	private var lastTextHash = -1
 	private val misspelledWords = mutableListOf<WordSegment>()
@@ -71,7 +75,7 @@ class SpellCheckState(
 	 * This is a very naive algorithm that just removes all spell check spans and
 	 * reruns the entire spell check again.
 	 */
-	fun runFullSpellCheck() {
+	suspend fun runFullSpellCheck() {
 		val sp = spellChecker ?: return
 		if (spellCheckingEnabled.not()) return
 
@@ -99,7 +103,7 @@ class SpellCheckState(
 		}
 	}
 
-	fun runPartialSpellCheck(range: TextEditorRange) {
+	suspend fun runPartialSpellCheck(range: TextEditorRange) {
 		val sp = spellChecker ?: return
 		if (spellCheckingEnabled.not()) return
 
@@ -136,7 +140,7 @@ class SpellCheckState(
 	 * @param segment The word segment to check
 	 * @return true if the word is misspelled and a new span was added, false otherwise
 	 */
-	fun checkWordSegment(segment: WordSegment): Boolean {
+	suspend fun checkWordSegment(segment: WordSegment): Boolean {
 		val sp = spellChecker ?: return false
 
 		removeMissSpellingsInRange(segment.range)
@@ -216,7 +220,7 @@ class SpellCheckState(
 		}
 	}
 
-	fun getSuggestions(word: String): List<Suggestion> {
+	suspend fun getSuggestions(word: String): List<Suggestion> {
 		val sp = spellChecker ?: return emptyList()
 
 		val wordLevel = sp.suggestions(word, scope = Scope.Word, closestOnly = true)

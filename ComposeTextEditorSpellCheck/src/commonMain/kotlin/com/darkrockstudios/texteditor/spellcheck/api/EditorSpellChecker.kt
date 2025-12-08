@@ -3,7 +3,7 @@ package com.darkrockstudios.texteditor.spellcheck.api
 /** A platform-agnostic spell checker interface used by the editor. */
 interface EditorSpellChecker {
 	/** Fast correctness check for a single lexical token (word). */
-	fun isCorrectWord(word: String): Boolean
+	suspend fun isCorrectWord(word: String): Boolean
 
 	/** Desired evaluation scope for suggestions. */
 	enum class Scope { Word, Sentence }
@@ -13,7 +13,7 @@ interface EditorSpellChecker {
 	 * implementations may return suggestions that include whitespace (e.g., "in the").
 	 * Implementations that can't do sentence-level can ignore it or approximate.
 	 */
-	fun suggestions(
+	suspend fun suggestions(
 		input: String,
 		scope: Scope = Scope.Word,
 		closestOnly: Boolean = true,

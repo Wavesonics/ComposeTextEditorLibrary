@@ -105,10 +105,11 @@ class TextEditorStateWordSegmentTest {
 			end = CharLineOffset(0, 21)
 		)
 		val segments = state.wordSegmentsInRange(range)
-		assertEquals(3, segments.size)
+		assertEquals(4, segments.size)
 		assertEquals("don't", segments[0].text)
 		assertEquals("U.S.A.", segments[1].text)
-		assertEquals("test-case", segments[2].text)
+		assertEquals("test", segments[2].text)
+		assertEquals("case", segments[3].text)
 	}
 
 	@Test
