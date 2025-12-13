@@ -4,7 +4,10 @@ import com.darkrockstudios.texteditor.CharLineOffset
 import com.darkrockstudios.texteditor.TextEditorRange
 
 fun TextEditorState.wordSegments(): Sequence<WordSegment> = sequence {
-	textLines.asSequence().withIndex().forEach { (lineIndex, line) ->
+	// Take a snapshot of all text lines to avoid crashes if textLines changes during iteration
+	val linesSnapshot = textLines.toList()
+
+	linesSnapshot.asSequence().withIndex().forEach { (lineIndex, line) ->
 		var wordStart = -1
 		var currentChar = 0
 
@@ -203,8 +206,13 @@ fun TextEditorState.wordSegmentsInRange(range: TextEditorRange): List<WordSegmen
 
 	val segments = mutableListOf<WordSegment>()
 
-	for (lineIndex in range.start.line..range.end.line) {
-		val lineText = textLines[lineIndex].text
+	// Take a snapshot of the lines we need to avoid crashes if textLines changes during iteration
+	val linesToProcess = (range.start.line..range.end.line).map { lineIndex ->
+		lineIndex to textLines[lineIndex]
+	}
+
+	for ((lineIndex, line) in linesToProcess) {
+		val lineText = line.text
 		if (lineText.isEmpty()) continue
 
 		// Determine the character range within the line to check
