@@ -14,16 +14,18 @@ internal class TextEditorKeyCommandHandler {
 	/**
 	 * Handle a key event and return true if it was consumed.
 	 * This handles keyboard shortcuts and navigation on KeyDown events.
+	 * @param enabled Whether the editor is enabled for editing. When false, only selection and copy operations are allowed.
 	 */
 	fun handleKeyEvent(
 		keyEvent: KeyEvent,
 		state: TextEditorState,
-		clipboardManager: ClipboardManager
+		clipboardManager: ClipboardManager,
+		enabled: Boolean = true
 	): Boolean {
 		if (keyEvent.type != KeyEventType.KeyDown) return false
 
 		return when {
-			// Edit key combos
+			// Selection, copy and navigation operations are always allowed
 			keyEvent.isCtrlPressed && keyEvent.key == Key.A -> {
 				state.selector.selectAll()
 				true
@@ -31,41 +33,6 @@ internal class TextEditorKeyCommandHandler {
 
 			keyEvent.isCtrlPressed && keyEvent.key == Key.C -> {
 				handleCopy(state, clipboardManager)
-				true
-			}
-
-			keyEvent.isCtrlPressed && keyEvent.key == Key.X -> {
-				handleCut(state, clipboardManager)
-				true
-			}
-
-			keyEvent.isCtrlPressed && keyEvent.key == Key.V -> {
-				handlePaste(state, clipboardManager)
-				true
-			}
-
-			keyEvent.isCtrlPressed && keyEvent.key == Key.Z -> {
-				state.undo()
-				true
-			}
-
-			keyEvent.isCtrlPressed && keyEvent.key == Key.Y -> {
-				state.redo()
-				true
-			}
-
-			keyEvent.key == Key.Delete -> {
-				handleDelete(state)
-				true
-			}
-
-			keyEvent.key == Key.Backspace -> {
-				handleBackspace(state)
-				true
-			}
-
-			keyEvent.key == Key.Enter || keyEvent.key == Key.NumPadEnter -> {
-				handleEnter(state)
 				true
 			}
 
@@ -106,6 +73,44 @@ internal class TextEditorKeyCommandHandler {
 
 			keyEvent.key == Key.PageDown -> {
 				handlePageDown(keyEvent, state)
+				true
+			}
+
+			// Editing operations require enabled=true
+			!enabled -> false
+
+			keyEvent.isCtrlPressed && keyEvent.key == Key.X -> {
+				handleCut(state, clipboardManager)
+				true
+			}
+
+			keyEvent.isCtrlPressed && keyEvent.key == Key.V -> {
+				handlePaste(state, clipboardManager)
+				true
+			}
+
+			keyEvent.isCtrlPressed && keyEvent.key == Key.Z -> {
+				state.undo()
+				true
+			}
+
+			keyEvent.isCtrlPressed && keyEvent.key == Key.Y -> {
+				state.redo()
+				true
+			}
+
+			keyEvent.key == Key.Delete -> {
+				handleDelete(state)
+				true
+			}
+
+			keyEvent.key == Key.Backspace -> {
+				handleBackspace(state)
+				true
+			}
+
+			keyEvent.key == Key.Enter || keyEvent.key == Key.NumPadEnter -> {
+				handleEnter(state)
 				true
 			}
 

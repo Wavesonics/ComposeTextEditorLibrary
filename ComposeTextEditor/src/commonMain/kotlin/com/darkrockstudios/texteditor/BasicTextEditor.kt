@@ -48,7 +48,6 @@ fun BasicTextEditor(
 	val interactionSource = remember { MutableInteractionSource() }
 	val clipboardManager = LocalClipboardManager.current
 
-	// Create the input modifier element for text input handling
 	val inputModifierElement = remember(state, clipboardManager, enabled) {
 		TextEditorInputModifierElement(state, clipboardManager, enabled)
 	}
@@ -60,15 +59,12 @@ fun BasicTextEditor(
 	}
 
 	LaunchedEffect(state.isFocused, state.cursorPosition, enabled) {
-		if (!enabled) {
-			state.updateFocus(false)
-			return@LaunchedEffect
-		}
-
-		state.cursor.setVisible()
-		while (state.isFocused) {
-			delay(CURSOR_BLINK_SPEED_MS)
-			state.cursor.toggleVisibility()
+		if (enabled && state.isFocused) {
+			state.cursor.setVisible()
+			while (state.isFocused) {
+				delay(CURSOR_BLINK_SPEED_MS)
+				state.cursor.toggleVisibility()
+			}
 		}
 	}
 
@@ -78,17 +74,10 @@ fun BasicTextEditor(
 	) { editorModifier ->
 		Box(
 			modifier = editorModifier
-				.then(
-					if (enabled) {
-						Modifier
-							.focusRequester(focusRequester)
-							.requestFocusOnPress(focusRequester)
-							.then(inputModifierElement) // New unified input handling
-							.focusable(enabled = true, interactionSource = interactionSource)
-					} else {
-						Modifier
-					}
-				)
+				.focusRequester(focusRequester)
+				.requestFocusOnPress(focusRequester)
+				.then(inputModifierElement)
+				.focusable(enabled = true, interactionSource = interactionSource)
 				.background(style.backgroundColor)
 				.onSizeChanged { size ->
 					state.onViewportSizeChange(
@@ -104,6 +93,7 @@ fun BasicTextEditor(
 		) {
 			Canvas(
 				modifier = Modifier
+					.textEditorPointerInputHandling(state, onRichSpanClick)
 					.size(
 						width = state.viewportSize.width.dp,
 						height = state.viewportSize.height.dp
@@ -111,13 +101,6 @@ fun BasicTextEditor(
 					.graphicsLayer {
 						clip = false
 					}
-					.then(
-						if (enabled) {
-							Modifier.textEditorPointerInputHandling(state, onRichSpanClick)
-						} else {
-							Modifier
-						}
-					)
 			) {
 				if (state.isEmpty() && style.placeholderText.isNotEmpty()) {
 					DrawPlaceholderText(state, style)

@@ -34,10 +34,18 @@ internal class TextEditorInputModifierNode(
 	private var inputSessionJob: Job? = null
 
 	override fun onFocusEvent(focusState: FocusState) {
-		state.updateFocus(focusState.isFocused)
-		if (focusState.isFocused && enabled) {
-			launchTextInputSession()
+		if (enabled) {
+			// Only update the focus state when enabled
+			state.updateFocus(focusState.isFocused)
+			if (focusState.isFocused) {
+				launchTextInputSession()
+			} else {
+				inputSessionJob?.cancel()
+				inputSessionJob = null
+			}
 		} else {
+			// When disabled, we still want to receive keyboard events but not show as "focused"
+			state.updateFocus(false)
 			inputSessionJob?.cancel()
 			inputSessionJob = null
 		}
@@ -56,8 +64,7 @@ internal class TextEditorInputModifierNode(
 	}
 
 	override fun onPreKeyEvent(event: KeyEvent): Boolean {
-		if (!enabled) return false
-		return keyCommandHandler.handleKeyEvent(event, state, clipboardManager)
+		return keyCommandHandler.handleKeyEvent(event, state, clipboardManager, enabled)
 	}
 
 	override fun onKeyEvent(event: KeyEvent): Boolean {
