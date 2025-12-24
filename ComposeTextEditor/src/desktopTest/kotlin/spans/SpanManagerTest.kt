@@ -180,7 +180,7 @@ class SpanManagerTest {
 			)
 		)
 
-		// Insert a character with a different style (normal weight) in the middle
+		// Insert a character with no explicit style in the middle
 		val insertedText = AnnotatedString(
 			text = " ",
 			spanStyles = emptyList()
@@ -188,14 +188,15 @@ class SpanManagerTest {
 
 		val result = spanManager.processSpans(originalText, insertionPoint = 5, insertedText = insertedText)
 
-		// Expected: Two bold spans with a non-bold space in between
+		// Expected: Bold span expands to cover the entire text including inserted character
+		// This is the typical text editor behavior where typing in the middle of styled text
+		// inherits the surrounding style
 		val expected = listOf(
-			AnnotatedString.Range(boldStyle, 0, 5),  // "Hello"
-			AnnotatedString.Range(boldStyle, 6, 11)  // "World"
+			AnnotatedString.Range(boldStyle, 0, 11)  // "Hello World" - entire text is bold
 		)
 
-		assertEquals(expected.size, result.size, "Should have three spans: two bold and one normal")
-		assertEquals(expected, result, "Bold spans should be split with normal text in between")
+		assertEquals(expected.size, result.size, "Should have one span covering entire text")
+		assertEquals(expected, result, "Bold span should expand to include inserted text")
 	}
 
 	@Test
@@ -307,23 +308,21 @@ class SpanManagerTest {
 		// Insert the italic text in the middle of the bold text
 		val result = spanManager.processSpans(originalText, insertionPoint = 6, insertedText = insertedText)
 
-		// Should have three spans after insertion
-		assertEquals(3, result.size, "Should have three spans after insertion")
+		// Should have two spans after insertion:
+		// - Bold expands to cover entire text (including inserted portion)
+		// - Italic applies to the inserted portion
+		// The inserted text will be both bold AND italic
+		assertEquals(2, result.size, "Should have two spans after insertion")
 
-		// Verify first span (beginning of text - bold)
-		assertEquals(0, result[0].start, "First span should start at beginning of text")
-		assertEquals(6, result[0].end, "First span should end at insertion point")
+		// Verify bold span covers entire text
+		assertEquals(0, result[0].start, "Bold span should start at beginning of text")
+		assertEquals(21, result[0].end, "Bold span should cover entire text")
 		assertEquals(boldStyle, result[0].item, "First span should have bold style")
 
-		// Verify second span (inserted text - italic)
-		assertEquals(6, result[1].start, "Second span should start at insertion point")
-		assertEquals(16, result[1].end, "Second span should end after inserted text")
+		// Verify italic span covers inserted text
+		assertEquals(6, result[1].start, "Italic span should start at insertion point")
+		assertEquals(16, result[1].end, "Italic span should end after inserted text")
 		assertEquals(italicStyle, result[1].item, "Second span should have italic style")
-
-		// Verify third span (end of text - bold)
-		assertEquals(16, result[2].start, "Third span should start after inserted text")
-		assertEquals(21, result[2].end, "Third span should end at end of text")
-		assertEquals(boldStyle, result[2].item, "Third span should have bold style")
 	}
 
 	@Test

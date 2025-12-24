@@ -65,14 +65,7 @@ class SpanManager {
 			})
 		}
 
-		// Determine whether to merge spans
-		val processedSpans = if (insertedText != null && insertionPoint >= 0 && insertedText.spanStyles.isEmpty()) {
-			// If we're inserting text with no spans, don't merge to preserve the split spans
-			spans
-		} else {
-			// Otherwise, merge overlapping and adjacent spans
-			mergeSpans(spans)
-		}
+		val processedSpans = mergeSpans(spans)
 
 		// Ensure all spans are within bounds and convert back to AnnotatedString.Range format
 		return processedSpans
@@ -134,8 +127,6 @@ class SpanManager {
 	}
 
 	private fun handleInsertion(spans: MutableList<SpanInfo>, point: Int, length: Int) {
-		val spansToAdd = mutableListOf<SpanInfo>()
-
 		spans.forEach { span ->
 			when {
 				// Span ends before insertion - no change needed
@@ -150,20 +141,12 @@ class SpanManager {
 				// Insertion is at the end of span - don't expand span
 				span.end == point -> {}
 
-				// Insertion is in middle of span - split span into two
+				// Insertion is in middle of span - expand span to include inserted text
 				span.start < point && span.end > point -> {
-					// Create a new span for the part after the insertion
-					val newSpan = SpanInfo(span.style, point + length, span.end + length)
-					spansToAdd.add(newSpan)
-
-					// Adjust the original span to end at the insertion point
-					span.end = point
+					span.end += length
 				}
 			}
 		}
-
-		// Add the new spans created during splitting
-		spans.addAll(spansToAdd)
 	}
 
 	private fun mergeSpans(spans: List<SpanInfo>): List<SpanInfo> {
