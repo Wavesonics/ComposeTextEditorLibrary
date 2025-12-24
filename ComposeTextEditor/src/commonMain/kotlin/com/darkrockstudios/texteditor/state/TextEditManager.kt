@@ -31,7 +31,7 @@ class TextEditManager(private val state: TextEditorState) {
 			is TextEditOperation.StyleSpan -> applyStyleOperation(operation)
 		}
 
-		state.cursor.updatePosition(operation.cursorAfter)
+		state.cursor.updatePosition(operation.cursorAfter, updateStyles = false)
 		state.richSpanManager.updateSpans(operation, metadata)
 		if (addToHistory) {
 			history.recordEdit(operation, metadata ?: OperationMetadata())
