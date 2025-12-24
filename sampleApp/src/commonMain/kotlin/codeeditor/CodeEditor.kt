@@ -87,6 +87,7 @@ fun CodeEditor(
 	state: TextEditorState = rememberTextEditorState(),
 	modifier: Modifier = Modifier,
 	enabled: Boolean = true,
+	autoFocus: Boolean = false,
 	style: CodeEditorStyle = rememberCodeEditorStyle(),
 	onRichSpanClick: RichSpanClickListener? = null,
 ) {
@@ -114,6 +115,7 @@ fun CodeEditor(
 					)
 				},
 			enabled = enabled,
+			autoFocus = autoFocus,
 			style = style.baseStyle,
 			onRichSpanClick = onRichSpanClick,
 			decorateLine = { line: Int, offset: Offset, state: TextEditorState, _: TextEditorStyle ->

@@ -25,6 +25,7 @@ fun SpellCheckingTextEditor(
 	modifier: Modifier = Modifier,
 	contentPadding: PaddingValues = DefaultContentPadding,
 	enabled: Boolean = true,
+	autoFocus: Boolean = false,
 	style: TextEditorStyle = rememberTextEditorStyle(),
 	onRichSpanClick: RichSpanClickListener? = null,
 ) {
@@ -56,6 +57,7 @@ fun SpellCheckingTextEditor(
 				state = state.textState,
 				modifier = Modifier.padding(contentPadding),
 				enabled = enabled,
+				autoFocus = autoFocus,
 				style = style,
 				onRichSpanClick = { span, type, offset ->
 					return@BasicTextEditor if (type == SpanClickType.SECONDARY_CLICK || type == SpanClickType.TAP) {

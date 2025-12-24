@@ -3,10 +3,7 @@ package com.darkrockstudios.texteditor
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
-import androidx.compose.foundation.gestures.Orientation
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.scrollable
+import androidx.compose.foundation.gestures.*
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -40,6 +37,7 @@ fun BasicTextEditor(
 	state: TextEditorState = rememberTextEditorState(),
 	modifier: Modifier = Modifier,
 	enabled: Boolean = true,
+	autoFocus: Boolean = false,
 	style: TextEditorStyle = rememberTextEditorStyle(),
 	onRichSpanClick: RichSpanClickListener? = null,
 	decorateLine: LineDecorator? = null,
@@ -53,7 +51,7 @@ fun BasicTextEditor(
 	}
 
 	LaunchedEffect(Unit) {
-		if (enabled) {
+		if (enabled && autoFocus) {
 			focusRequester.requestFocus()
 		}
 	}
@@ -127,7 +125,9 @@ fun BasicTextEditor(
 private fun Modifier.requestFocusOnPress(focusRequester: FocusRequester) = pointerInput(Unit) {
 	awaitEachGesture {
 		awaitFirstDown(requireUnconsumed = false)
-		focusRequester.requestFocus()
+		waitForUpOrCancellation()?.let {
+			focusRequester.requestFocus()
+		}
 	}
 }
 

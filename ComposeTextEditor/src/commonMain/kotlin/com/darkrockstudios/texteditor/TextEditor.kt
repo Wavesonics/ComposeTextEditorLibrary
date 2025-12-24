@@ -17,6 +17,7 @@ fun TextEditor(
 	modifier: Modifier = Modifier,
 	contentPadding: PaddingValues = DefaultContentPadding,
 	enabled: Boolean = true,
+	autoFocus: Boolean = false,
 	style: TextEditorStyle = rememberTextEditorStyle(),
 	onRichSpanClick: RichSpanClickListener? = null,
 ) {
@@ -25,6 +26,7 @@ fun TextEditor(
 			state = state,
 			modifier = Modifier.padding(contentPadding),
 			enabled = enabled,
+			autoFocus = autoFocus,
 			style = style,
 			onRichSpanClick = onRichSpanClick,
 		)
