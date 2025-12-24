@@ -186,11 +186,23 @@ class TextEditorState(
 	fun insertStringAtCursor(string: String) = insertStringAtCursor(string.toAnnotatedString())
 	fun insertStringAtCursor(text: AnnotatedString) {
 		val styledText = cursor.applyCursorStyle(text)
+
+		// Calculate cursor position after insertion, accounting for newlines
+		val textString = text.text
+		val lastNewlineIndex = textString.lastIndexOf('\n')
+		val cursorAfter = if (lastNewlineIndex >= 0) {
+			val newlineCount = textString.count { it == '\n' }
+			val charsAfterLastNewline = textString.length - lastNewlineIndex - 1
+			CharLineOffset(cursorPosition.line + newlineCount, charsAfterLastNewline)
+		} else {
+			CharLineOffset(cursorPosition.line, cursorPosition.char + text.length)
+		}
+
 		val operation = TextEditOperation.Insert(
 			position = cursorPosition,
 			text = styledText,
 			cursorBefore = cursorPosition,
-			cursorAfter = CharLineOffset(cursorPosition.line, cursorPosition.char + text.length)
+			cursorAfter = cursorAfter
 		)
 		editManager.applyOperation(operation)
 	}
