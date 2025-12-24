@@ -22,10 +22,8 @@ jobs:
     strategy:
       matrix:
         include:
-          - target: test
+          - target: check
             os: ubuntu-latest
-          #- target: desktopTest
-          #  os: ubuntu-latest
     runs-on: ${{ matrix.os }}
 
     steps:
