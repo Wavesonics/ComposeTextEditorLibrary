@@ -92,7 +92,6 @@ fun TextEditorDemoUi(
 				.padding(8.dp)
 				.fillMaxSize(),
 			style = style,
-			autoFocus = true,
 			onRichSpanClick = { span, clickType, _ ->
 				when (clickType) {
 					SpanClickType.TAP -> println("Touch tap on span: $span")
