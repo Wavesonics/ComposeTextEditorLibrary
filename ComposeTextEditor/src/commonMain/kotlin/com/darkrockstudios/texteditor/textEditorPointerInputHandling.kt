@@ -95,6 +95,7 @@ private fun Modifier.handleDragInput(state: TextEditorState): Modifier {
 					if (isMouse && mouseSelectionAnchor != null) {
 						val currentOffset = state.getOffsetAtPosition(currentPosition)
 						state.selector.updateSelection(mouseSelectionAnchor, currentOffset)
+						state.cursor.updatePosition(currentOffset)
 					}
 				}
 			}
