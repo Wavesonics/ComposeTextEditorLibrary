@@ -1,18 +1,18 @@
 [versions]
 android-compileSdk = "36"
 android-minSdk = "26"
-agp = "8.11.2"
+agp = "8.12.3"
 jvm = "17"
 androidx-lifecycle = "2.9.6"
 compose-multiplatform = "1.9.3"
-kotlin = "2.2.21"
+kotlin = "2.3.0"
 kotlinx-coroutines = "1.10.2"
 markdown = "0.7.3"
-mockk = "1.14.6"
+mockk = "1.14.7"
 
-activity-ktx = "1.12.0"
+activity-ktx = "1.12.2"
 lifecycleRuntimeKtx = "2.10.0"
-activityCompose = "1.12.0"
+activityCompose = "1.12.2"
 composeBom = "2025.11.01"
 
 symspellkt = "3.4.0"
