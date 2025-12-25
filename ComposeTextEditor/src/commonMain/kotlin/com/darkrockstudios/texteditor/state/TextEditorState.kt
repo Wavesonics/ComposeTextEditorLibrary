@@ -108,7 +108,7 @@ class TextEditorState(
 	fun insertNewlineAtCursor() {
 		val operation = TextEditOperation.Insert(
 			position = cursorPosition,
-			text = AnnotatedString("\n"),
+			text = cursor.applyCursorStyle("\n"),
 			cursorBefore = cursorPosition,
 			cursorAfter = CharLineOffset(cursorPosition.line + 1, 0)
 		)
