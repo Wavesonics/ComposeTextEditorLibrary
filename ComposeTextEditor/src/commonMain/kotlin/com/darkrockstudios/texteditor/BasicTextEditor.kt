@@ -18,7 +18,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.toSize
 import com.darkrockstudios.texteditor.cursor.DrawCursor
@@ -44,10 +44,10 @@ fun BasicTextEditor(
 ) {
 	val focusRequester = remember { FocusRequester() }
 	val interactionSource = remember { MutableInteractionSource() }
-	val clipboardManager = LocalClipboardManager.current
+	val clipboard = LocalClipboard.current
 
-	val inputModifierElement = remember(state, clipboardManager, enabled) {
-		TextEditorInputModifierElement(state, clipboardManager, enabled)
+	val inputModifierElement = remember(state, clipboard, enabled) {
+		TextEditorInputModifierElement(state, clipboard, enabled)
 	}
 
 	LaunchedEffect(Unit) {

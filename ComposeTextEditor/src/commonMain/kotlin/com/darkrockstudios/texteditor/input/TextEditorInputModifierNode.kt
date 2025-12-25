@@ -5,7 +5,7 @@ import androidx.compose.ui.focus.FocusState
 import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.KeyInputModifierNode
 import androidx.compose.ui.node.ModifierNodeElement
-import androidx.compose.ui.platform.ClipboardManager
+import androidx.compose.ui.platform.Clipboard
 import androidx.compose.ui.platform.InspectorInfo
 import androidx.compose.ui.platform.PlatformTextInputModifierNode
 import androidx.compose.ui.platform.establishTextInputSession
@@ -23,7 +23,7 @@ import kotlinx.coroutines.launch
  */
 internal class TextEditorInputModifierNode(
 	var state: TextEditorState,
-	var clipboardManager: ClipboardManager,
+	var clipboard: Clipboard,
 	var enabled: Boolean
 ) : androidx.compose.ui.Modifier.Node(),
 	KeyInputModifierNode,
@@ -64,7 +64,7 @@ internal class TextEditorInputModifierNode(
 	}
 
 	override fun onPreKeyEvent(event: KeyEvent): Boolean {
-		return keyCommandHandler.handleKeyEvent(event, state, clipboardManager, enabled)
+		return keyCommandHandler.handleKeyEvent(event, state, clipboard, coroutineScope, enabled)
 	}
 
 	override fun onKeyEvent(event: KeyEvent): Boolean {
@@ -75,11 +75,11 @@ internal class TextEditorInputModifierNode(
 
 	fun update(
 		state: TextEditorState,
-		clipboardManager: ClipboardManager,
+		clipboard: Clipboard,
 		enabled: Boolean
 	) {
 		this.state = state
-		this.clipboardManager = clipboardManager
+		this.clipboard = clipboard
 		this.enabled = enabled
 	}
 }
@@ -89,16 +89,16 @@ internal class TextEditorInputModifierNode(
  */
 internal data class TextEditorInputModifierElement(
 	val state: TextEditorState,
-	val clipboardManager: ClipboardManager,
+	val clipboard: Clipboard,
 	val enabled: Boolean
 ) : ModifierNodeElement<TextEditorInputModifierNode>() {
 
 	override fun create(): TextEditorInputModifierNode {
-		return TextEditorInputModifierNode(state, clipboardManager, enabled)
+		return TextEditorInputModifierNode(state, clipboard, enabled)
 	}
 
 	override fun update(node: TextEditorInputModifierNode) {
-		node.update(state, clipboardManager, enabled)
+		node.update(state, clipboard, enabled)
 	}
 
 	override fun InspectorInfo.inspectableProperties() {

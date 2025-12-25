@@ -1,0 +1,25 @@
+package com.darkrockstudios.texteditor.clipboard
+
+import android.content.ClipData
+import androidx.compose.ui.ExperimentalComposeUiApi
+import androidx.compose.ui.platform.Clipboard
+import androidx.compose.ui.platform.toClipEntry
+import androidx.compose.ui.text.AnnotatedString
+
+@OptIn(ExperimentalComposeUiApi::class)
+actual object ClipboardHelper {
+	actual suspend fun getText(clipboard: Clipboard): AnnotatedString? {
+		return clipboard.getClipEntry()?.clipData?.let { clipData ->
+			if (clipData.itemCount > 0) {
+				clipData.getItemAt(0).text?.toString()?.let { text ->
+					AnnotatedString(text)
+				}
+			} else null
+		}
+	}
+
+	actual suspend fun setText(clipboard: Clipboard, text: AnnotatedString) {
+		val clipData = ClipData.newPlainText("text", text.text)
+		clipboard.setClipEntry(clipData.toClipEntry())
+	}
+}

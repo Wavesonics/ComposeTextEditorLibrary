@@ -1,9 +1,12 @@
 package com.darkrockstudios.texteditor.input
 
 import androidx.compose.ui.input.key.*
-import androidx.compose.ui.platform.ClipboardManager
+import androidx.compose.ui.platform.Clipboard
 import com.darkrockstudios.texteditor.CharLineOffset
+import com.darkrockstudios.texteditor.clipboard.ClipboardHelper
 import com.darkrockstudios.texteditor.state.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 
 /**
  * Handles keyboard commands (shortcuts and navigation) for the text editor.
@@ -19,7 +22,8 @@ internal class TextEditorKeyCommandHandler {
 	fun handleKeyEvent(
 		keyEvent: KeyEvent,
 		state: TextEditorState,
-		clipboardManager: ClipboardManager,
+		clipboard: Clipboard,
+		scope: CoroutineScope,
 		enabled: Boolean = true
 	): Boolean {
 		if (keyEvent.type != KeyEventType.KeyDown) return false
@@ -32,7 +36,7 @@ internal class TextEditorKeyCommandHandler {
 			}
 
 			keyEvent.isCtrlPressed && keyEvent.key == Key.C -> {
-				handleCopy(state, clipboardManager)
+				handleCopy(state, clipboard, scope)
 				true
 			}
 
@@ -80,12 +84,12 @@ internal class TextEditorKeyCommandHandler {
 			!enabled -> false
 
 			keyEvent.isCtrlPressed && keyEvent.key == Key.X -> {
-				handleCut(state, clipboardManager)
+				handleCut(state, clipboard, scope)
 				true
 			}
 
 			keyEvent.isCtrlPressed && keyEvent.key == Key.V -> {
-				handlePaste(state, clipboardManager)
+				handlePaste(state, clipboard, scope)
 				true
 			}
 
@@ -154,31 +158,37 @@ internal class TextEditorKeyCommandHandler {
 		return true
 	}
 
-	private fun handleCopy(state: TextEditorState, clipboardManager: ClipboardManager) {
+	private fun handleCopy(state: TextEditorState, clipboard: Clipboard, scope: CoroutineScope) {
 		state.selector.selection?.let {
 			val selectedText = state.selector.getSelectedText()
-			clipboardManager.setText(selectedText)
+			scope.launch {
+				ClipboardHelper.setText(clipboard, selectedText)
+			}
 		}
 	}
 
-	private fun handleCut(state: TextEditorState, clipboardManager: ClipboardManager) {
+	private fun handleCut(state: TextEditorState, clipboard: Clipboard, scope: CoroutineScope) {
 		state.selector.selection?.let {
 			val selectedText = state.selector.getSelectedText()
 			state.selector.deleteSelection()
-			clipboardManager.setText(selectedText)
+			scope.launch {
+				ClipboardHelper.setText(clipboard, selectedText)
+			}
 		}
 	}
 
-	private fun handlePaste(state: TextEditorState, clipboardManager: ClipboardManager) {
-		clipboardManager.getText()?.let { text ->
-			val curSelection = state.selector.selection
-			if (curSelection != null) {
-				state.replace(curSelection, text)
-			} else {
-				state.insertStringAtCursor(text)
+	private fun handlePaste(state: TextEditorState, clipboard: Clipboard, scope: CoroutineScope) {
+		scope.launch {
+			ClipboardHelper.getText(clipboard)?.let { text ->
+				val curSelection = state.selector.selection
+				if (curSelection != null) {
+					state.replace(curSelection, text)
+				} else {
+					state.insertStringAtCursor(text)
+				}
+				state.selector.clearSelection()
 			}
 		}
-		state.selector.clearSelection()
 	}
 
 	private fun handleDelete(state: TextEditorState) {
