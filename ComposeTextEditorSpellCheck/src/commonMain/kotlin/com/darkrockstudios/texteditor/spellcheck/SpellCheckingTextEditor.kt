@@ -1,7 +1,6 @@
 package com.darkrockstudios.texteditor.spellcheck
 
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -55,7 +54,8 @@ fun SpellCheckingTextEditor(
 		) {
 			BasicTextEditor(
 				state = state.textState,
-				modifier = Modifier.padding(contentPadding),
+				modifier = Modifier,
+				contentPadding = contentPadding,
 				enabled = enabled,
 				autoFocus = autoFocus,
 				style = style,

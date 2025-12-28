@@ -5,9 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.*
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
@@ -36,6 +34,7 @@ private const val CURSOR_BLINK_SPEED_MS = 500L
 fun BasicTextEditor(
 	state: TextEditorState = rememberTextEditorState(),
 	modifier: Modifier = Modifier,
+	contentPadding: PaddingValues = PaddingValues(0.dp),
 	enabled: Boolean = true,
 	autoFocus: Boolean = false,
 	style: TextEditorStyle = rememberTextEditorStyle(),
@@ -72,6 +71,7 @@ fun BasicTextEditor(
 	) { editorModifier ->
 		Box(
 			modifier = editorModifier
+				.padding(contentPadding)
 				.focusRequester(focusRequester)
 				.requestFocusOnPress(focusRequester)
 				.then(inputModifierElement)
