@@ -9,24 +9,27 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.unit.IntOffset
+import com.darkrockstudios.texteditor.spellcheck.SpellCheckItem
 import com.darkrockstudios.texteditor.spellcheck.SpellCheckState
 import com.darkrockstudios.texteditor.spellcheck.api.Suggestion
-import com.darkrockstudios.texteditor.state.WordSegment
 import kotlin.math.roundToInt
 
 @Composable
 internal fun SpellCheckDropdown(
-	word: WordSegment?,
+	item: SpellCheckItem?,
 	position: Offset,
 	spellCheckState: SpellCheckState,
 	dismiss: () -> Unit,
-	correctSpelling: (WordSegment, String) -> Unit
+	correctSpelling: (SpellCheckItem, String) -> Unit
 ) {
 	var suggestionItems by remember { mutableStateOf(emptyList<Suggestion>()) }
 
-	LaunchedEffect(word, spellCheckState) {
-		word ?: return@LaunchedEffect
-		suggestionItems = spellCheckState.getSuggestions(word.text)
+	LaunchedEffect(item, spellCheckState) {
+		item ?: return@LaunchedEffect
+		suggestionItems = when (item) {
+			is SpellCheckItem.MisspelledWord -> spellCheckState.getSuggestions(item.segment.text)
+			is SpellCheckItem.SentenceIssue -> item.correction.suggestions
+		}
 	}
 
 	Box(modifier = Modifier.offset {
@@ -36,15 +39,15 @@ internal fun SpellCheckDropdown(
 		)
 	}) {
 		DropdownMenu(
-			expanded = word != null,
+			expanded = item != null,
 			onDismissRequest = dismiss,
 		) {
-			word ?: return@DropdownMenu
+			item ?: return@DropdownMenu
 			if (suggestionItems.isNotEmpty()) {
-				suggestionItems.forEach { item ->
+				suggestionItems.forEach { suggestion ->
 					DropdownMenuItem(
-						text = { Text(item.term) },
-						onClick = { correctSpelling(word, item.term) },
+						text = { Text(suggestion.term) },
+						onClick = { correctSpelling(item, suggestion.term) },
 					)
 				}
 			} else {

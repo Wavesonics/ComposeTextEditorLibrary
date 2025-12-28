@@ -12,9 +12,10 @@ fun rememberSpellCheckState(
 	spellChecker: EditorSpellChecker?,
 	initialText: AnnotatedString? = null,
 	enableSpellChecking: Boolean = true,
+	spellCheckMode: SpellCheckMode = SpellCheckMode.Word,
 ): SpellCheckState {
 	val richTextState = rememberTextEditorState(initialText)
-	val state = remember { SpellCheckState(richTextState, spellChecker, enableSpellChecking) }
+	val state = remember { SpellCheckState(richTextState, spellChecker, enableSpellChecking, spellCheckMode) }
 
 	// Run SpellCheck as soon as it is ready
 	LaunchedEffect(spellChecker) {

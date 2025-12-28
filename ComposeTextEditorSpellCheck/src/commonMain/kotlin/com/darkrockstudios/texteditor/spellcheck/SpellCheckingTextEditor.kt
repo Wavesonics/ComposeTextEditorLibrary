@@ -8,11 +8,13 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.darkrockstudios.texteditor.*
+import com.darkrockstudios.texteditor.spellcheck.api.Correction
 import com.darkrockstudios.texteditor.spellcheck.api.EditorSpellChecker
 import com.darkrockstudios.texteditor.spellcheck.utils.debounceUntilQuiescentWithBatch
 import com.darkrockstudios.texteditor.state.SpanClickType
 import com.darkrockstudios.texteditor.state.TextEditOperation
 import com.darkrockstudios.texteditor.state.TextEditorState
+import com.darkrockstudios.texteditor.state.WordSegment
 import kotlin.time.Duration.Companion.milliseconds
 
 private val DefaultContentPadding = PaddingValues(start = 8.dp)
@@ -29,7 +31,7 @@ fun SpellCheckingTextEditor(
 	onRichSpanClick: RichSpanClickListener? = null,
 ) {
 	val menuState by remember(state) { mutableStateOf(SpellCheckMenuState(state)) }
-	val wordVisibilityBuffer = DpToPx(35.dp)
+	val wordVisibilityBuffer = dpToPx(35.dp)
 
 	LaunchedEffect(state) {
 		state.textState.editOperations
@@ -61,11 +63,15 @@ fun SpellCheckingTextEditor(
 				style = style,
 				onRichSpanClick = { span, type, offset ->
 					return@BasicTextEditor if (type == SpanClickType.SECONDARY_CLICK || type == SpanClickType.TAP) {
-						val correction = state.handleSpanClick(span)
-						if (correction != null) {
+						val spellCheckItem: SpellCheckItem? = when (val clickResult = state.handleSpanClick(span)) {
+							is WordSegment -> SpellCheckItem.MisspelledWord(clickResult)
+							is Correction -> SpellCheckItem.SentenceIssue(clickResult)
+							else -> null
+						}
+						if (spellCheckItem != null) {
 							val menuPos = offset.copy(y = offset.y + wordVisibilityBuffer)
 							menuState.missSpelling.value =
-								SpellCheckMenuState.MissSpelling(correction, menuPos)
+								SpellCheckMenuState.MissSpelling(spellCheckItem, menuPos)
 							true
 						} else {
 							menuState.missSpelling.value = null
@@ -82,7 +88,7 @@ fun SpellCheckingTextEditor(
 }
 
 @Composable
-private fun DpToPx(dp: Dp): Float {
+private fun dpToPx(dp: Dp): Float {
 	val density = LocalDensity.current.density
 	return dp.value * density
 }
