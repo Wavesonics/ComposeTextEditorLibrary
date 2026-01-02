@@ -289,14 +289,24 @@ private class TextEditorInputConnection(
 			val actualCursorPos = state.getCharacterIndex(state.cursorPosition)
 			val delta = start - imeExpectedCursorPos
 
-			// If this is a small relative move (like arrow key), apply delta to actual position
-			// This handles the case where IME has stale cursor position data
-			val newPos = if (delta != 0 && kotlin.math.abs(delta) <= 10) {
-				// Small delta - likely a cursor move command, apply to actual position
-				(actualCursorPos + delta).coerceIn(0, state.getTextLength())
-			} else {
-				// Large delta or zero - use as absolute position (like tapping to position)
-				start.coerceIn(0, state.getTextLength())
+			// Determine if this looks like a relative move or absolute positioning
+			// Relative moves: IME requests position relative to what it thinks cursor is at
+			// Absolute positioning: IME requests specific position (e.g., user tap, select word)
+			val newPos = when {
+				// Zero delta means IME thinks cursor is already there - no move needed
+				delta == 0 -> start.coerceIn(0, state.getTextLength())
+
+				// Common relative move deltas from arrow keys and word movement:
+				// -1, +1: single character left/right
+				// -2 to -20, +2 to +20: word movement (varies by word length)
+				// Larger values are more likely to be absolute positioning
+				isLikelyRelativeMove(delta) -> {
+					// Apply delta to actual position to handle stale IME cursor data
+					(actualCursorPos + delta).coerceIn(0, state.getTextLength())
+				}
+
+				// Large delta or IME expected position matches actual - use absolute
+				else -> start.coerceIn(0, state.getTextLength())
 			}
 
 			val offset = state.getOffsetAtCharacter(newPos)
@@ -304,7 +314,6 @@ private class TextEditorInputConnection(
 			state.selector.clearSelection()
 
 			// Update expected position to where IME thinks cursor is now
-			// For relative moves, IME thinks it's at 'start', for absolute it's also 'start'
 			imeExpectedCursorPos = start
 		} else {
 			// Selection (start != end) - use absolute positions
@@ -316,6 +325,31 @@ private class TextEditorInputConnection(
 		}
 
 		return true
+	}
+
+	/**
+	 * Determines if a cursor movement delta looks like a relative move vs absolute positioning.
+	 *
+	 * Relative moves come from keyboard navigation:
+	 * - Arrow keys: ±1 character
+	 * - Ctrl+Arrow (word movement): typically ±2 to ±20 depending on word length
+	 * - Home/End within a line: could be larger but usually < 100
+	 *
+	 * Absolute positioning comes from:
+	 * - User tapping to a specific location
+	 * - IME selecting a suggestion
+	 * - Document navigation (Ctrl+Home/End)
+	 *
+	 * We use a threshold that covers most navigation while excluding likely absolute positions.
+	 * A threshold of 50 covers typical line lengths for word navigation.
+	 */
+	private fun isLikelyRelativeMove(delta: Int): Boolean {
+		val absDelta = kotlin.math.abs(delta)
+		// Single char moves are definitely relative
+		if (absDelta == 1) return true
+		// Word/line navigation is typically under 50 chars
+		// Larger moves are more likely to be absolute positioning
+		return absDelta in 2..50
 	}
 
 	// ============ CURSOR/COMPOSING EXTRACTION ============
