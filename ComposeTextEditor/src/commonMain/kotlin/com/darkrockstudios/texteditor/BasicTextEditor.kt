@@ -20,6 +20,7 @@ import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.toSize
 import com.darkrockstudios.texteditor.cursor.DrawCursor
+import com.darkrockstudios.texteditor.input.CaptureViewForIme
 import com.darkrockstudios.texteditor.input.TextEditorInputModifierElement
 import com.darkrockstudios.texteditor.richstyle.RichSpan
 import com.darkrockstudios.texteditor.scrollbar.TextEditorScrollbar
@@ -41,6 +42,9 @@ fun BasicTextEditor(
 	onRichSpanClick: RichSpanClickListener? = null,
 	decorateLine: LineDecorator? = null,
 ) {
+	// Capture platform view for IME cursor synchronization (Android only)
+	CaptureViewForIme()
+
 	val focusRequester = remember { FocusRequester() }
 	val interactionSource = remember { MutableInteractionSource() }
 	val clipboard = LocalClipboard.current

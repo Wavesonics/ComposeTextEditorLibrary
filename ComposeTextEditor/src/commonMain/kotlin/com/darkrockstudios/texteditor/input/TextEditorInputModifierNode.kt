@@ -32,6 +32,7 @@ internal class TextEditorInputModifierNode(
 
 	private val keyCommandHandler = TextEditorKeyCommandHandler()
 	private var inputSessionJob: Job? = null
+	private var imeCursorSync: ImeCursorSync? = null
 
 	override fun onFocusEvent(focusState: FocusState) {
 		if (enabled) {
@@ -40,19 +41,31 @@ internal class TextEditorInputModifierNode(
 			if (focusState.isFocused) {
 				launchTextInputSession()
 			} else {
-				inputSessionJob?.cancel()
-				inputSessionJob = null
+				stopTextInputSession()
 			}
 		} else {
 			// When disabled, we still want to receive keyboard events but not show as "focused"
 			state.updateFocus(false)
-			inputSessionJob?.cancel()
-			inputSessionJob = null
+			stopTextInputSession()
 		}
+	}
+
+	private fun stopTextInputSession() {
+		inputSessionJob?.cancel()
+		inputSessionJob = null
+		imeCursorSync?.stopSync()
+		imeCursorSync = null
 	}
 
 	private fun launchTextInputSession() {
 		inputSessionJob?.cancel()
+
+		// Start IME cursor synchronization (syncs cursor/selection changes to keyboard)
+		imeCursorSync?.stopSync()
+		imeCursorSync = ImeCursorSync(state).also { sync ->
+			sync.startSync { getPlatformView() }
+		}
+
 		inputSessionJob = coroutineScope.launch {
 			establishTextInputSession {
 				// Start platform-specific input method
