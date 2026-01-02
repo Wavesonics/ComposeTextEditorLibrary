@@ -411,9 +411,50 @@ private class TextEditorInputConnection(
 
 	// ============ OTHER REQUIRED METHODS ============
 
-	override fun beginBatchEdit(): Boolean = true
+	override fun beginBatchEdit(): Boolean {
+		state.platformExtensions.beginBatchEdit()
+		return true
+	}
 
-	override fun endBatchEdit(): Boolean = true
+	override fun endBatchEdit(): Boolean {
+		val batchEnded = state.platformExtensions.endBatchEdit()
+		if (batchEnded) {
+			// Force an IME selection update now that the batch has ended
+			// The IME cursor sync may have skipped updates during the batch
+			notifyImeSelectionChanged()
+		}
+		return true
+	}
+
+	/**
+	 * Notifies the IME of the current selection/cursor position.
+	 * Called when a batch edit ends to ensure the IME has the final state.
+	 */
+	private fun notifyImeSelectionChanged() {
+		val view = state.platformExtensions.view ?: return
+		val imm = view.context.getSystemService(android.content.Context.INPUT_METHOD_SERVICE)
+			as? android.view.inputmethod.InputMethodManager ?: return
+
+		val cursorIndex = state.getCharacterIndex(state.cursorPosition)
+		val selection = state.selector.selection
+		val selStart: Int
+		val selEnd: Int
+
+		if (selection != null) {
+			selStart = state.getCharacterIndex(selection.start)
+			selEnd = state.getCharacterIndex(selection.end)
+		} else {
+			selStart = cursorIndex
+			selEnd = cursorIndex
+		}
+
+		// Get composing region if active
+		val composingRange = state.composingRange
+		val candidatesStart = composingRange?.let { state.getCharacterIndex(it.start) } ?: -1
+		val candidatesEnd = composingRange?.let { state.getCharacterIndex(it.end) } ?: -1
+
+		imm.updateSelection(view, selStart, selEnd, candidatesStart, candidatesEnd)
+	}
 
 	override fun clearMetaKeyStates(states: Int): Boolean = true
 

@@ -34,6 +34,10 @@ actual class ImeCursorSync actual constructor(
 				Pair(cursorPos, selection)
 			}.collect { pair ->
 				val view = state.platformExtensions.view ?: return@collect
+
+				// Skip updates during batch edits - IME will get final state when batch ends
+				if (state.platformExtensions.isInBatchEdit) return@collect
+
 				val cursorPos = pair.first
 				val selection = pair.second
 

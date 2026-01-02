@@ -27,6 +27,38 @@ actual class PlatformTextEditorExtensions actual constructor(
 	var cursorAnchorMonitoringEnabled: Boolean = false
 
 	/**
+	 * Tracks the batch edit depth. IMEs may nest batch edits.
+	 * When > 0, IME cursor sync updates should be suppressed.
+	 */
+	private var batchEditDepth: Int = 0
+
+	/**
+	 * Whether a batch edit is currently in progress.
+	 * During batch edits, IME cursor sync updates are suppressed to avoid
+	 * unnecessary intermediate updates.
+	 */
+	val isInBatchEdit: Boolean get() = batchEditDepth > 0
+
+	/**
+	 * Begins a batch edit. Call [endBatchEdit] when done.
+	 * Batch edits can be nested.
+	 */
+	fun beginBatchEdit() {
+		batchEditDepth++
+	}
+
+	/**
+	 * Ends a batch edit started by [beginBatchEdit].
+	 * @return true if all batch edits have ended (depth == 0)
+	 */
+	fun endBatchEdit(): Boolean {
+		if (batchEditDepth > 0) {
+			batchEditDepth--
+		}
+		return batchEditDepth == 0
+	}
+
+	/**
 	 * Sends cursor anchor information to the IME.
 	 * This provides the keyboard with cursor position for floating toolbars and other UI.
 	 *
