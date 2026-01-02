@@ -43,7 +43,7 @@ fun BasicTextEditor(
 	decorateLine: LineDecorator? = null,
 ) {
 	// Capture platform view for IME cursor synchronization (Android only)
-	CaptureViewForIme()
+	CaptureViewForIme(state)
 
 	val focusRequester = remember { FocusRequester() }
 	val interactionSource = remember { MutableInteractionSource() }

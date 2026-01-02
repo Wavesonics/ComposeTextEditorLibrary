@@ -63,7 +63,7 @@ internal class TextEditorInputModifierNode(
 		// Start IME cursor synchronization (syncs cursor/selection changes to keyboard)
 		imeCursorSync?.stopSync()
 		imeCursorSync = ImeCursorSync(state).also { sync ->
-			sync.startSync { getPlatformView() }
+			sync.startSync()
 		}
 
 		inputSessionJob = coroutineScope.launch {

@@ -11,9 +11,9 @@ expect class ImeCursorSync(state: TextEditorState) {
 	/**
 	 * Start observing cursor changes and syncing to IME.
 	 * Should be called when the text input session starts.
-	 * @param viewProvider A function that returns the platform view (Android View on Android, null elsewhere)
+	 * On Android, the View is obtained from state.platformExtensions.view.
 	 */
-	fun startSync(viewProvider: () -> Any?)
+	fun startSync()
 
 	/**
 	 * Stop observing cursor changes.

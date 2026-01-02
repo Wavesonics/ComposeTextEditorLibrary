@@ -18,12 +18,10 @@ actual class ImeCursorSync actual constructor(
 	private val state: TextEditorState
 ) {
 	private var syncScope: CoroutineScope? = null
-	private var viewProvider: (() -> Any?)? = null
 	private var lastSelStart = -1
 	private var lastSelEnd = -1
 
-	actual fun startSync(viewProvider: () -> Any?) {
-		this.viewProvider = viewProvider
+	actual fun startSync() {
 		stopSync() // Cancel any existing sync
 
 		syncScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -35,7 +33,7 @@ actual class ImeCursorSync actual constructor(
 			) { cursorPos, selection ->
 				Pair(cursorPos, selection)
 			}.collect { pair ->
-				val view = viewProvider() as? View ?: return@collect
+				val view = state.platformExtensions.view ?: return@collect
 				val cursorPos = pair.first
 				val selection = pair.second
 

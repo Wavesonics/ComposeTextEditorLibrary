@@ -2,9 +2,9 @@ package com.darkrockstudios.texteditor.state
 
 import android.content.Context
 import android.graphics.Matrix
+import android.view.View
 import android.view.inputmethod.CursorAnchorInfo
 import android.view.inputmethod.InputMethodManager
-import com.darkrockstudios.texteditor.input.AndroidViewHolder
 
 /**
  * Android-specific extensions for TextEditorState.
@@ -13,6 +13,13 @@ import com.darkrockstudios.texteditor.input.AndroidViewHolder
 actual class PlatformTextEditorExtensions actual constructor(
 	private val state: TextEditorState
 ) {
+	/**
+	 * The Android View associated with this text editor instance.
+	 * Used for IME operations (cursor anchor info, selection updates).
+	 * Set by CaptureViewForIme composable when the editor is composed.
+	 */
+	internal var view: View? = null
+
 	/**
 	 * When true, cursor anchor info should be sent to the IME whenever the cursor moves.
 	 * Set by [requestCursorUpdates] when IME requests CURSOR_UPDATE_MONITOR mode.
@@ -28,7 +35,7 @@ actual class PlatformTextEditorExtensions actual constructor(
 	 * - On cursor changes when CURSOR_UPDATE_MONITOR is active
 	 */
 	fun sendCursorAnchorInfo() {
-		val view = AndroidViewHolder.currentView ?: return
+		val view = view ?: return
 		val imm = view.context.getSystemService(Context.INPUT_METHOD_SERVICE)
 				as? InputMethodManager ?: return
 
