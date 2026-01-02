@@ -54,6 +54,13 @@ class TextEditorState(
 	var composingRange: TextEditorRange? by mutableStateOf(null)
 		internal set
 
+	/**
+	 * Last calculated cursor pixel metrics.
+	 * Updated during rendering and used by IME for cursor anchor info.
+	 */
+	var lastCursorMetrics: CursorMetrics? = null
+		internal set
+
 	private var _lineOffsets by mutableStateOf(emptyList<LineWrap>())
 	val lineOffsets: List<LineWrap> get() = _lineOffsets
 

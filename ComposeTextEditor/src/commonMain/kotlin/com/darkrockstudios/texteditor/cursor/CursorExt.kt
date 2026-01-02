@@ -12,14 +12,24 @@ fun TextEditorState.calculateCursorPosition(): CursorMetrics {
 	val currentWrappedLine = lineOffsets[currentWrappedLineIndex]
 
 	val layout = currentWrappedLine.textLayoutResult
+	val virtualLineIndex = currentWrappedLine.virtualLineIndex
 
 	val cursorX = layout.getHorizontalPosition(charIndex, usePrimaryDirection = true)
 	val cursorY = currentWrappedLine.offset.y - scrollState.value
-	val lineHeight = layout.multiParagraph.getLineHeight(currentWrappedLine.virtualLineIndex)
+	val lineHeight = layout.multiParagraph.getLineHeight(virtualLineIndex)
+
+	// Calculate line metrics for IME cursor anchor info
+	val lineTop = cursorY
+	val lineBottom = cursorY + lineHeight
+	val lineBaseline = cursorY + layout.multiParagraph.getLineBaseline(virtualLineIndex) -
+			layout.multiParagraph.getLineTop(virtualLineIndex)
 
 	return CursorMetrics(
 		position = Offset(cursorX, cursorY),
-		height = lineHeight
+		height = lineHeight,
+		lineTop = lineTop,
+		lineBaseline = lineBaseline,
+		lineBottom = lineBottom
 	)
 }
 

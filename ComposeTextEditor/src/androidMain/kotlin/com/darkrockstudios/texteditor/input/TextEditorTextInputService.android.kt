@@ -503,7 +503,82 @@ private class TextEditorInputConnection(
 
 	override fun performPrivateCommand(action: String?, data: Bundle?): Boolean = false
 
-	override fun requestCursorUpdates(cursorUpdateMode: Int): Boolean = true
+	// Cursor update mode requested by the IME
+	private var cursorUpdateMode: Int = 0
+
+	override fun requestCursorUpdates(cursorUpdateMode: Int): Boolean {
+		this.cursorUpdateMode = cursorUpdateMode
+
+		// If immediate update requested, send cursor info now
+		if (cursorUpdateMode and InputConnection.CURSOR_UPDATE_IMMEDIATE != 0) {
+			sendCursorAnchorInfo()
+		}
+
+		// Return true to indicate we support cursor updates
+		// Note: For CURSOR_UPDATE_MONITOR mode, the ImeCursorSync class handles
+		// ongoing updates via InputMethodManager.updateSelection()
+		return true
+	}
+
+	/**
+	 * Sends cursor anchor information to the IME.
+	 * This provides the keyboard with cursor position for floating toolbars.
+	 */
+	private fun sendCursorAnchorInfo() {
+		val view = AndroidViewHolder.currentView ?: return
+		val imm = view.context.getSystemService(android.content.Context.INPUT_METHOD_SERVICE)
+				as? android.view.inputmethod.InputMethodManager ?: return
+
+		// Build cursor anchor info
+		val builder = android.view.inputmethod.CursorAnchorInfo.Builder()
+
+		// Set selection range
+		val cursorIndex = state.getCharacterIndex(state.cursorPosition)
+		val selection = state.selector.selection
+		if (selection != null) {
+			builder.setSelectionRange(
+				state.getCharacterIndex(selection.start),
+				state.getCharacterIndex(selection.end)
+			)
+		} else {
+			builder.setSelectionRange(cursorIndex, cursorIndex)
+		}
+
+		// Set composing text info if present
+		if (composingStart >= 0 && composingEnd > composingStart) {
+			builder.setComposingText(
+				composingStart,
+				state.getAllText().subSequence(
+					composingStart.coerceAtMost(state.getTextLength()),
+					composingEnd.coerceAtMost(state.getTextLength())
+				)
+			)
+		}
+
+		// Set the transformation matrix to convert from view coordinates to screen coordinates
+		val matrix = android.graphics.Matrix()
+		val location = IntArray(2)
+		view.getLocationOnScreen(location)
+		matrix.setTranslate(location[0].toFloat(), location[1].toFloat())
+		builder.setMatrix(matrix)
+
+		// Set insertion marker location if we have cursor metrics
+		state.lastCursorMetrics?.let { metrics ->
+			builder.setInsertionMarkerLocation(
+				metrics.position.x,
+				metrics.lineTop,
+				metrics.lineBaseline,
+				metrics.lineBottom,
+				0 // flags: 0 = visible
+			)
+		}
+
+		try {
+			imm.updateCursorAnchorInfo(view, builder.build())
+		} catch (e: Exception) {
+			// Ignore errors - some fields may be required on certain API levels
+		}
+	}
 
 	override fun getHandler(): Handler? = null
 
