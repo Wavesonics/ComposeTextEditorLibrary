@@ -75,9 +75,21 @@ actual class ImeCursorSync actual constructor(
 		val imm = view.context.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
 			?: return
 
+		// Get composing region if active
+		val composingRange = state.composingRange
+		val candidatesStart: Int
+		val candidatesEnd: Int
+		if (composingRange != null) {
+			candidatesStart = state.getCharacterIndex(composingRange.start)
+			candidatesEnd = state.getCharacterIndex(composingRange.end)
+		} else {
+			candidatesStart = -1
+			candidatesEnd = -1
+		}
+
 		// updateSelection parameters:
 		// selStart, selEnd: current selection (same value = cursor position)
 		// candidatesStart, candidatesEnd: composing region (-1 if none)
-		imm.updateSelection(view, selStart, selEnd, -1, -1)
+		imm.updateSelection(view, selStart, selEnd, candidatesStart, candidatesEnd)
 	}
 }
