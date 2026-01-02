@@ -143,25 +143,45 @@ private class TextEditorInputConnection(
 	override fun setComposingText(text: CharSequence?, newCursorPosition: Int): Boolean {
 		if (text == null) return false
 
-		// If we have existing composing text, replace it
-		if (composingStart >= 0 && composingEnd >= 0 && composingStart < composingEnd) {
-			val startOffset = state.getOffsetAtCharacter(composingStart)
-			val endOffset = state.getOffsetAtCharacter(composingEnd)
-			val range = TextEditorRange(startOffset, endOffset)
-			state.replace(range, text.toString())
+		when {
+			// If we have existing non-empty composing text, replace it
+			composingStart >= 0 && composingEnd > composingStart -> {
+				val startOffset = state.getOffsetAtCharacter(composingStart)
+				val endOffset = state.getOffsetAtCharacter(composingEnd)
+				val range = TextEditorRange(startOffset, endOffset)
+				state.replace(range, text.toString())
 
-			// Update composing range
-			composingEnd = composingStart + text.length
-		} else {
-			// Delete selection if present
-			if (state.selector.hasSelection()) {
-				state.selector.deleteSelection()
+				// Update composing range end
+				composingEnd = composingStart + text.length
 			}
 
-			// Insert composing text
-			composingStart = state.getCharacterIndex(state.cursorPosition)
-			state.insertStringAtCursor(text.toString())
-			composingEnd = composingStart + text.length
+			// Empty composing region (composingStart == composingEnd) - insert at that position
+			// Some IMEs set empty composing regions before inserting text
+			composingStart >= 0 && composingEnd == composingStart -> {
+				// Delete selection if present
+				if (state.selector.hasSelection()) {
+					state.selector.deleteSelection()
+				}
+
+				// Move cursor to composing position and insert
+				val insertOffset = state.getOffsetAtCharacter(composingStart)
+				state.cursor.updatePosition(insertOffset)
+				state.insertStringAtCursor(text.toString())
+				composingEnd = composingStart + text.length
+			}
+
+			// No composing region - insert at current cursor position
+			else -> {
+				// Delete selection if present
+				if (state.selector.hasSelection()) {
+					state.selector.deleteSelection()
+				}
+
+				// Insert composing text at cursor
+				composingStart = state.getCharacterIndex(state.cursorPosition)
+				state.insertStringAtCursor(text.toString())
+				composingEnd = composingStart + text.length
+			}
 		}
 
 		// Update the expected cursor position for IME sync
