@@ -194,9 +194,85 @@ private class TextEditorInputConnection(
 	}
 
 	override fun deleteSurroundingTextInCodePoints(beforeLength: Int, afterLength: Int): Boolean {
-		// For simplicity, treat code points as characters
-		// A more complete implementation would handle surrogate pairs
-		return deleteSurroundingText(beforeLength, afterLength)
+		val cursorIndex = state.getCharacterIndex(state.cursorPosition)
+		val fullText = state.getAllText()
+		val textLength = fullText.length
+
+		// Convert code points to character counts, handling surrogate pairs
+		val charsBefore = codePointsToChars(fullText, cursorIndex, beforeLength, backwards = true)
+		val charsAfter = codePointsToChars(fullText, cursorIndex, afterLength, backwards = false)
+
+		// Calculate delete range in characters
+		val deleteStart = maxOf(0, cursorIndex - charsBefore)
+		val deleteEnd = minOf(textLength, cursorIndex + charsAfter)
+
+		if (deleteStart < deleteEnd) {
+			val startOffset = state.getOffsetAtCharacter(deleteStart)
+			val endOffset = state.getOffsetAtCharacter(deleteEnd)
+			val range = TextEditorRange(startOffset, endOffset)
+			state.delete(range)
+		}
+
+		// Update the expected cursor position for IME sync
+		imeExpectedCursorPos = state.getCharacterIndex(state.cursorPosition)
+
+		return true
+	}
+
+	/**
+	 * Converts a count of code points to a count of UTF-16 characters (code units).
+	 * Handles surrogate pairs correctly for emoji and characters outside the BMP.
+	 *
+	 * @param text The full text
+	 * @param fromIndex Starting character index
+	 * @param codePointCount Number of code points to count
+	 * @param backwards If true, count backwards from fromIndex; if false, count forwards
+	 * @return Number of UTF-16 characters that represent the given code points
+	 */
+	private fun codePointsToChars(
+		text: CharSequence,
+		fromIndex: Int,
+		codePointCount: Int,
+		backwards: Boolean
+	): Int {
+		if (codePointCount <= 0) return 0
+
+		var charCount = 0
+		var codePointsRemaining = codePointCount
+
+		if (backwards) {
+			var index = fromIndex
+			while (codePointsRemaining > 0 && index > 0) {
+				index--
+				charCount++
+				// Check if this is the low surrogate of a surrogate pair
+				if (Character.isLowSurrogate(text[index]) && index > 0 &&
+					Character.isHighSurrogate(text[index - 1])
+				) {
+					// This is part of a surrogate pair, include the high surrogate too
+					index--
+					charCount++
+				}
+				codePointsRemaining--
+			}
+		} else {
+			var index = fromIndex
+			while (codePointsRemaining > 0 && index < text.length) {
+				charCount++
+				// Check if this is the high surrogate of a surrogate pair
+				if (Character.isHighSurrogate(text[index]) && index + 1 < text.length &&
+					Character.isLowSurrogate(text[index + 1])
+				) {
+					// This is a surrogate pair, include both characters
+					charCount++
+					index++
+				}
+				index++
+				codePointsRemaining--
+			}
+		}
+
+		return charCount
 	}
 
 	// ============ SELECTION METHODS ============
