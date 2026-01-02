@@ -3,6 +3,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.graphics.Color
 import com.darkrockstudios.texteditor.markdown.MarkdownConfiguration
 import com.darkrockstudios.texteditor.richstyle.HighlightSpanStyle
@@ -42,7 +43,7 @@ fun App() {
 
 	MaterialTheme(colorScheme = colorScheme) {
 		Surface {
-			var curLocation by remember { mutableStateOf(Destination.Menu) }
+			var curLocation by rememberSaveable { mutableStateOf(Destination.Menu) }
 
 			fun navigateTo(destination: Destination) {
 				curLocation = destination
