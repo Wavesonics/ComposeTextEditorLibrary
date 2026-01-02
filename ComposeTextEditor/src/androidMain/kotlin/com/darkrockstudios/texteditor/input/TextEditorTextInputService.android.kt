@@ -240,9 +240,22 @@ private class TextEditorInputConnection(
 	// ============ CURSOR/COMPOSING EXTRACTION ============
 
 	override fun getCursorCapsMode(reqModes: Int): Int {
-		// Return capitalization mode based on cursor position
-		// For simplicity, return 0 (no special caps mode)
-		return 0
+		if (reqModes == 0) return 0
+
+		val cursorIndex = state.getCharacterIndex(state.cursorPosition)
+
+		// At the very start of the document, suggest sentence caps
+		if (cursorIndex == 0) {
+			return reqModes and (android.text.TextUtils.CAP_MODE_CHARACTERS or
+					android.text.TextUtils.CAP_MODE_WORDS or
+					android.text.TextUtils.CAP_MODE_SENTENCES)
+		}
+
+		// Get text before cursor for analysis
+		val textBefore = getTextBeforeCursor(cursorIndex, 0) ?: return 0
+
+		// Use Android's TextUtils to determine caps mode
+		return android.text.TextUtils.getCapsMode(textBefore, textBefore.length, reqModes)
 	}
 
 	override fun getExtractedText(request: ExtractedTextRequest?, flags: Int): ExtractedText? {
