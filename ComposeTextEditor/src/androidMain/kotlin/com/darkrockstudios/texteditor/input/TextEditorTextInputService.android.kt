@@ -76,11 +76,15 @@ private class TextEditorInputConnection(
 ) : InputConnection {
 
 	// Composing text state (for autocomplete/suggestions preview)
+	// @Volatile ensures visibility across threads since IME callbacks may come from different threads
+	@Volatile
 	private var composingStart: Int = -1
+	@Volatile
 	private var composingEnd: Int = -1
 
 	// Track what position the IME thinks the cursor is at
 	// This helps us handle relative cursor movements correctly when IME has stale data
+	@Volatile
 	private var imeExpectedCursorPos: Int = state.getCharacterIndex(state.cursorPosition)
 
 	// ============ TEXT RETRIEVAL METHODS ============
