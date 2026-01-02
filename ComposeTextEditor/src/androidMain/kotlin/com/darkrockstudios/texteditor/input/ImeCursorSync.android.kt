@@ -56,6 +56,11 @@ actual class ImeCursorSync actual constructor(
 					lastSelStart = selStart
 					lastSelEnd = selEnd
 					updateImeSelection(view, selStart, selEnd)
+
+					// Send cursor anchor info if monitoring is enabled
+					if (state.platformExtensions.cursorAnchorMonitoringEnabled) {
+						state.platformExtensions.sendCursorAnchorInfo()
+					}
 				}
 			}
 		}

@@ -100,6 +100,13 @@ class TextEditorState(
 	internal val editManager = TextEditManager(this)
 	val richSpanManager = RichSpanManager(this)
 
+	/**
+	 * Platform-specific extensions for TextEditorState.
+	 * On Android: Contains IME-related functionality (cursor anchor monitoring, etc.)
+	 * On Desktop/WASM: Empty class (no-op)
+	 */
+	val platformExtensions = PlatformTextEditorExtensions(this)
+
 	val scrollState get() = scrollManager.scrollState
 
 	val editOperations = editManager.editOperations
