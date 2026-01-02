@@ -163,6 +163,9 @@ private class TextEditorInputConnection(
 		// Update the expected cursor position for IME sync
 		imeExpectedCursorPos = state.getCharacterIndex(state.cursorPosition)
 
+		// Notify state about composing region for visual feedback
+		state.updateComposingRange(composingStart, composingEnd)
+
 		return true
 	}
 
@@ -170,6 +173,8 @@ private class TextEditorInputConnection(
 		// Clear composing state
 		composingStart = -1
 		composingEnd = -1
+		// Clear visual feedback
+		state.clearComposingRange()
 		return true
 	}
 
@@ -399,6 +404,8 @@ private class TextEditorInputConnection(
 	override fun setComposingRegion(start: Int, end: Int): Boolean {
 		composingStart = start
 		composingEnd = end
+		// Notify state about composing region for visual feedback
+		state.updateComposingRange(composingStart, composingEnd)
 		return true
 	}
 

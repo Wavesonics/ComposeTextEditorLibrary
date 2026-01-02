@@ -1,10 +1,12 @@
 package com.darkrockstudios.texteditor
 
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.util.fastForEach
 import com.darkrockstudios.texteditor.state.TextEditorState
+import com.darkrockstudios.texteditor.utils.getBoundingBoxes
 
 internal fun DrawScope.DrawEditorText(
 	state: TextEditorState,
@@ -48,6 +50,77 @@ internal fun DrawScope.DrawEditorText(
 			}
 
 			drawRichSpans(virtualLine, state)
+
+			// Draw composing underline if this line intersects the composing region
+			state.composingRange?.let { composingRange ->
+				drawComposingUnderline(virtualLine, state, composingRange, style)
+			}
+		}
+	}
+}
+
+/**
+ * Draws an underline for the IME composing region (autocomplete preview).
+ */
+private fun DrawScope.drawComposingUnderline(
+	lineWrap: LineWrap,
+	state: TextEditorState,
+	composingRange: TextEditorRange,
+	style: TextEditorStyle
+) {
+	val textLayoutResult = lineWrap.textLayoutResult
+
+	// Get the range of text visible in this wrap
+	val wrapVisibleStart = textLayoutResult.getLineStart(lineWrap.virtualLineIndex)
+	val wrapVisibleEnd = textLayoutResult.getLineEnd(lineWrap.virtualLineIndex, visibleEnd = true)
+
+	// Calculate where in the original line this wrapped segment starts and ends
+	val lineStart = CharLineOffset(line = lineWrap.line, char = lineWrap.wrapStartsAtIndex)
+	val lineEnd = CharLineOffset(
+		line = lineWrap.line,
+		char = lineWrap.wrapStartsAtIndex + (wrapVisibleEnd - wrapVisibleStart)
+	)
+
+	// Convert to absolute character indices
+	val composingStartAbsChar = composingRange.start.toCharacterIndex(state)
+	val composingEndAbsChar = composingRange.end.toCharacterIndex(state)
+	val lineStartAbsChar = lineStart.toCharacterIndex(state)
+	val lineEndAbsChar = lineEnd.toCharacterIndex(state)
+
+	// Check if this wrapped segment intersects with the composing region
+	if (composingStartAbsChar <= lineEndAbsChar && composingEndAbsChar >= lineStartAbsChar) {
+		// Calculate the local range within this wrapped segment
+		val localStart = if (composingStartAbsChar <= lineStartAbsChar) {
+			wrapVisibleStart
+		} else {
+			(composingStartAbsChar - lineStartAbsChar) + wrapVisibleStart
+		}
+
+		val localEnd = if (composingEndAbsChar >= lineEndAbsChar) {
+			wrapVisibleEnd
+		} else {
+			((composingEndAbsChar - lineStartAbsChar) + wrapVisibleStart)
+				.coerceAtMost(wrapVisibleEnd)
+		}
+
+		if (localStart < localEnd) {
+			// Get bounding boxes for the composing text
+			val boxes = textLayoutResult.getBoundingBoxes(localStart, localEnd)
+
+			// Draw underline for each box
+			val scrollY = state.scrollState.value
+			val underlineColor = style.textColor.copy(alpha = 0.6f)
+			val strokeWidth = 2f
+
+			boxes.forEach { box ->
+				val y = lineWrap.offset.y - scrollY + box.bottom - strokeWidth
+				drawLine(
+					color = underlineColor,
+					start = Offset(box.left, y),
+					end = Offset(box.right, y),
+					strokeWidth = strokeWidth
+				)
+			}
 		}
 	}
 }

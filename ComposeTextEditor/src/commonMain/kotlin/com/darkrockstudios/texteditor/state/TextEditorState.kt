@@ -46,6 +46,14 @@ class TextEditorState(
 
 	var isFocused by mutableStateOf(false)
 
+	/**
+	 * The current IME composing region (for autocomplete preview).
+	 * When non-null, this text should be rendered with an underline.
+	 * This is set by the Android InputConnection during text composition.
+	 */
+	var composingRange: TextEditorRange? by mutableStateOf(null)
+		internal set
+
 	private var _lineOffsets by mutableStateOf(emptyList<LineWrap>())
 	val lineOffsets: List<LineWrap> get() = _lineOffsets
 
@@ -103,6 +111,33 @@ class TextEditorState(
 
 	fun updateFocus(focused: Boolean) {
 		isFocused = focused
+		// Clear composing state when focus is lost
+		if (!focused) {
+			composingRange = null
+		}
+	}
+
+	/**
+	 * Updates the IME composing region.
+	 * Called by the Android InputConnection when composing text changes.
+	 * @param startIndex Character index of composing start, or -1 to clear
+	 * @param endIndex Character index of composing end, or -1 to clear
+	 */
+	internal fun updateComposingRange(startIndex: Int, endIndex: Int) {
+		composingRange = if (startIndex >= 0 && endIndex > startIndex) {
+			val startOffset = getOffsetAtCharacter(startIndex)
+			val endOffset = getOffsetAtCharacter(endIndex)
+			TextEditorRange(startOffset, endOffset)
+		} else {
+			null
+		}
+	}
+
+	/**
+	 * Clears the IME composing region.
+	 */
+	internal fun clearComposingRange() {
+		composingRange = null
 	}
 
 	fun insertNewlineAtCursor() {
