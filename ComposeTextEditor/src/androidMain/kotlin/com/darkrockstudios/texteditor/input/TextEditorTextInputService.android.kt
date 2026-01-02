@@ -1,13 +1,12 @@
 package com.darkrockstudios.texteditor.input
 
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.text.InputType
 import android.view.KeyEvent
-import android.view.inputmethod.EditorInfo
-import android.view.inputmethod.ExtractedText
-import android.view.inputmethod.ExtractedTextRequest
-import android.view.inputmethod.InputConnection
+import android.view.inputmethod.*
+import androidx.annotation.RequiresApi
 import androidx.compose.ui.platform.PlatformTextInputMethodRequest
 import androidx.compose.ui.platform.PlatformTextInputSession
 import com.darkrockstudios.texteditor.TextEditorRange
@@ -45,12 +44,14 @@ private class TextEditorInputMethodRequest(
 
 	private fun configureEditorInfo(outAttributes: EditorInfo) {
 		// Basic text input with multi-line support
+		// Using TYPE_TEXT_VARIATION_NORMAL explicitly for standard text behavior
 		outAttributes.inputType = InputType.TYPE_CLASS_TEXT or
-				InputType.TYPE_TEXT_FLAG_MULTI_LINE or
-				InputType.TYPE_TEXT_FLAG_AUTO_CORRECT
+				InputType.TYPE_TEXT_VARIATION_NORMAL or
+				InputType.TYPE_TEXT_FLAG_MULTI_LINE
 
 		// Enable autocomplete and suggestions, prevent fullscreen mode
 		outAttributes.imeOptions = EditorInfo.IME_FLAG_NO_FULLSCREEN or
+				EditorInfo.IME_FLAG_NO_EXTRACT_UI or
 				EditorInfo.IME_ACTION_NONE
 
 		// Set initial selection/cursor position
@@ -262,6 +263,46 @@ private class TextEditorInputConnection(
 				selectionEnd = cursorIndex
 			}
 		}
+	}
+
+	@RequiresApi(Build.VERSION_CODES.S)
+	override fun getSurroundingText(
+		beforeLength: Int,
+		afterLength: Int,
+		flags: Int
+	): SurroundingText {
+		val cursorIndex = state.getCharacterIndex(state.cursorPosition)
+		val textLength = state.getTextLength()
+
+		// Calculate the range of text to return
+		val start = maxOf(0, cursorIndex - beforeLength)
+		val end = minOf(textLength, cursorIndex + afterLength)
+
+		// Get the text in the range
+		val text = if (start < end) {
+			state.getAllText().subSequence(start, end).toString()
+		} else {
+			""
+		}
+
+		// Calculate selection within the returned text
+		val selection = state.selector.selection
+		val selectionStart: Int
+		val selectionEnd: Int
+
+		if (selection != null) {
+			val selStart = state.getCharacterIndex(selection.start)
+			val selEnd = state.getCharacterIndex(selection.end)
+			// Adjust selection positions relative to the returned text's start
+			selectionStart = (selStart - start).coerceIn(0, text.length)
+			selectionEnd = (selEnd - start).coerceIn(0, text.length)
+		} else {
+			// No selection, cursor position relative to returned text
+			selectionStart = (cursorIndex - start).coerceIn(0, text.length)
+			selectionEnd = selectionStart
+		}
+
+		return SurroundingText(text, selectionStart, selectionEnd, start)
 	}
 
 	// ============ COMPOSING REGION METHODS ============
