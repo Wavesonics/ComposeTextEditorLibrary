@@ -87,6 +87,14 @@ class TextEditorCursorState(
 		styles = emptySet()
 	}
 
+	/**
+	 * Refreshes cursor styles based on the current cursor position.
+	 * Useful when styles might be stale after text operations that don't update cursor styles.
+	 */
+	fun refreshStylesFromPosition() {
+		updateStylesFromPosition(_position)
+	}
+
 	private fun updateStylesFromPosition(position: CharLineOffset) {
 		// If we're at the start of the line and it's not the first line,
 		// check the end of the previous line

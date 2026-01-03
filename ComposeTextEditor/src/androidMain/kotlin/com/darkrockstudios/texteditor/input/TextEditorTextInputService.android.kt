@@ -123,16 +123,42 @@ private class TextEditorInputConnection(
 	override fun commitText(text: CharSequence?, newCursorPosition: Int): Boolean {
 		if (text == null) return false
 
-		// Finish any composing text first
-		finishComposingText()
+		when {
+			// If there's a composing region, replace it (inheriting styles for autocorrect)
+			composingStart >= 0 && composingEnd > composingStart -> {
+				val startOffset = state.getOffsetAtCharacter(composingStart)
+				val endOffset = state.getOffsetAtCharacter(composingEnd)
+				val range = TextEditorRange(startOffset, endOffset)
+				// Inherit styles from the text being replaced (e.g., preserve bold during autocorrect)
+				state.replace(range, text.toString(), inheritStyle = true)
+			}
 
-		// Delete selection if present
-		if (state.selector.hasSelection()) {
-			state.selector.deleteSelection()
+			// Empty composing region - insert at composing position
+			composingStart >= 0 && composingEnd == composingStart -> {
+				if (state.selector.hasSelection()) {
+					state.selector.deleteSelection()
+				}
+				val insertOffset = state.getOffsetAtCharacter(composingStart)
+				state.cursor.updatePosition(insertOffset)
+				// Refresh cursor styles from surrounding text to ensure proper style inheritance
+				state.cursor.refreshStylesFromPosition()
+				state.insertStringAtCursor(text.toString())
+			}
+
+			// No composing region - delete selection if present and insert at cursor
+			else -> {
+				if (state.selector.hasSelection()) {
+					state.selector.deleteSelection()
+				}
+				// Refresh cursor styles from surrounding text to ensure proper style inheritance
+				// This handles cases like deleteSurroundingText + commitText where styles might be stale
+				state.cursor.refreshStylesFromPosition()
+				state.insertStringAtCursor(text.toString())
+			}
 		}
 
-		// Insert the committed text
-		state.insertStringAtCursor(text.toString())
+		// Clear composing state after handling the commit
+		finishComposingText()
 
 		// Update the expected cursor position for IME sync
 		imeExpectedCursorPos = state.getCharacterIndex(state.cursorPosition)
@@ -149,7 +175,8 @@ private class TextEditorInputConnection(
 				val startOffset = state.getOffsetAtCharacter(composingStart)
 				val endOffset = state.getOffsetAtCharacter(composingEnd)
 				val range = TextEditorRange(startOffset, endOffset)
-				state.replace(range, text.toString())
+				// Inherit styles from the text being replaced (e.g., preserve bold during autocorrect)
+				state.replace(range, text.toString(), inheritStyle = true)
 
 				// Update composing range end
 				composingEnd = composingStart + text.length
@@ -166,6 +193,8 @@ private class TextEditorInputConnection(
 				// Move cursor to composing position and insert
 				val insertOffset = state.getOffsetAtCharacter(composingStart)
 				state.cursor.updatePosition(insertOffset)
+				// Refresh cursor styles from surrounding text to ensure proper style inheritance
+				state.cursor.refreshStylesFromPosition()
 				state.insertStringAtCursor(text.toString())
 				composingEnd = composingStart + text.length
 			}
@@ -176,6 +205,9 @@ private class TextEditorInputConnection(
 				if (state.selector.hasSelection()) {
 					state.selector.deleteSelection()
 				}
+
+				// Refresh cursor styles from surrounding text to ensure proper style inheritance
+				state.cursor.refreshStylesFromPosition()
 
 				// Insert composing text at cursor
 				composingStart = state.getCharacterIndex(state.cursorPosition)
