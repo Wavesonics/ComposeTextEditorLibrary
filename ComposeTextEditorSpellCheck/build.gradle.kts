@@ -29,6 +29,10 @@ kotlin {
 		binaries.library()
 	}
 
+	iosX64()
+	iosArm64()
+	iosSimulatorArm64()
+
 	sourceSets {
 		val commonMain by getting {
 			dependencies {
@@ -87,6 +91,11 @@ kotlin {
 		}
 		val wasmJsMain by getting {
 			dependsOn(symSpellMain)
+		}
+		// iOS uses both SymSpell and platform spell checker (like Desktop and Android)
+		val iosMain by getting {
+			dependsOn(symSpellMain)
+			dependsOn(platformSpellMain)
 		}
 	}
 }
