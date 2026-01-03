@@ -140,8 +140,6 @@ private class TextEditorInputConnection(
 				}
 				val insertOffset = state.getOffsetAtCharacter(composingStart)
 				state.cursor.updatePosition(insertOffset)
-				// Refresh cursor styles from surrounding text to ensure proper style inheritance
-				state.cursor.refreshStylesFromPosition()
 				state.insertStringAtCursor(text.toString())
 			}
 
@@ -150,9 +148,6 @@ private class TextEditorInputConnection(
 				if (state.selector.hasSelection()) {
 					state.selector.deleteSelection()
 				}
-				// Refresh cursor styles from surrounding text to ensure proper style inheritance
-				// This handles cases like deleteSurroundingText + commitText where styles might be stale
-				state.cursor.refreshStylesFromPosition()
 				state.insertStringAtCursor(text.toString())
 			}
 		}
@@ -193,8 +188,6 @@ private class TextEditorInputConnection(
 				// Move cursor to composing position and insert
 				val insertOffset = state.getOffsetAtCharacter(composingStart)
 				state.cursor.updatePosition(insertOffset)
-				// Refresh cursor styles from surrounding text to ensure proper style inheritance
-				state.cursor.refreshStylesFromPosition()
 				state.insertStringAtCursor(text.toString())
 				composingEnd = composingStart + text.length
 			}
@@ -205,9 +198,6 @@ private class TextEditorInputConnection(
 				if (state.selector.hasSelection()) {
 					state.selector.deleteSelection()
 				}
-
-				// Refresh cursor styles from surrounding text to ensure proper style inheritance
-				state.cursor.refreshStylesFromPosition()
 
 				// Insert composing text at cursor
 				composingStart = state.getCharacterIndex(state.cursorPosition)
