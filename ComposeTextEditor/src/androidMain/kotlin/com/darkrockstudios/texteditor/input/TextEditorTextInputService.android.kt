@@ -513,7 +513,7 @@ private class TextEditorInputConnection(
 	private fun notifyImeSelectionChanged() {
 		val view = state.platformExtensions.view ?: return
 		val imm = view.context.getSystemService(android.content.Context.INPUT_METHOD_SERVICE)
-			as? android.view.inputmethod.InputMethodManager ?: return
+				as? InputMethodManager ?: return
 
 		val cursorIndex = state.getCharacterIndex(state.cursorPosition)
 		val selection = state.selector.selection
@@ -646,14 +646,14 @@ private class TextEditorInputConnection(
 		state.platformExtensions.cursorAnchorMonitoringEnabled = false
 	}
 
-	override fun commitCompletion(text: android.view.inputmethod.CompletionInfo?): Boolean = false
+	override fun commitCompletion(text: CompletionInfo?): Boolean = false
 
-	override fun commitCorrection(correctionInfo: android.view.inputmethod.CorrectionInfo?): Boolean = false
+	override fun commitCorrection(correctionInfo: CorrectionInfo?): Boolean = false
 
 	override fun reportFullscreenMode(enabled: Boolean): Boolean = false
 
 	override fun commitContent(
-		inputContentInfo: android.view.inputmethod.InputContentInfo,
+		inputContentInfo: InputContentInfo,
 		flags: Int,
 		opts: Bundle?
 	): Boolean {
