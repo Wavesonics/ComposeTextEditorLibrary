@@ -1,4 +1,7 @@
+@file:OptIn(ExperimentalWasmDsl::class)
+
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
+import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -24,6 +27,21 @@ kotlin {
 			}
 		}
 		binaries.executable()
+	}
+
+	iosX64()
+	iosArm64()
+	iosSimulatorArm64()
+
+	listOf(
+		iosX64(),
+		iosArm64(),
+		iosSimulatorArm64()
+	).forEach { iosTarget ->
+		iosTarget.binaries.framework {
+			baseName = "SampleApp"
+			isStatic = true
+		}
 	}
 
 	sourceSets {
@@ -88,6 +106,12 @@ kotlin {
 			dependencies {
 				implementation(libs.symspellkt)
 				implementation(libs.symspellkt.fdic)
+			}
+		}
+
+		val iosMain by getting {
+			dependencies {
+				implementation(libs.platform.spellchecker)
 			}
 		}
 	}
