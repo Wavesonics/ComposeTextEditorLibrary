@@ -1,8 +1,12 @@
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.text.AnnotatedString
@@ -81,8 +85,11 @@ fun FindTextEditorDemoUi(
 			}
 		}
 
-		// Find bar at top (when visible)
-		if (showFindBar) {
+		AnimatedVisibility(
+			visible = showFindBar,
+			enter = expandVertically(expandFrom = Alignment.Top),
+			exit = shrinkVertically(shrinkTowards = Alignment.Top)
+		) {
 			FindBar(
 				state = findState,
 				onClose = { showFindBar = false }

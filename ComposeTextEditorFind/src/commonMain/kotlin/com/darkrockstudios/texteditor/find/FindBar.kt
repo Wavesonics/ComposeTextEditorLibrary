@@ -8,7 +8,9 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -51,11 +53,27 @@ fun FindBar(
 		}
 	}
 
+	// Sizes
+	val buttonSize = 32.dp
+	val iconSize = 20.dp
+	val clearButtonSize = 18.dp
+	val clearIconSize = 14.dp
+	val fontSize = 14.sp
+	val borderWidth = 1.dp
+	val borderRadius = 4.dp
+	val fieldPaddingHorizontal = 8.dp
+	val fieldPaddingVertical = 6.dp
+	val barPaddingHorizontal = 8.dp
+	val rowSpacing = 4.dp
+
+	// Colors
 	val textColor = MaterialTheme.colorScheme.onSurface
-	val textStyle = TextStyle(fontSize = 14.sp, color = textColor)
 	val borderColor = MaterialTheme.colorScheme.outline
 	val cursorColor = MaterialTheme.colorScheme.primary
 	val placeholderColor = MaterialTheme.colorScheme.onSurfaceVariant
+
+	// Styles
+	val textStyle = TextStyle(fontSize = fontSize, color = textColor)
 
 	Surface(
 		modifier = modifier.fillMaxWidth(),
@@ -65,20 +83,20 @@ fun FindBar(
 		Column(
 			modifier = Modifier
 				.fillMaxWidth()
-				.padding(horizontal = 8.dp)
+				.padding(horizontal = barPaddingHorizontal)
 		) {
 			// First row: Find
 			Row(
 				modifier = Modifier.fillMaxWidth(),
 				verticalAlignment = Alignment.CenterVertically,
-				horizontalArrangement = Arrangement.spacedBy(8.dp)
+				horizontalArrangement = Arrangement.spacedBy(rowSpacing)
 			) {
 				// Search input with custom styling
 				Box(
 					modifier = Modifier
 						.weight(1f)
-						.border(1.dp, borderColor, RoundedCornerShape(4.dp))
-						.padding(horizontal = 8.dp, vertical = 6.dp),
+						.border(borderWidth, borderColor, RoundedCornerShape(borderRadius))
+						.padding(horizontal = fieldPaddingHorizontal, vertical = fieldPaddingVertical),
 					contentAlignment = Alignment.CenterStart
 				) {
 					Row(
@@ -139,12 +157,12 @@ fun FindBar(
 									searchText = ""
 									state.clearSearch()
 								},
-								modifier = Modifier.size(18.dp)
+								modifier = Modifier.size(clearButtonSize)
 							) {
 								Icon(
 									imageVector = Icons.Default.Clear,
 									contentDescription = strings.clearSearch,
-									modifier = Modifier.size(14.dp)
+									modifier = Modifier.size(clearIconSize)
 								)
 							}
 						}
@@ -169,40 +187,57 @@ fun FindBar(
 				}
 
 				// Previous button
-				TextButton(
+				IconButton(
 					onClick = { state.findPrevious() },
 					enabled = state.matchCount > 0,
-					contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
+					modifier = Modifier.size(buttonSize)
 				) {
-					Text(strings.previousMatch)
+					Icon(
+						imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+						contentDescription = strings.previousMatch,
+						modifier = Modifier.size(iconSize)
+					)
 				}
 
 				// Next button
-				TextButton(
+				IconButton(
 					onClick = { state.findNext() },
 					enabled = state.matchCount > 0,
-					contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
+					modifier = Modifier.size(buttonSize)
 				) {
-					Text(strings.nextMatch)
+					Icon(
+						imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+						contentDescription = strings.nextMatch,
+						modifier = Modifier.size(iconSize)
+					)
 				}
 
 				// Replace toggle button
-				TextButton(
+				IconButton(
 					onClick = { showReplace = !showReplace },
-					contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
+					modifier = Modifier.size(buttonSize)
 				) {
-					Text(if (showReplace) strings.hideReplace else strings.showReplace)
+					Icon(
+						imageVector = Icons.Default.FindReplace,
+						contentDescription = if (showReplace) strings.hideReplace else strings.showReplace,
+						modifier = Modifier.size(iconSize),
+						tint = if (showReplace) MaterialTheme.colorScheme.primary else LocalContentColor.current
+					)
 				}
 
 				// Close button
-				TextButton(
+				IconButton(
 					onClick = {
 						state.clearSearch()
 						onClose()
 					},
-					contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
+					modifier = Modifier.size(buttonSize)
 				) {
-					Text(strings.close)
+					Icon(
+						imageVector = Icons.Default.Close,
+						contentDescription = strings.close,
+						modifier = Modifier.size(iconSize)
+					)
 				}
 			}
 
@@ -211,16 +246,16 @@ fun FindBar(
 				Row(
 					modifier = Modifier
 						.fillMaxWidth()
-						.padding(top = 4.dp),
+						.padding(top = rowSpacing),
 					verticalAlignment = Alignment.CenterVertically,
-					horizontalArrangement = Arrangement.spacedBy(8.dp)
+					horizontalArrangement = Arrangement.spacedBy(rowSpacing)
 				) {
 					// Replace input with custom styling
 					Box(
 						modifier = Modifier
 							.weight(1f)
-							.border(1.dp, borderColor, RoundedCornerShape(4.dp))
-							.padding(horizontal = 8.dp, vertical = 6.dp),
+							.border(borderWidth, borderColor, RoundedCornerShape(borderRadius))
+							.padding(horizontal = fieldPaddingHorizontal, vertical = fieldPaddingVertical),
 						contentAlignment = Alignment.CenterStart
 					) {
 						Row(
@@ -269,12 +304,12 @@ fun FindBar(
 							if (replaceText.isNotEmpty()) {
 								IconButton(
 									onClick = { replaceText = "" },
-									modifier = Modifier.size(18.dp)
+									modifier = Modifier.size(clearButtonSize)
 								) {
 									Icon(
 										imageVector = Icons.Default.Clear,
 										contentDescription = strings.clearSearch,
-										modifier = Modifier.size(14.dp)
+										modifier = Modifier.size(clearIconSize)
 									)
 								}
 							}
@@ -282,21 +317,29 @@ fun FindBar(
 					}
 
 					// Replace button
-					TextButton(
+					IconButton(
 						onClick = { state.replaceCurrent(replaceText) },
 						enabled = state.matchCount > 0,
-						contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
+						modifier = Modifier.size(buttonSize)
 					) {
-						Text(strings.replace)
+						Icon(
+							imageVector = Icons.Default.Done,
+							contentDescription = strings.replace,
+							modifier = Modifier.size(iconSize)
+						)
 					}
 
 					// Replace All button
-					TextButton(
+					IconButton(
 						onClick = { state.replaceAll(replaceText) },
 						enabled = state.matchCount > 0,
-						contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
+						modifier = Modifier.size(buttonSize)
 					) {
-						Text(strings.replaceAll)
+						Icon(
+							imageVector = Icons.Default.DoneAll,
+							contentDescription = strings.replaceAll,
+							modifier = Modifier.size(iconSize)
+						)
 					}
 				}
 			}
