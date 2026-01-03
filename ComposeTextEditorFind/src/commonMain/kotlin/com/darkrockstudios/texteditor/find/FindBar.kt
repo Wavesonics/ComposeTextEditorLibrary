@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
  * @param state The FindState managing the search
  * @param onClose Called when the user closes the find bar
  * @param modifier Modifier for the find bar
+ * @param strings Localizable strings for the UI. Defaults to English.
  * @param requestFocus Whether to request focus on the search field when shown
  */
 @Composable
@@ -28,6 +29,7 @@ fun FindBar(
 	state: FindState,
 	onClose: () -> Unit,
 	modifier: Modifier = Modifier,
+	strings: FindBarStrings = FindBarStrings.Default,
 	requestFocus: Boolean = true
 ) {
 	var searchText by remember { mutableStateOf(state.query) }
@@ -84,7 +86,7 @@ fun FindBar(
 							}
 						} else false
 					},
-				placeholder = { Text("Find...") },
+				placeholder = { Text(strings.placeholder) },
 				singleLine = true,
 				trailingIcon = {
 					if (searchText.isNotEmpty()) {
@@ -97,7 +99,7 @@ fun FindBar(
 						) {
 							Icon(
 								imageVector = Icons.Default.Clear,
-								contentDescription = "Clear search",
+								contentDescription = strings.clearSearch,
 								modifier = Modifier.size(16.dp)
 							)
 						}
@@ -113,9 +115,9 @@ fun FindBar(
 			if (state.query.isNotEmpty()) {
 				Text(
 					text = if (state.matchCount > 0) {
-						"${state.currentMatchIndex + 1} of ${state.matchCount}"
+						strings.matchCount(state.currentMatchIndex + 1, state.matchCount)
 					} else {
-						"No matches"
+						strings.noMatches
 					},
 					style = MaterialTheme.typography.bodySmall,
 					color = if (state.matchCount == 0) {
@@ -131,7 +133,7 @@ fun FindBar(
 				onClick = { state.findPrevious() },
 				enabled = state.matchCount > 0
 			) {
-				Text("Prev")
+				Text(strings.previousMatch)
 			}
 
 			// Next button
@@ -139,7 +141,7 @@ fun FindBar(
 				onClick = { state.findNext() },
 				enabled = state.matchCount > 0
 			) {
-				Text("Next")
+				Text(strings.nextMatch)
 			}
 
 			// Close button
@@ -147,7 +149,7 @@ fun FindBar(
 				state.clearSearch()
 				onClose()
 			}) {
-				Text("Close")
+				Text(strings.close)
 			}
 		}
 	}
