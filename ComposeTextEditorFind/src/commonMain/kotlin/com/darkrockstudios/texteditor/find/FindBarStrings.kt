@@ -17,6 +17,11 @@ data class FindBarStrings(
 	 * Example: "3 of 15"
 	 */
 	val matchCount: (current: Int, total: Int) -> String,
+	val replacePlaceholder: String,
+	val replace: String,
+	val replaceAll: String,
+	val showReplace: String,
+	val hideReplace: String,
 ) {
 	companion object {
 		/**
@@ -29,7 +34,12 @@ data class FindBarStrings(
 			previousMatch = "Prev",
 			nextMatch = "Next",
 			close = "Close",
-			matchCount = { current, total -> "$current of $total" }
+			matchCount = { current, total -> "$current of $total" },
+			replacePlaceholder = "Replace with...",
+			replace = "Replace",
+			replaceAll = "All",
+			showReplace = "Replace",
+			hideReplace = "Hide",
 		)
 	}
 }

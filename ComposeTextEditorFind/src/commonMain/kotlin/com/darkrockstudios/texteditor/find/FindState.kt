@@ -160,6 +160,72 @@ class FindState(
 		clearHighlights()
 		_matches.clear()
 		currentMatchIndex = -1
+		textState.selector.clearSelection()
+	}
+
+	/**
+	 * Replace the current match with the given text and move to the next match.
+	 * @param replaceText The text to replace with
+	 * @return true if a replacement was made, false if no current match
+	 */
+	fun replaceCurrent(replaceText: String): Boolean {
+		if (currentMatchIndex < 0 || currentMatchIndex >= _matches.size) return false
+
+		val match = _matches[currentMatchIndex]
+
+		// Clear highlights before replacement
+		clearHighlights()
+
+		// Perform the replacement
+		textState.replace(match, replaceText)
+
+		// Re-run the search to update matches
+		// The debounced search will also run, but we do it immediately for responsiveness
+		val results = textState.findAll(query, caseSensitive)
+		_matches.clear()
+		_matches.addAll(results)
+
+		// Adjust current index - stay at same index if possible, or wrap
+		if (_matches.isEmpty()) {
+			currentMatchIndex = -1
+		} else {
+			// Keep at same index (which is now the next match after replacement)
+			// but clamp to valid range
+			currentMatchIndex = currentMatchIndex.coerceIn(0, _matches.lastIndex)
+		}
+
+		// Update highlights and navigate
+		updateHighlights()
+		if (_matches.isNotEmpty()) {
+			goToCurrentMatch()
+		}
+
+		return true
+	}
+
+	/**
+	 * Replace all matches with the given text.
+	 * @param replaceText The text to replace with
+	 * @return The number of replacements made
+	 */
+	fun replaceAll(replaceText: String): Int {
+		if (_matches.isEmpty()) return 0
+
+		val count = _matches.size
+
+		// Clear highlights before replacements
+		clearHighlights()
+
+		// Replace from end to start to preserve positions
+		_matches.sortedByDescending { it.start }.forEach { match ->
+			textState.replace(match, replaceText)
+		}
+
+		// Clear matches since they're all replaced
+		_matches.clear()
+		currentMatchIndex = -1
+
+		return count
 	}
 
 	/**
