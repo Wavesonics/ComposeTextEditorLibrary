@@ -50,6 +50,7 @@ kotlin {
 			dependencies {
 				implementation(projects.composeTextEditor)
 				implementation(projects.composeTextEditorSpellCheck)
+				implementation(projects.composeTextEditorFind)
 				implementation(compose.runtime)
 				implementation(compose.foundation)
 				implementation(compose.material3)

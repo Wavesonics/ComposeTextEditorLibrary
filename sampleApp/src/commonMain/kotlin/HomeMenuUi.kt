@@ -41,6 +41,10 @@ fun HomeMenu(
 			Button(onClick = { navigateTo(Destination.CodeEditor) }) {
 				Text("Code Editor")
 			}
+
+			Button(onClick = { navigateTo(Destination.FindDemo) }) {
+				Text("Find Demo (Ctrl+F)")
+			}
 		}
 	}
 }
