@@ -5,17 +5,20 @@ plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
-    alias(libs.plugins.android.library)
+	alias(libs.plugins.android.kmp.library)
 	alias(libs.plugins.mavenPublish)
 }
 
 kotlin {
     applyDefaultHierarchyTemplate()
     jvm("desktop")
-    androidTarget {
-        publishLibraryVariants("release")
-	    compilerOptions {
-		    jvmTarget.set(JvmTarget.fromTarget(libs.versions.jvm.get()))
+	androidLibrary {
+		namespace = "com.darkrockstudios.texteditor"
+		compileSdk = libs.versions.android.compileSdk.get().toInt()
+		minSdk = libs.versions.android.minSdk.get().toInt()
+
+		compilerOptions {
+			jvmTarget.set(JvmTarget.fromTarget(libs.versions.jvm.get()))
         }
     }
     @OptIn(ExperimentalWasmDsl::class)
@@ -65,18 +68,6 @@ kotlin {
                 implementation(libs.kotlinx.coroutines.test.jvm)
             }
         }
-    }
-}
-
-android {
-    namespace = "com.darkrockstudios.texteditor"
-    compileSdk = libs.versions.android.compileSdk.get().toInt()
-    defaultConfig {
-        minSdk = libs.versions.android.minSdk.get().toInt()
-    }
-    compileOptions {
-        sourceCompatibility = JavaVersion.toVersion(libs.versions.jvm.get().toInt())
-        targetCompatibility = JavaVersion.toVersion(libs.versions.jvm.get().toInt())
     }
 }
 
