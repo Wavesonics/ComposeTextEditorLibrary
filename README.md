@@ -10,7 +10,7 @@ Compose has been missing a **Rich Text Editor** since its inception.
 I've [taken a crack](https://github.com/Wavesonics/richtext-compose-multiplatform) at this
 previously, as have [others](https://github.com/MohamedRejeb/Compose-Rich-Editor).
 
-However they have all suffered from fundamental limitations in `BasicTextField`, the foundation of
+However, they have all suffered from fundamental limitations in `BasicTextField`, the foundation of
 all text entry in Compose.
 
 This project is an attempt to re-implement text entry from scratch to finally have a
@@ -74,9 +74,13 @@ Text Editor:
 
 `implementation("com.darkrockstudios:composetexteditor:1.5.0")`
 
-Text Editor with Spell Checking:
+Spell Checking addon:
 
 `implementation("com.darkrockstudios:composetexteditor-spellcheck:1.5.0")`
+
+Find & Replace addon:
+
+`implementation("com.darkrockstudios:composetexteditor-find:1.5.0")`
 
 
 [badge-android]: http://img.shields.io/badge/-android-6EDB8D.svg?style=flat
