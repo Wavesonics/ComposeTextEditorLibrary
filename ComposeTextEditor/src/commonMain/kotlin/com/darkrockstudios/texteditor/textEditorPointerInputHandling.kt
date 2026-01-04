@@ -21,10 +21,11 @@ data class SelectionHandle(
 internal fun Modifier.textEditorPointerInputHandling(
 	state: TextEditorState,
 	onSpanClick: RichSpanClickListener? = null,
+	onContextMenuRequest: ((Offset) -> Unit)? = null,
 ): Modifier {
 	return this
 		.handleDragInput(state)
-		.handleTextInteractions(state, onSpanClick)
+		.handleTextInteractions(state, onSpanClick, onContextMenuRequest)
 		.detectMouseClicksImperatively(
 			onClick = { offset: Offset ->
 				val position = state.getOffsetAtPosition(offset)
@@ -61,8 +62,13 @@ private fun Modifier.handleDragInput(state: TextEditorState): Modifier {
 					state.selector.setDraggingHandle(handle.isStart)
 				}
 			} else if (isMouse) {
-				mouseSelectionAnchor = state.getOffsetAtPosition(initialPosition)
-				state.selector.startSelection(position = mouseSelectionAnchor, isTouch = false)
+
+				// Only start selection drag on primary (left) mouse button
+				// Secondary (right) click should preserve existing selection for context menu
+				if (currentEvent.buttons.isPrimaryPressed && !currentEvent.buttons.isSecondaryPressed) {
+					mouseSelectionAnchor = state.getOffsetAtPosition(initialPosition)
+					state.selector.startSelection(position = mouseSelectionAnchor, isTouch = false)
+				}
 			}
 
 			val pointerId = down.id
@@ -155,7 +161,8 @@ private fun handleSpanInteraction(
 
 private fun Modifier.handleTextInteractions(
 	state: TextEditorState,
-	onSpanClick: RichSpanClickListener?
+	onSpanClick: RichSpanClickListener?,
+	onContextMenuRequest: ((Offset) -> Unit)?
 ): Modifier {
 	return pointerInput(Unit) {
 		awaitEachGesture {
@@ -172,10 +179,14 @@ private fun Modifier.handleTextInteractions(
 					PointerEventType.Press -> {
 						val position = eventChange.position
 
-						val handle = findHandleAtPosition(position, state)
-						if (handle != null) {
-							didHandlePress = true
-							break
+						// Only check for handle interaction on touch events
+						// Mouse right-clicks should always fall through to context menu
+						if (eventChange.type == PointerType.Touch) {
+							val handle = findHandleAtPosition(position, state)
+							if (handle != null) {
+								didHandlePress = true
+								break
+							}
 						}
 
 						when (eventChange.type) {
@@ -189,6 +200,7 @@ private fun Modifier.handleTextInteractions(
 									state.selector.selectWordAt(wordPosition)
 									didLongPress = true
 									didHandlePress = true
+									onContextMenuRequest?.invoke(position)
 								}
 							}
 
@@ -208,6 +220,7 @@ private fun Modifier.handleTextInteractions(
 										SpanClickType.SECONDARY_CLICK,
 										onSpanClick
 									)
+									onContextMenuRequest?.invoke(position)
 									didHandlePress = true
 								}
 							}
