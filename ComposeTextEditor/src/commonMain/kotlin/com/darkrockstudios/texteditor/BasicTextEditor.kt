@@ -44,6 +44,7 @@ fun BasicTextEditor(
 	autoFocus: Boolean = false,
 	style: TextEditorStyle = rememberTextEditorStyle(),
 	contextMenuStrings: ContextMenuStrings = ContextMenuStrings.Default,
+	contextMenuState: TextEditorContextMenuState? = null,
 	onRichSpanClick: RichSpanClickListener? = null,
 	decorateLine: LineDecorator? = null,
 ) {
@@ -58,7 +59,10 @@ fun BasicTextEditor(
 		TextEditorInputModifierElement(state, clipboard, enabled)
 	}
 
-	val contextMenuState = remember { TextEditorContextMenuState() }
+	// Use provided context menu state or create internal one
+	val internalContextMenuState = remember { TextEditorContextMenuState() }
+	val effectiveContextMenuState = contextMenuState ?: internalContextMenuState
+
 	val contextMenuActions = remember(state, clipboard) {
 		ContextMenuActions(state, clipboard, state.scope)
 	}
@@ -84,7 +88,7 @@ fun BasicTextEditor(
 	}
 
 	TextEditorContextMenuProvider(
-		menuState = contextMenuState,
+		menuState = effectiveContextMenuState,
 		actions = contextMenuActions,
 		strings = contextMenuStrings,
 		enabled = enabled,
@@ -118,9 +122,7 @@ fun BasicTextEditor(
 						.textEditorPointerInputHandling(
 							state = state,
 							onSpanClick = onRichSpanClick,
-							onContextMenuRequest = { offset ->
-								contextMenuState.showMenu(offset)
-							}
+							onContextMenuRequest = { offset -> effectiveContextMenuState.showMenu(offset) }
 						)
 						.size(
 							width = state.viewportSize.width.dp,

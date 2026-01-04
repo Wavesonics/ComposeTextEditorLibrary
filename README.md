@@ -2,6 +2,7 @@
 
 [![Maven Central](https://img.shields.io/maven-central/v/com.darkrockstudios/composetexteditor.svg)](https://search.maven.org/artifact/com.darkrockstudios/composetexteditor)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
+[![CI Build](https://github.com/Wavesonics/ComposeTextEditorLibrary/actions/workflows/ci-build.yml/badge.svg)](https://github.com/Wavesonics/ComposeTextEditorLibrary/actions/workflows/ci-build.yml)
 
 [![KMP](https://img.shields.io/badge/platforms:-blue.svg?logo=kotlin)](http://kotlinlang.org)
 ![badge-jvm] ![badge-android] ![badge-wasm] ![badge-ios]
@@ -67,6 +68,7 @@ All of the platforms supported by Compose Text Editor are now supported.
 
 - Copy/Paste of rich text always strips the formatting (_this is a Compose MP bug_)
 - Right-to-Left text is probably broken
+- Sentence level spell checking is not working as expected
 
 ## Want to try it?
 

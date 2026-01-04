@@ -169,6 +169,35 @@ android {
 		}
 	}
 }
+
+tasks.register<Copy>("updateDemo") {
+	description = "Builds the WASM distribution and copies it to the docs directory for GitHub Pages"
+	group = "distribution"
+
+	dependsOn("wasmJsBrowserDistribution")
+
+	from(layout.buildDirectory.dir("dist/wasmJs/productionExecutable"))
+	into(layout.projectDirectory.dir("../docs"))
+
+	doLast {
+		val docsDir = layout.projectDirectory.dir("../docs").asFile
+		val buildDir = layout.buildDirectory.dir("dist/wasmJs/productionExecutable").get().asFile
+
+		// Get list of WASM files in build output
+		val newWasmFiles =
+			buildDir.listFiles { file -> file.extension == "wasm" }?.map { it.name }?.toSet() ?: emptySet()
+
+		// Remove old WASM files that are no longer in the build
+		docsDir.listFiles { file -> file.extension == "wasm" }?.forEach { oldFile ->
+			if (oldFile.name !in newWasmFiles) {
+				println("Removing old WASM file: ${oldFile.name}")
+				oldFile.delete()
+			}
+		}
+
+		println("Demo updated in docs/ directory")
+	}
+}
 dependencies {
 	implementation(libs.lifecycle.runtime.ktx)
 	implementation(libs.activity.compose)

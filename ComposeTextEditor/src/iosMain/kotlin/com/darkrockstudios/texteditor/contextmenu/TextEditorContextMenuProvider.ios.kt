@@ -22,6 +22,7 @@ actual fun TextEditorContextMenuProvider(
 				actions = actions,
 				strings = strings,
 				enabled = enabled,
+				extraItems = menuState.extraItems.value,
 				onDismiss = menuState::dismissMenu
 			)
 		}

@@ -32,7 +32,7 @@ fun SpellCheckingTextEditorDemoUi(
 			spellChecker,
 			SIMPLE_MARKDOWN.toAnnotatedStringFromMarkdown(configuration),
 			true,
-			SpellCheckMode.Sentence
+			SpellCheckMode.Word
 		)
 	val markdownExtension = remember(state) { state.withMarkdown(configuration) }
 
