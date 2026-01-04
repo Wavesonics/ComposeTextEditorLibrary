@@ -2,6 +2,7 @@
 
 [![Maven Central](https://img.shields.io/maven-central/v/com.darkrockstudios/composetexteditor.svg)](https://search.maven.org/artifact/com.darkrockstudios/composetexteditor)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
+[![CI Build](https://github.com/Wavesonics/ComposeTextEditorLibrary/actions/workflows/ci-build.yml/badge.svg)](https://github.com/Wavesonics/ComposeTextEditorLibrary/actions/workflows/ci-build.yml)
 
 [![KMP](https://img.shields.io/badge/platforms:-blue.svg?logo=kotlin)](http://kotlinlang.org)
 ![badge-jvm] ![badge-android] ![badge-wasm] ![badge-ios]
