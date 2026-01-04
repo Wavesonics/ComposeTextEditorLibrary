@@ -14,7 +14,7 @@ However they have all suffered from fundamental limitations in `BasicTextField`,
 all text entry in Compose.
 
 This project is an attempt to re-implement text entry from scratch to finally have a
-solution to the various problems.
+solution to the various problems.faw
 
 ### Why?
 
@@ -23,16 +23,24 @@ field in Compose, and keep running up against
 the limitations of `BasicTextField`. Pretty much out of options, I decided to see what it might take
 to replace `BasicTextField` with something that solved all of my needs.
 
-**tl;dr** it's hard, _but maybe not as hard as I had thought_.
+And now, it's working, and at this point, working pretty well.
 
-~~This is not ready for prime time, but if anyone is interested in collaborating, I think it could
-actually work. It just needs some more time and attention.~~
+It's probably not a permanent solution.
+`BasicTextField2`'s new state based approach and gap-buffer has reach maturity and includes a lot of what I would need
+to replace this, but still cannot handle rich text rendering. So until that is solved, this is the only solution
+that I am aware of that ticks every box:
 
-Maybe it's ready? 🤷 [Give it a try here](https://wavesonics.github.io/ComposeTextEditorLibrary/).
+- ✅ 100% Compose Multiplatform
+- ✅ Efficient rendering and editing of long-form text
+- ✅ Rich text with custom spans
+- ✅ Expose scroll state
+- ✅ Spell checking
+
+You can [Give it a try here](https://wavesonics.github.io/ComposeTextEditorLibrary/).
 
 ![sample_screenshot_00.png](sample_screenshot_00.png)
 
-### What is working:
+### Features:
 
 - Rich text rendering and editable
   - Semi-efficient rendering for long form text (_only renders what is visible_)
@@ -48,13 +56,12 @@ Maybe it's ready? 🤷 [Give it a try here](https://wavesonics.github.io/Compose
   squiggle_)
 - Emits edit events: so if a single character is inserted, you can collect a Flow, and know exactly
   what change was made. This makes managing Spell Check much more efficient as you can just
-  respell-check the single word that was changed, rather than everything. Currently neither BTF1 or
-  BTF2 offers this.
+  respell-check the single word that was changed, rather than everything. (_BTF2 now finally offers this!_)
+- Find & Replace UI: Works exactly as you'd expect.
 
 #### Platforms
 
-So far I have support for JVM/Desktop, Android, Web. The others should probably also work,
-but I haven't had time to add the targets and test them.
+All of the platforms supported by Compose Text Editor are now supported.
 
 ### Work left to do:
 
@@ -65,11 +72,11 @@ but I haven't had time to add the targets and test them.
 
 Text Editor:
 
-`implementation("com.darkrockstudios:composetexteditor:0.9.0")`
+`implementation("com.darkrockstudios:composetexteditor:1.5.0")`
 
 Text Editor with Spell Checking:
 
-`implementation("com.darkrockstudios:composetexteditor-spellcheck:0.9.0")`
+`implementation("com.darkrockstudios:composetexteditor-spellcheck:1.5.0")`
 
 
 [badge-android]: http://img.shields.io/badge/-android-6EDB8D.svg?style=flat
