@@ -27,6 +27,9 @@ kotlin {
 			}
 		}
 		binaries.executable()
+		compilerOptions {
+			freeCompilerArgs.add("-Xwasm-use-new-exception-proposal")
+		}
 	}
 
 	iosX64()
