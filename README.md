@@ -4,7 +4,7 @@
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 
 [![KMP](https://img.shields.io/badge/platforms:-blue.svg?logo=kotlin)](http://kotlinlang.org)
-![badge-jvm] ![badge-android] ![badge-wasm]
+![badge-jvm] ![badge-android] ![badge-wasm] ![badge-ios]
 
 Compose has been missing a **Rich Text Editor** since its inception.
 I've [taken a crack](https://github.com/Wavesonics/richtext-compose-multiplatform) at this
