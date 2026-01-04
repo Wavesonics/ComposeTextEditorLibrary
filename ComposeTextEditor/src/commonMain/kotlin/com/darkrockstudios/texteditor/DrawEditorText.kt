@@ -2,7 +2,6 @@ package com.darkrockstudios.texteditor
 
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.util.fastForEach
 import com.darkrockstudios.texteditor.state.TextEditorState
@@ -41,7 +40,7 @@ internal fun DrawScope.DrawEditorText(
 					textMeasurer = state.textMeasurer,
 					text = line,
 					topLeft = offset,
-					style = TextStyle.Default.copy(
+					style = state.textStyle.copy(
 						color = style.textColor,
 					)
 				)

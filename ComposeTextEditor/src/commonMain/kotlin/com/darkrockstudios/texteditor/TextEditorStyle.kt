@@ -4,6 +4,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
 
 data class TextEditorStyle(
 	val textColor: Color = Color.Unspecified,
@@ -13,7 +14,8 @@ data class TextEditorStyle(
 	val cursorColor: Color = Color.Unspecified,
 	val selectionColor: Color = Color.Unspecified,
 	val focusedBorderColor: Color = Color.Unspecified,
-	val unfocusedBorderColor: Color = Color.Unspecified
+	val unfocusedBorderColor: Color = Color.Unspecified,
+	val textStyle: TextStyle = TextStyle.Default
 )
 
 @Composable
@@ -25,10 +27,11 @@ fun rememberTextEditorStyle(
 	cursorColor: Color = MaterialTheme.colorScheme.onSurface,
 	selectionColor: Color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
 	focusedBorderColor: Color = MaterialTheme.colorScheme.outline,
-	unfocusedBorderColor: Color = MaterialTheme.colorScheme.outlineVariant
+	unfocusedBorderColor: Color = MaterialTheme.colorScheme.outlineVariant,
+	textStyle: TextStyle = TextStyle.Default
 ): TextEditorStyle = remember(
 	textColor, placeholderText, placeholderColor,
-	cursorColor, selectionColor, focusedBorderColor, unfocusedBorderColor
+	cursorColor, selectionColor, focusedBorderColor, unfocusedBorderColor, textStyle
 ) {
 	TextEditorStyle(
 		textColor = textColor,
@@ -39,5 +42,6 @@ fun rememberTextEditorStyle(
 		selectionColor = selectionColor,
 		focusedBorderColor = focusedBorderColor,
 		unfocusedBorderColor = unfocusedBorderColor,
+		textStyle = textStyle,
 	)
 }

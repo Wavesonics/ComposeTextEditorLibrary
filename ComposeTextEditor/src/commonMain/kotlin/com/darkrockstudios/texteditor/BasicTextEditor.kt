@@ -79,6 +79,10 @@ fun BasicTextEditor(
 		}
 	}
 
+	LaunchedEffect(style.textStyle) {
+		state.textStyle = style.textStyle
+	}
+
 	TextEditorContextMenuProvider(
 		menuState = contextMenuState,
 		actions = contextMenuActions,

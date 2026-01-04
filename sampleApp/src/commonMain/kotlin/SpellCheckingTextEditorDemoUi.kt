@@ -7,10 +7,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextIndent
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.darkrockstudios.texteditor.markdown.MarkdownConfiguration
 import com.darkrockstudios.texteditor.markdown.toAnnotatedStringFromMarkdown
+import com.darkrockstudios.texteditor.rememberTextEditorStyle
 import com.darkrockstudios.texteditor.spellcheck.SpellCheckMode
 import com.darkrockstudios.texteditor.spellcheck.SpellCheckingTextEditor
 import com.darkrockstudios.texteditor.spellcheck.markdown.withMarkdown
@@ -56,6 +60,11 @@ fun SpellCheckingTextEditorDemoUi(
 
 		SpellCheckingTextEditor(
 			state = state,
+			style = rememberTextEditorStyle(
+				textStyle = TextStyle.Default.copy(
+					textIndent = TextIndent(firstLine = 24.sp)
+				)
+			),
 			modifier = Modifier
 				.padding(16.dp)
 				.fillMaxSize(),

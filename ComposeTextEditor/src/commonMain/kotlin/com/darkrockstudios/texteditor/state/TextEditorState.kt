@@ -5,10 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.TextMeasurer
-import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.*
 import androidx.compose.ui.unit.Constraints
 import com.darkrockstudios.texteditor.CharLineOffset
 import com.darkrockstudios.texteditor.LineWrap
@@ -34,6 +31,14 @@ class TextEditorState(
 		internal set(value) {
 			field = value
 			updateBookKeeping()
+		}
+
+	var textStyle: TextStyle = TextStyle.Default
+		internal set(value) {
+			if (field != value) {
+				field = value
+				updateBookKeeping()
+			}
 		}
 
 	internal val _textLines = mutableListOf<AnnotatedString>()
@@ -525,6 +530,7 @@ class TextEditorState(
 				try {
 					textMeasurer.measure(
 						text = line,
+						style = textStyle,
 						constraints = Constraints(
 							maxWidth = maxOf(1, viewportSize.width.toInt()),
 							minHeight = 0,
@@ -536,6 +542,7 @@ class TextEditorState(
 					// If measurement fails, create an empty layout result
 					textMeasurer.measure(
 						text = AnnotatedString(""),
+						style = textStyle,
 						constraints = Constraints(
 							maxWidth = maxOf(1, viewportSize.width.toInt()),
 							minHeight = 0,
@@ -550,6 +557,7 @@ class TextEditorState(
 				} else {
 					textMeasurer.measure(
 						text = line,
+						style = textStyle,
 						constraints = Constraints(
 							maxWidth = maxOf(1, viewportSize.width.toInt()),
 							minHeight = 0,
