@@ -48,7 +48,7 @@ fun AnnotatedString.toMarkdown(
 	boundaries.forEach { boundary ->
 		// Add any text between the last position and this boundary
 		while (currentIndex < boundary.index) {
-			result.append(text[currentIndex])
+			result.append(escapeMarkdownChar(text[currentIndex]))
 			currentIndex++
 		}
 
@@ -76,7 +76,7 @@ fun AnnotatedString.toMarkdown(
 
 	// Add any remaining text
 	while (currentIndex < text.length) {
-		result.append(text[currentIndex])
+		result.append(escapeMarkdownChar(text[currentIndex]))
 		currentIndex++
 	}
 
@@ -122,3 +122,14 @@ private data class StyleMarkerPair(
 	val openMarker: String,
 	val closeMarker: String
 )
+
+/**
+ * Escapes markdown special characters by adding a backslash before them.
+ * Characters that need escaping: *, _, `, #, +, -, ., !, [, ], (, ), {, }, <, >, |, \
+ */
+private fun escapeMarkdownChar(char: Char): String {
+	return when (char) {
+		'*', '_', '`', '#', '+', '-', '!', '[', ']', '(', ')', '{', '}', '<', '>', '|', '\\' -> "\\$char"
+		else -> char.toString()
+	}
+}

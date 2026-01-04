@@ -5,6 +5,7 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.MutatePriority
+import androidx.compose.foundation.MutatorMutex
 import androidx.compose.foundation.gestures.ScrollScope
 import androidx.compose.foundation.gestures.ScrollableState
 import androidx.compose.runtime.getValue
@@ -20,6 +21,7 @@ class TextEditorScrollState(
 	private var _value by mutableStateOf(initial)
 	private var _maxValue by mutableStateOf(0)
 	private var _isScrollInProgress by mutableStateOf(false)
+	private val scrollMutex = MutatorMutex()
 
 	private val scrollScope: ScrollScope = object : ScrollScope {
 		override fun scrollBy(pixels: Float): Float {
@@ -42,14 +44,13 @@ class TextEditorScrollState(
 		scrollPriority: MutatePriority,
 		block: suspend ScrollScope.() -> Unit
 	) {
-		_isScrollInProgress = true
-		try {
-			scrollScope.run {
+		scrollMutex.mutateWith(scrollScope, scrollPriority) {
+			_isScrollInProgress = true
+			try {
 				block()
+			} finally {
+				_isScrollInProgress = false
 			}
-
-		} finally {
-			_isScrollInProgress = false
 		}
 	}
 
@@ -77,18 +78,20 @@ class TextEditorScrollState(
 			visibilityThreshold = 1f
 		)
 	) {
-		val targetValue = value.coerceIn(0, maxValue).toFloat()
-		_isScrollInProgress = true
-		try {
-			animate(
-				initialValue = _value.toFloat(),
-				targetValue = targetValue,
-				animationSpec = animationSpec
-			) { value, _ ->
-				_value = value.roundToInt()
+		scrollMutex.mutate {
+			val targetValue = value.coerceIn(0, maxValue).toFloat()
+			_isScrollInProgress = true
+			try {
+				animate(
+					initialValue = _value.toFloat(),
+					targetValue = targetValue,
+					animationSpec = animationSpec
+				) { value, _ ->
+					_value = value.roundToInt()
+				}
+			} finally {
+				_isScrollInProgress = false
 			}
-		} finally {
-			_isScrollInProgress = false
 		}
 	}
 

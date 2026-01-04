@@ -10,6 +10,9 @@ internal fun DrawScope.DrawCursor(
 ) {
 	val metrics = state.calculateCursorPosition()
 
+	// Store metrics for IME cursor anchor info
+	state.lastCursorMetrics = metrics
+
 	// Only draw cursor if it's in the visible area
 	if (metrics.position.y + metrics.height >= 0 && metrics.position.y <= size.height) {
 		drawLine(

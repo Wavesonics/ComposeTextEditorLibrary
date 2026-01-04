@@ -2,7 +2,6 @@ rootProject.name = "ComposeTextEditorLibrary"
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 
 pluginManagement {
-    includeBuild("convention-plugins")
     repositories {
         google {
             mavenContent {
@@ -31,4 +30,5 @@ dependencyResolutionManagement {
 
 include(":ComposeTextEditor")
 include(":ComposeTextEditorSpellCheck")
+include(":ComposeTextEditorFind")
 include(":sampleApp")

@@ -1,0 +1,4 @@
+- Pushed all changes
+- Create a tag in the format `vX.Y.Z`
+- Push the tag
+- The `deploy.yml` workflow will run and publish the artifacts to Maven Central

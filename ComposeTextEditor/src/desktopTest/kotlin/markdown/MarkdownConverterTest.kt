@@ -165,4 +165,53 @@ class MarkdownConverterTest {
 		}
 		assertEquals("**Hello *beautiful *world*** and universe*", input.toMarkdown())
 	}
+
+	@Test
+	fun `test escaping single special characters`() {
+		val specialChars =
+			listOf('*', '_', '`', '#', '+', '-', '!', '[', ']', '(', ')', '{', '}', '<', '>', '|', '\\')
+
+		specialChars.forEach { char ->
+			val input = AnnotatedString("Text with $char character")
+			val expected = "Text with \\$char character"
+			assertEquals(expected, input.toMarkdown(), "Failed to escape character: $char")
+		}
+	}
+
+	@Test
+	fun `test escaping multiple special characters`() {
+		val input = AnnotatedString("Text with *bold* and _italic_ and `code` markers")
+		val expected = "Text with \\*bold\\* and \\_italic\\_ and \\`code\\` markers"
+		assertEquals(expected, input.toMarkdown())
+	}
+
+	@Test
+	fun `test escaping special characters at different positions`() {
+		val input1 = AnnotatedString("*At the beginning")
+		assertEquals("\\*At the beginning", input1.toMarkdown())
+
+		val input2 = AnnotatedString("In the middle * of text")
+		assertEquals("In the middle \\* of text", input2.toMarkdown())
+
+		val input3 = AnnotatedString("At the end*")
+		assertEquals("At the end\\*", input3.toMarkdown())
+	}
+
+	@Test
+	fun `test escaping special characters within styled text`() {
+		val input = buildAnnotatedString {
+			append("Text with ")
+			withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
+				append("bold *with* special chars")
+			}
+			append(" and ")
+			withStyle(SpanStyle(fontStyle = FontStyle.Italic)) {
+				append("italic [with] special chars")
+			}
+		}
+		assertEquals(
+			"Text with **bold \\*with\\* special chars** and *italic \\[with\\] special chars*",
+			input.toMarkdown()
+		)
+	}
 }

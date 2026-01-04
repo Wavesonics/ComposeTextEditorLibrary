@@ -16,7 +16,7 @@ actual fun SpellCheckTextContextMenuProvider(
 
 		spellCheckMenuState.missSpelling.value?.apply {
 			SpellCheckDropdown(
-				wordSegment,
+				item,
 				menuPosition,
 				spellCheckMenuState.spellCheckState,
 				dismiss = spellCheckMenuState::clearSpellCheck,

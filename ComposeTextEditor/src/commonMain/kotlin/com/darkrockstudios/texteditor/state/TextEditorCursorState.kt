@@ -38,7 +38,7 @@ class TextEditorCursorState(
 	)
 	val positionFlow: SharedFlow<CharLineOffset> = _cursorPositionFlow
 
-	fun updatePosition(position: CharLineOffset) {
+	fun updatePosition(position: CharLineOffset, updateStyles: Boolean = true) {
 		val maxLine = (editorState.textLines.size - 1).coerceAtLeast(0)
 		val line = position.line.coerceIn(0, maxLine)
 		val char = position.char.coerceIn(0, editorState.textLines.getOrNull(line)?.length ?: 0)
@@ -47,8 +47,10 @@ class TextEditorCursorState(
 		_position = newPosition
 		_cursorPositionFlow.tryEmit(newPosition)
 
-		// Update styles based on surrounding text
-		updateStylesFromPosition(newPosition)
+		// Update styles based on surrounding text (skip during text operations to preserve manually-set styles)
+		if (updateStyles) {
+			updateStylesFromPosition(newPosition)
+		}
 
 		editorState.scrollManager.ensureCursorVisible()
 	}
@@ -90,8 +92,8 @@ class TextEditorCursorState(
 		// check the end of the previous line
 		if (position.char == 0 && position.line > 0) {
 			val previousLine = position.line - 1
-			val previousLineLength = editorState.textLines[previousLine].length
-			if (previousLineLength > 0) {
+			val previousLineLength = editorState.textLines[previousLine].length - 1
+			if (previousLineLength >= 0) {
 				val previousPosition = CharLineOffset(previousLine, previousLineLength)
 				styles = editorState.getSpanStylesAtPosition(previousPosition)
 			}

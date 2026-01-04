@@ -1,4 +1,8 @@
+@file:OptIn(ExperimentalWasmDsl::class)
+
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
+import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
 	alias(libs.plugins.kotlinMultiplatform)
@@ -11,14 +15,12 @@ kotlin {
 	applyDefaultHierarchyTemplate()
 	jvm("desktop")
 	androidTarget {
-		compilations.all {
-			kotlinOptions {
-				jvmTarget = libs.versions.jvm.get()
-			}
+		compilerOptions {
+			jvmTarget.set(JvmTarget.fromTarget(libs.versions.jvm.get()))
 		}
 	}
 	wasmJs {
-		moduleName = "sampleApp"
+		outputModuleName = "sampleApp"
 		browser {
 			commonWebpackConfig {
 				outputFileName = "sampleApp.js"
@@ -27,12 +29,28 @@ kotlin {
 		binaries.executable()
 	}
 
+	iosX64()
+	iosArm64()
+	iosSimulatorArm64()
+
+	listOf(
+		iosX64(),
+		iosArm64(),
+		iosSimulatorArm64()
+	).forEach { iosTarget ->
+		iosTarget.binaries.framework {
+			baseName = "SampleApp"
+			isStatic = true
+		}
+	}
+
 	sourceSets {
 
 		val commonMain by getting {
 			dependencies {
 				implementation(projects.composeTextEditor)
 				implementation(projects.composeTextEditorSpellCheck)
+				implementation(projects.composeTextEditorFind)
 				implementation(compose.runtime)
 				implementation(compose.foundation)
 				implementation(compose.material3)
@@ -41,8 +59,6 @@ kotlin {
 				implementation(compose.components.resources)
 				implementation(compose.components.uiToolingPreview)
 				implementation(compose.components.resources)
-				implementation(libs.symspellkt)
-				implementation(libs.symspellkt.fdic)
 			}
 		}
 
@@ -61,6 +77,7 @@ kotlin {
 				implementation(compose.ui)
 				implementation(compose.components.resources)
 				implementation(compose.components.uiToolingPreview)
+				implementation(libs.platform.spellchecker)
 			}
 		}
 
@@ -82,6 +99,20 @@ kotlin {
 				implementation(compose.material3)
 				implementation(compose.ui)
 				implementation(compose.components.resources)
+				implementation(libs.platform.spellchecker)
+			}
+		}
+
+		val wasmJsMain by getting {
+			dependencies {
+				implementation(libs.symspellkt)
+				implementation(libs.symspellkt.fdic)
+			}
+		}
+
+		val iosMain by getting {
+			dependencies {
+				implementation(libs.platform.spellchecker)
 			}
 		}
 	}
@@ -109,11 +140,11 @@ compose.experimental {
 
 android {
 	namespace = "com.darkrockstudios.texteditor.sample"
-	compileSdk = 35
+	compileSdk = libs.versions.android.compileSdk.get().toInt()
 	defaultConfig {
 		applicationId = "com.darkrockstudios.texteditor.sample"
-		minSdk = 26
-		targetSdk = 35
+		minSdk = libs.versions.android.minSdk.get().toInt()
+		targetSdk = libs.versions.android.compileSdk.get().toInt()
 		versionCode = 1
 		versionName = "1.0"
 

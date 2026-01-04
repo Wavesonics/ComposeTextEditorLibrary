@@ -4,17 +4,18 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.text.AnnotatedString
-import com.darkrockstudios.symspellkt.api.SpellChecker
+import com.darkrockstudios.texteditor.spellcheck.api.EditorSpellChecker
 import com.darkrockstudios.texteditor.state.rememberTextEditorState
 
 @Composable
 fun rememberSpellCheckState(
-	spellChecker: SpellChecker?,
+	spellChecker: EditorSpellChecker?,
 	initialText: AnnotatedString? = null,
 	enableSpellChecking: Boolean = true,
+	spellCheckMode: SpellCheckMode = SpellCheckMode.Word,
 ): SpellCheckState {
 	val richTextState = rememberTextEditorState(initialText)
-	val state = remember { SpellCheckState(richTextState, spellChecker, enableSpellChecking) }
+	val state = remember { SpellCheckState(richTextState, spellChecker, enableSpellChecking, spellCheckMode) }
 
 	// Run SpellCheck as soon as it is ready
 	LaunchedEffect(spellChecker) {

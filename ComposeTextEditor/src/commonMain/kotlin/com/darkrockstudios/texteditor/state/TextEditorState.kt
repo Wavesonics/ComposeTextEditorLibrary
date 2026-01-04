@@ -5,17 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.TextMeasurer
-import androidx.compose.ui.text.TextRange
-import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.input.CommitTextCommand
-import androidx.compose.ui.text.input.ImeOptions
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.TextFieldValue
-import androidx.compose.ui.text.input.TextInputService
-import androidx.compose.ui.text.input.TextInputSession
+import androidx.compose.ui.text.*
 import androidx.compose.ui.unit.Constraints
 import com.darkrockstudios.texteditor.CharLineOffset
 import com.darkrockstudios.texteditor.LineWrap
@@ -37,13 +27,20 @@ class TextEditorState(
 	measurer: TextMeasurer,
 	initialText: AnnotatedString? = null
 ) {
-	internal var textMeasurer: TextMeasurer = measurer
-		set(value) {
+	var textMeasurer: TextMeasurer = measurer
+		internal set(value) {
 			field = value
 			updateBookKeeping()
 		}
 
-	private var _version by mutableStateOf(0)
+	var textStyle: TextStyle = TextStyle.Default
+		internal set(value) {
+			if (field != value) {
+				field = value
+				updateBookKeeping()
+			}
+		}
+
 	internal val _textLines = mutableListOf<AnnotatedString>()
 	val textLines: List<AnnotatedString> get() = _textLines
 
@@ -53,6 +50,21 @@ class TextEditorState(
 		get() = cursor.position
 
 	var isFocused by mutableStateOf(false)
+
+	/**
+	 * The current IME composing region (for autocomplete preview).
+	 * When non-null, this text should be rendered with an underline.
+	 * This is set by the Android InputConnection during text composition.
+	 */
+	var composingRange: TextEditorRange? by mutableStateOf(null)
+		internal set
+
+	/**
+	 * Last calculated cursor pixel metrics.
+	 * Updated during rendering and used by IME for cursor anchor info.
+	 */
+	var lastCursorMetrics: CursorMetrics? = null
+		internal set
 
 	private var _lineOffsets by mutableStateOf(emptyList<LineWrap>())
 	val lineOffsets: List<LineWrap> get() = _lineOffsets
@@ -93,52 +105,64 @@ class TextEditorState(
 	internal val editManager = TextEditManager(this)
 	val richSpanManager = RichSpanManager(this)
 
+	/**
+	 * Platform-specific extensions for TextEditorState.
+	 * On Android: Contains IME-related functionality (cursor anchor monitoring, etc.)
+	 * On Desktop/WASM: Empty class (no-op)
+	 */
+	val platformExtensions = PlatformTextEditorExtensions(this)
+
 	val scrollState get() = scrollManager.scrollState
 
 	val editOperations = editManager.editOperations
-
-	private var inputSession: TextInputSession? = null
-
-	internal fun notifyContentChanged() {
-		_version++
-	}
 
 	fun setText(text: String) {
 		_textLines.clear()
 		_textLines.addAll(text.split("\n").map { it.toAnnotatedString() })
 		updateBookKeeping()
-		notifyContentChanged()
 	}
 
 	fun setText(text: AnnotatedString) {
 		_textLines.clear()
 		_textLines.addAll(text.splitAnnotatedString())
 		updateBookKeeping()
-		notifyContentChanged()
 	}
 
 	fun updateFocus(focused: Boolean) {
 		isFocused = focused
-
-		if (isFocused) {
-			showKeyboard()
-		} else {
-			hideKeyboard()
+		// Clear composing state when focus is lost
+		if (!focused) {
+			composingRange = null
 		}
 	}
 
-	fun showKeyboard() {
-		inputSession?.showSoftwareKeyboard()
+	/**
+	 * Updates the IME composing region.
+	 * Called by the Android InputConnection when composing text changes.
+	 * @param startIndex Character index of composing start, or -1 to clear
+	 * @param endIndex Character index of composing end, or -1 to clear
+	 */
+	internal fun updateComposingRange(startIndex: Int, endIndex: Int) {
+		composingRange = if (startIndex >= 0 && endIndex > startIndex) {
+			val startOffset = getOffsetAtCharacter(startIndex)
+			val endOffset = getOffsetAtCharacter(endIndex)
+			TextEditorRange(startOffset, endOffset)
+		} else {
+			null
+		}
 	}
 
-	fun hideKeyboard() {
-		inputSession?.hideSoftwareKeyboard()
+	/**
+	 * Clears the IME composing region.
+	 */
+	internal fun clearComposingRange() {
+		composingRange = null
 	}
 
 	fun insertNewlineAtCursor() {
 		val operation = TextEditOperation.Insert(
 			position = cursorPosition,
-			text = AnnotatedString("\n"),
+			text = cursor.applyCursorStyle("\n"),
 			cursorBefore = cursorPosition,
 			cursorAfter = CharLineOffset(cursorPosition.line + 1, 0)
 		)
@@ -216,11 +240,23 @@ class TextEditorState(
 	fun insertStringAtCursor(string: String) = insertStringAtCursor(string.toAnnotatedString())
 	fun insertStringAtCursor(text: AnnotatedString) {
 		val styledText = cursor.applyCursorStyle(text)
+
+		// Calculate cursor position after insertion, accounting for newlines
+		val textString = text.text
+		val lastNewlineIndex = textString.lastIndexOf('\n')
+		val cursorAfter = if (lastNewlineIndex >= 0) {
+			val newlineCount = textString.count { it == '\n' }
+			val charsAfterLastNewline = textString.length - lastNewlineIndex - 1
+			CharLineOffset(cursorPosition.line + newlineCount, charsAfterLastNewline)
+		} else {
+			CharLineOffset(cursorPosition.line, cursorPosition.char + text.length)
+		}
+
 		val operation = TextEditOperation.Insert(
 			position = cursorPosition,
 			text = styledText,
 			cursorBefore = cursorPosition,
-			cursorAfter = CharLineOffset(cursorPosition.line, cursorPosition.char + text.length)
+			cursorAfter = cursorAfter
 		)
 		editManager.applyOperation(operation)
 	}
@@ -294,7 +330,6 @@ class TextEditorState(
 			_textLines[i] = processor(i, line)
 		}
 		updateBookKeeping()
-		notifyContentChanged()
 	}
 
 	internal fun removeLines(startIndex: Int, count: Int) {
@@ -361,13 +396,11 @@ class TextEditorState(
 
 		val currentWrappedLineIndex = lineOffsets.getWrappedLineIndex(position)
 		val currentWrappedLine = lineOffsets[currentWrappedLineIndex]
-		val startOfLineOffset = lineOffsets.first { it.line == currentWrappedLine.line }.offset
 
 		val layout = currentWrappedLine.textLayoutResult
 
 		val cursorX = layout.getHorizontalPosition(charIndex, usePrimaryDirection = true)
-		val cursorY =
-			startOfLineOffset.y + layout.multiParagraph.getLineTop(currentWrappedLine.virtualLineIndex) - scrollState.value
+		val cursorY = currentWrappedLine.offset.y - scrollState.value
 
 		val lineHeight = layout.multiParagraph.getLineHeight(currentWrappedLine.virtualLineIndex)
 
@@ -497,6 +530,7 @@ class TextEditorState(
 				try {
 					textMeasurer.measure(
 						text = line,
+						style = textStyle,
 						constraints = Constraints(
 							maxWidth = maxOf(1, viewportSize.width.toInt()),
 							minHeight = 0,
@@ -508,6 +542,7 @@ class TextEditorState(
 					// If measurement fails, create an empty layout result
 					textMeasurer.measure(
 						text = AnnotatedString(""),
+						style = textStyle,
 						constraints = Constraints(
 							maxWidth = maxOf(1, viewportSize.width.toInt()),
 							minHeight = 0,
@@ -522,6 +557,7 @@ class TextEditorState(
 				} else {
 					textMeasurer.measure(
 						text = line,
+						style = textStyle,
 						constraints = Constraints(
 							maxWidth = maxOf(1, viewportSize.width.toInt()),
 							minHeight = 0,
@@ -749,48 +785,6 @@ class TextEditorState(
 		return hash
 	}
 
-	fun establishInputSession(textInputService: TextInputService?) {
-		if (inputSession != null) {
-			destroyInputSession(textInputService)
-		}
-
-		inputSession = textInputService?.startInput(
-			value = TextFieldValue(""),
-			imeOptions = ImeOptions(
-				autoCorrect = false,
-				keyboardType = KeyboardType.Text,
-			),
-			onEditCommand = { editCommands ->
-				editCommands.forEach {
-					if (it is CommitTextCommand) {
-						insertTypedString(it.text)
-
-						// TODO when TextInputSession is replaced, this should probably go away
-						val selection = selector.selection?.let { sel ->
-							TextRange(start = sel.start.char, end = sel.end.char)
-						} ?: TextRange.Zero
-						val value = TextFieldValue(
-							annotatedString = textLines[cursor.position.line],
-							selection = selection
-						)
-						inputSession?.updateState(oldValue = null, newValue = value)
-					}
-				}
-			},
-			onImeActionPerformed = { action ->
-				println("onImeActionPerformed: $action")
-			},
-		)
-	}
-
-	fun destroyInputSession(textInputService: TextInputService?) {
-		inputSession?.apply {
-			hideKeyboard()
-			textInputService?.stopInput(this)
-		}
-		inputSession = null
-	}
-
 	init {
 		setText(initialText ?: AnnotatedString(""))
 	}
@@ -818,7 +812,6 @@ class TextEditorState(
 	}
 
 	override fun hashCode(): Int {
-		val result = 31 + textLines.hashCode()
-		return result
+		return 31 + textLines.hashCode()
 	}
 }

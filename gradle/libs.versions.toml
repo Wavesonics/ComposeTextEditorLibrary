@@ -1,26 +1,24 @@
 [versions]
-android-compileSdk = "35"
+android-compileSdk = "36"
 android-minSdk = "26"
-agp = "8.7.3"
+agp = "8.12.3"
 jvm = "17"
-androidx-lifecycle = "2.8.4"
-compose-multiplatform = "1.7.1"
-kotlin = "2.1.10"
-kotlinx-coroutines = "1.9.0"
-kotlinx-coroutines-test-jvm = "1.9.0"
-kotlinxDatetime = "0.6.1"
+androidx-lifecycle = "2.9.6"
+compose-multiplatform = "1.9.3"
+kotlin = "2.3.0"
+kotlinx-coroutines = "1.10.2"
 markdown = "0.7.3"
-mockk = "1.13.13"
-kotlinx-coroutines-test = "1.9.0"
+mockk = "1.14.7"
 
-activity-ktx = "1.10.1"
-lifecycleRuntimeKtx = "2.8.7"
-activityCompose = "1.10.1"
-composeBom = "2025.03.01"
+activity-ktx = "1.12.2"
+lifecycleRuntimeKtx = "2.10.0"
+activityCompose = "1.12.2"
+composeBom = "2025.11.01"
 
-symspellkt = "3.3.0"
+symspellkt = "3.4.0"
+spellcheckerkt = "1.0.0"
 
-nexus-publish = "2.0.0"
+maven-publish = "0.35.0"
 
 [libraries]
 jetbrains-kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test" }
@@ -28,11 +26,11 @@ jetbrains-kotlin-test-junit = { module = "org.jetbrains.kotlin:kotlin-test-junit
 androidx-lifecycle-viewmodel = { group = "org.jetbrains.androidx.lifecycle", name = "lifecycle-viewmodel", version.ref = "androidx-lifecycle" }
 androidx-lifecycle-runtime-compose = { group = "org.jetbrains.androidx.lifecycle", name = "lifecycle-runtime-compose", version.ref = "androidx-lifecycle" }
 kotlinx-coroutines-swing = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-swing", version.ref = "kotlinx-coroutines" }
-kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinx-coroutines-test" }
-kotlinx-coroutines-test-jvm = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test-jvm", version.ref = "kotlinx-coroutines-test-jvm" }
-kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinxDatetime" }
+kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinx-coroutines" }
+kotlinx-coroutines-test-jvm = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test-jvm", version.ref = "kotlinx-coroutines" }
 markdown = { module = "org.jetbrains:markdown", version.ref = "markdown" }
 mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
+platform-spellchecker = { module = "com.darkrockstudios:platform-spellcheckerkt", version.ref = "spellcheckerkt" }
 
 lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycleRuntimeKtx" }
 activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
@@ -46,8 +44,6 @@ ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
 material3 = { group = "androidx.compose.material3", name = "material3" }
 activity-ktx = { group = "androidx.activity", name = "activity-ktx", version.ref = "activity-ktx" }
 
-nexus-publish = { module = "io.github.gradle-nexus.publish-plugin:io.github.gradle-nexus.publish-plugin.gradle.plugin", version.ref = "nexus-publish" }
-
 symspellkt = { module = "com.darkrockstudios:symspellkt", version.ref = "symspellkt" }
 symspellkt-fdic = { module = "com.darkrockstudios:symspellktfdic", version.ref = "symspellkt" }
 
@@ -57,3 +53,5 @@ composeCompiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "k
 kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
 android-application = { id = "com.android.application", version.ref = "agp" }
 android-library = { id = "com.android.library", version.ref = "agp" }
+android-kmp-library = { id = "com.android.kotlin.multiplatform.library", version.ref = "agp" }
+mavenPublish = { id = "com.vanniktech.maven.publish", version.ref = "maven-publish" }

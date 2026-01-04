@@ -1,51 +1,94 @@
 package com.darkrockstudios.texteditor.spellcheck
 
 import androidx.compose.ui.util.fastForEach
-import com.darkrockstudios.symspellkt.api.SpellChecker
-import com.darkrockstudios.symspellkt.common.SuggestionItem
-import com.darkrockstudios.symspellkt.common.Verbosity
-import com.darkrockstudios.symspellkt.common.isSpelledCorrectly
-import com.darkrockstudios.symspellkt.common.spellingIsCorrect
 import com.darkrockstudios.texteditor.TextEditorRange
 import com.darkrockstudios.texteditor.richstyle.RichSpan
 import com.darkrockstudios.texteditor.richstyle.SpellCheckStyle
+import com.darkrockstudios.texteditor.spellcheck.api.Correction
+import com.darkrockstudios.texteditor.spellcheck.api.EditorSpellChecker
+import com.darkrockstudios.texteditor.spellcheck.api.EditorSpellChecker.Scope
+import com.darkrockstudios.texteditor.spellcheck.api.Suggestion
 import com.darkrockstudios.texteditor.spellcheck.utils.applyCapitalizationStrategy
-import com.darkrockstudios.texteditor.state.TextEditOperation
-import com.darkrockstudios.texteditor.state.TextEditorState
-import com.darkrockstudios.texteditor.state.WordSegment
-import com.darkrockstudios.texteditor.state.getRichSpansInRange
-import com.darkrockstudios.texteditor.state.wordSegments
-import com.darkrockstudios.texteditor.state.wordSegmentsInRange
+import com.darkrockstudios.texteditor.state.*
+
+/**
+ * Determines which spell checking mode is active.
+ */
+enum class SpellCheckMode {
+	/** Check individual words - current/default behavior */
+	Word,
+
+	/** Check full sentences for context-aware corrections */
+	Sentence
+}
 
 class SpellCheckState(
 	val textState: TextEditorState,
-	var spellChecker: SpellChecker?,
+	var spellChecker: EditorSpellChecker?,
 	enableSpellChecking: Boolean = true,
+	var spellCheckMode: SpellCheckMode = SpellCheckMode.Word,
 ) {
 	var spellCheckingEnabled: Boolean = enableSpellChecking
-		set(value) {
-			val runSpellcheck = (field != value && value == true)
-			field = value
-			if (runSpellcheck) {
-				runFullSpellCheck()
-			} else {
-				clearSpellCheck()
-			}
+		private set
+
+	suspend fun setSpellCheckingEnabled(value: Boolean) {
+		spellCheckingEnabled = value
+
+		val runSpellcheck = (spellCheckingEnabled != value && value == true)
+		spellCheckingEnabled = value
+		if (runSpellcheck) {
+			runFullSpellCheck()
+		} else {
+			clearSpellCheck()
 		}
+	}
 
 	private var lastTextHash = -1
 	private val misspelledWords = mutableListOf<WordSegment>()
+	private val sentenceCorrections = mutableListOf<Correction>()
 
 	private fun removeMissSpellingsInRange(range: TextEditorRange) {
 		misspelledWords.removeAll { it.range.intersects(range) }
 	}
 
-	fun handleSpanClick(span: RichSpan): WordSegment? {
+	private fun removeSentenceCorrectionsInRange(range: TextEditorRange) {
+		sentenceCorrections.removeAll { it.range.intersects(range) }
+	}
+
+	/**
+	 * Handle click on a spell check span.
+	 * @return WordSegment for word-level misspellings, Correction for sentence-level issues, or null
+	 */
+	fun handleSpanClick(span: RichSpan): Any? {
+		if (span.style !is SpellCheckStyle) return null
+
+		// First check word-level misspellings
+		val wordSegment = findWordSegmentContainingRange(misspelledWords, span.range)
+		if (wordSegment != null) return wordSegment
+
+		// Then check sentence-level corrections
+		return sentenceCorrections.find { it.range.intersects(span.range) }
+	}
+
+	/**
+	 * Handle click for word-level misspellings only.
+	 * Use this when you specifically need a WordSegment.
+	 */
+	fun handleWordSpanClick(span: RichSpan): WordSegment? {
 		return if (span.style is SpellCheckStyle) {
-			findWordSegmentContainingRange(
-				misspelledWords,
-				span.range
-			)
+			findWordSegmentContainingRange(misspelledWords, span.range)
+		} else {
+			null
+		}
+	}
+
+	/**
+	 * Handle click for sentence-level corrections only.
+	 * Use this when you specifically need a Correction.
+	 */
+	fun handleSentenceSpanClick(span: RichSpan): Correction? {
+		return if (span.style is SpellCheckStyle) {
+			sentenceCorrections.find { it.range.intersects(span.range) }
 		} else {
 			null
 		}
@@ -62,6 +105,20 @@ class SpellCheckState(
 		textState.replace(segment.range, correction, true)
 	}
 
+	/**
+	 * Apply a sentence-level correction.
+	 */
+	fun applySentenceCorrection(correction: Correction, selectedSuggestion: String) {
+		textState.getRichSpansInRange(correction.range)
+			.filter { it.style == SpellCheckStyle }
+			.forEach { span ->
+				textState.removeRichSpan(span)
+			}
+		sentenceCorrections.remove(correction)
+		println("Applying sentence correction: ${correction.originalText} -> $selectedSuggestion")
+		textState.replace(correction.range, selectedSuggestion, true)
+	}
+
 	private fun clearSpellCheck() {
 		textState.apply {
 			richSpanManager.getAllRichSpans()
@@ -72,17 +129,38 @@ class SpellCheckState(
 		}
 
 		misspelledWords.clear()
+		sentenceCorrections.clear()
+	}
+
+	/**
+	 * Run full spell check based on the current mode.
+	 */
+	suspend fun runFullSpellCheck() {
+		when (spellCheckMode) {
+			SpellCheckMode.Word -> runFullWordCheck()
+			SpellCheckMode.Sentence -> runFullSentenceCheck()
+		}
+	}
+
+	/**
+	 * Run partial spell check based on the current mode.
+	 */
+	suspend fun runPartialSpellCheck(range: TextEditorRange) {
+		when (spellCheckMode) {
+			SpellCheckMode.Word -> runPartialWordCheck(range)
+			SpellCheckMode.Sentence -> runPartialSentenceCheck(range)
+		}
 	}
 
 	/**
 	 * This is a very naive algorithm that just removes all spell check spans and
-	 * reruns the entire spell check again.
+	 * reruns the entire word-level spell check again.
 	 */
-	fun runFullSpellCheck() {
+	private suspend fun runFullWordCheck() {
 		val sp = spellChecker ?: return
 		if (spellCheckingEnabled.not()) return
 
-		println("Running full Spell Check")
+		println("Running full Word Spell Check")
 		textState.apply {
 			// Remove all existing spell checks
 			richSpanManager.getAllRichSpans()
@@ -92,22 +170,51 @@ class SpellCheckState(
 				}
 
 			misspelledWords.clear()
+			sentenceCorrections.clear()
 
 			wordSegments()
 				.filter(::shouldSpellCheck)
 				.mapNotNullTo(misspelledWords) { segment ->
-				val suggestions = sp.lookup(segment.text)
-				if (suggestions.spellingIsCorrect(segment.text)) {
-					null
-				} else {
-					addRichSpan(segment.range, SpellCheckStyle)
-					segment
+					if (sp.isCorrectWord(segment.text)) {
+						null
+					} else {
+						addRichSpan(segment.range, SpellCheckStyle)
+						segment
+					}
+				}
+		}
+	}
+
+	/**
+	 * Run full sentence-level spell check on the entire document.
+	 */
+	private suspend fun runFullSentenceCheck() {
+		val sp = spellChecker ?: return
+		if (spellCheckingEnabled.not()) return
+
+		println("Running full Sentence Spell Check")
+		textState.apply {
+			// Remove all existing spell checks
+			richSpanManager.getAllRichSpans()
+				.filter { it.style is SpellCheckStyle }
+				.forEach { span ->
+					removeRichSpan(span)
+				}
+
+			misspelledWords.clear()
+			sentenceCorrections.clear()
+
+			sentenceSegments().forEach { sentence ->
+				val corrections = sp.checkSentence(sentence.text, sentence.range)
+				corrections.forEach { correction ->
+					addRichSpan(correction.range, SpellCheckStyle)
+					sentenceCorrections.add(correction)
 				}
 			}
 		}
 	}
 
-	fun runPartialSpellCheck(range: TextEditorRange) {
+	private suspend fun runPartialWordCheck(range: TextEditorRange) {
 		val sp = spellChecker ?: return
 		if (spellCheckingEnabled.not()) return
 
@@ -125,17 +232,40 @@ class SpellCheckState(
 		textState.wordSegmentsInRange(range)
 			.filter(::shouldSpellCheck)
 			.mapNotNullTo(misspelledSegments) { segment ->
-			println("Checking Segment: $segment")
-			val suggestions = sp.lookup(segment.text)
-			if (suggestions.spellingIsCorrect(segment.text)) {
-				null
-			} else {
-				textState.addRichSpan(segment.range, SpellCheckStyle)
-				segment
+				println("Checking Segment: $segment")
+				if (sp.isCorrectWord(segment.text)) {
+					null
+				} else {
+					textState.addRichSpan(segment.range, SpellCheckStyle)
+					segment
+				}
 			}
-		}
 
 		misspelledWords.addAll(misspelledSegments)
+	}
+
+	/**
+	 * Run sentence-level spell check on sentences that intersect the given range.
+	 */
+	private suspend fun runPartialSentenceCheck(range: TextEditorRange) {
+		val sp = spellChecker ?: return
+		if (spellCheckingEnabled.not()) return
+
+		// Remove existing spell check spans in the range
+		textState.richSpanManager.getSpansInRange(range)
+			.filter { it.style is SpellCheckStyle }
+			.forEach { span -> textState.removeRichSpan(span) }
+
+		removeSentenceCorrectionsInRange(range)
+
+		// Find and check sentences that intersect the range
+		textState.sentenceSegmentsInRange(range).forEach { sentence ->
+			val corrections = sp.checkSentence(sentence.text, sentence.range)
+			corrections.forEach { correction ->
+				textState.addRichSpan(correction.range, SpellCheckStyle)
+				sentenceCorrections.add(correction)
+			}
+		}
 	}
 
 	/**
@@ -145,7 +275,7 @@ class SpellCheckState(
 	 * @param segment The word segment to check
 	 * @return true if the word is misspelled and a new span was added, false otherwise
 	 */
-	fun checkWordSegment(segment: WordSegment): Boolean {
+	suspend fun checkWordSegment(segment: WordSegment): Boolean {
 		val sp = spellChecker ?: return false
 
 		removeMissSpellingsInRange(segment.range)
@@ -159,8 +289,7 @@ class SpellCheckState(
 				}
 
 			// Check if the word is misspelled
-			val suggestions = sp.lookup(segment.text)
-			val isSpelledCorrectly = suggestions.spellingIsCorrect(segment.text)
+			val isSpelledCorrectly = sp.isCorrectWord(segment.text)
 
 			if (!isSpelledCorrectly) {
 				// Add a new spell check span
@@ -199,6 +328,7 @@ class SpellCheckState(
 
 			range?.let {
 				removeMissSpellingsInRange(range)
+				removeSentenceCorrectionsInRange(range)
 			}
 
 			range?.affectedLineWraps(textState)?.forEach { vLine ->
@@ -226,34 +356,25 @@ class SpellCheckState(
 		}
 	}
 
-	fun getSuggestions(word: String): List<SuggestionItem> {
+	suspend fun getSuggestions(word: String): List<Suggestion> {
 		val sp = spellChecker ?: return emptyList()
 
-		val suggestions = sp.lookup(word, verbosity = Verbosity.Closest)
-		val proposedSuggestions = if (word.isSpelledCorrectly(suggestions).not()) {
-			// If things are misspelled, see if it just needs to be broken up
-			val composition = sp.wordBreakSegmentation(word)
-			val segmentedWord = composition.segmentedString
-			if (segmentedWord != null
-				&& segmentedWord.equals(word, ignoreCase = true).not()
-				&& suggestions.find { it.term.equals(segmentedWord, ignoreCase = true) } == null
-			) {
-				// Add the segmented suggest as the last item
-				suggestions.toMutableList().apply { add(SuggestionItem(segmentedWord, 1.0, 0.1)) }
-			} else {
-				suggestions
-			}
-		} else {
-			emptyList()
-		}
+		val wordLevel = sp.suggestions(word, scope = Scope.Word, closestOnly = true)
+		val sentenceLevel = if (!sp.isCorrectWord(word)) {
+			sp.suggestions(word, scope = Scope.Sentence, closestOnly = false)
+		} else emptyList()
 
-		return proposedSuggestions.map { suggestionItem ->
-			suggestionItem.copy(
-				term = applyCapitalizationStrategy(
-					source = word,
-					target = suggestionItem.term
+		val combined = (wordLevel + sentenceLevel)
+			.distinctBy { it.term.lowercase() }
+			.map { suggestion ->
+				suggestion.copy(
+					term = applyCapitalizationStrategy(
+						source = word,
+						target = suggestion.term
+					)
 				)
-			)
-		}
+			}
+
+		return combined
 	}
 }

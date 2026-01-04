@@ -65,11 +65,10 @@ class SpanManager {
 			})
 		}
 
-		// Merge overlapping and adjacent spans
-		val mergedSpans = mergeSpans(spans)
+		val processedSpans = mergeSpans(spans)
 
 		// Ensure all spans are within bounds and convert back to AnnotatedString.Range format
-		return mergedSpans
+		return processedSpans
 			.mapNotNull { span -> span.coerceIn(0..finalLength) }
 			.map { span ->
 				AnnotatedString.Range(span.style, span.start, span.end)
@@ -142,7 +141,7 @@ class SpanManager {
 				// Insertion is at the end of span - don't expand span
 				span.end == point -> {}
 
-				// Insertion is in middle of span - expand span
+				// Insertion is in middle of span - expand span to include inserted text
 				span.start < point && span.end > point -> {
 					span.end += length
 				}

@@ -1,6 +1,6 @@
 package com.darkrockstudios.texteditor
 
-import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -8,11 +8,15 @@ import androidx.compose.ui.unit.dp
 import com.darkrockstudios.texteditor.state.TextEditorState
 import com.darkrockstudios.texteditor.state.rememberTextEditorState
 
+private val DefaultContentPadding = PaddingValues(start = 8.dp)
+
 @Composable
 fun TextEditor(
 	state: TextEditorState = rememberTextEditorState(),
 	modifier: Modifier = Modifier,
+	contentPadding: PaddingValues = DefaultContentPadding,
 	enabled: Boolean = true,
+	autoFocus: Boolean = false,
 	style: TextEditorStyle = rememberTextEditorStyle(),
 	onRichSpanClick: RichSpanClickListener? = null,
 ) {
@@ -20,16 +24,11 @@ fun TextEditor(
 		BasicTextEditor(
 			state = state,
 			modifier = Modifier,
+			contentPadding = contentPadding,
 			enabled = enabled,
+			autoFocus = autoFocus,
 			style = style,
 			onRichSpanClick = onRichSpanClick,
 		)
 	}
-}
-
-private fun Modifier.focusBorder(isFocused: Boolean, style: TextEditorStyle): Modifier {
-	return this.border(
-		width = 1.dp,
-		color = if (isFocused) style.focusedBorderColor else style.unfocusedBorderColor
-	)
 }
