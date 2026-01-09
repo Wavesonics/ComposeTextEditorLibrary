@@ -1,6 +1,6 @@
 [versions]
 android-compileSdk = "36"
-android-minSdk = "26"
+android-minSdk = "23"
 agp = "8.12.3"
 jvm = "17"
 androidx-lifecycle = "2.9.6"
