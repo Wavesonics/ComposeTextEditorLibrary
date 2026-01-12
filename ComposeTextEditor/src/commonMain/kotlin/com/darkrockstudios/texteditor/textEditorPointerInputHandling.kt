@@ -193,14 +193,28 @@ private fun Modifier.handleTextInteractions(
 							PointerType.Touch -> {
 								wasDrag = false
 								didLongPress = false
+								// Capture selection state before delay
+								val existingSelection = state.selector.selection
 								longPressJob = state.scope.launch {
 									delay(500)
 									val wordPosition = state.getOffsetAtPosition(position)
-									state.selector.startSelection(wordPosition, isTouch = true)
-									state.selector.selectWordAt(wordPosition)
+
+									// Check if long press is on already-selected text
+									val isOnSelection = existingSelection != null &&
+											(wordPosition isAfterOrEqual existingSelection.start) &&
+											(wordPosition isBeforeOrEqual existingSelection.end)
+
+									if (isOnSelection) {
+										// Long press on existing selection: show context menu
+										onContextMenuRequest?.invoke(position)
+									} else {
+										// Long press on unselected text: select word, no menu
+										state.selector.startSelection(wordPosition, isTouch = true)
+										state.selector.selectWordAt(wordPosition)
+									}
+
 									didLongPress = true
 									didHandlePress = true
-									onContextMenuRequest?.invoke(position)
 								}
 							}
 
