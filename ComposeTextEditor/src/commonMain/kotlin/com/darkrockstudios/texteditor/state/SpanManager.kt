@@ -152,25 +152,27 @@ class SpanManager {
 	private fun mergeSpans(spans: List<SpanInfo>): List<SpanInfo> {
 		if (spans.isEmpty()) return emptyList()
 
+		// Group spans by style and merge within each group
 		val result = mutableListOf<SpanInfo>()
-		val sorted = spans.sortedBy { it.start }
+		val spansByStyle = spans.groupBy { it.style }
 
-		var current = sorted.first()
-		var mergeCount = 0
+		spansByStyle.forEach { (_, styleSpans) ->
+			val sorted = styleSpans.sortedBy { it.start }
+			var current = sorted.first()
+			var mergeCount = 0
 
-		for (i in 1 until sorted.size) {
-			val next = sorted[i]
-			if (current.overlaps(next) || current.isAdjacent(next)) {
-				current = current.merge(next)
-				mergeCount++
-			} else {
-				result.add(current)
-				current = next
+			for (i in 1 until sorted.size) {
+				val next = sorted[i]
+				if (current.overlaps(next) || current.isAdjacent(next)) {
+					current = current.merge(next)
+					mergeCount++
+				} else {
+					result.add(current)
+					current = next
+				}
 			}
+			result.add(current)
 		}
-		result.add(current)
-
-		//println("Style Spans Merged: $mergeCount")
 
 		return result
 	}
