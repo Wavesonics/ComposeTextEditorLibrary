@@ -29,9 +29,10 @@ private fun DrawScope.drawHandle(
 ) {
 	val (position, height) = positionMetrics
 
-	val lineWidth = 4f
+	val lineWidth = 6f
 
-	val handleY = position.y + height + SELECTION_HANDLE_RADIUS
+	// Position the handle center well below the text line
+	val handleY = position.y + height + SELECTION_HANDLE_OFFSET + SELECTION_HANDLE_RADIUS
 
 	drawCircle(
 		color = color,
@@ -39,13 +40,17 @@ private fun DrawScope.drawHandle(
 		center = position.copy(y = handleY)
 	)
 
+	// Draw the stem from the TOP of the text line down to the handle
 	drawLine(
 		color = color,
-		start = position,
-		end = Offset(position.x, position.y + height),
+		start = Offset(position.x, position.y),
+		end = Offset(position.x, handleY - SELECTION_HANDLE_RADIUS),
 		strokeWidth = lineWidth
 	)
 }
 
-internal const val SELECTION_HANDLE_DIAMETER = 45f
+internal const val SELECTION_HANDLE_DIAMETER = 52f
 internal const val SELECTION_HANDLE_RADIUS = SELECTION_HANDLE_DIAMETER / 2
+
+// Gap between the text bottom and the handle circle
+internal const val SELECTION_HANDLE_OFFSET = 50f

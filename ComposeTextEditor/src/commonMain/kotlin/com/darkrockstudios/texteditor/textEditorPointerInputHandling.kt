@@ -87,7 +87,12 @@ private fun Modifier.handleDragInput(state: TextEditorState): Modifier {
 				currentPosition = dragEvent.position
 
 				if (state.selector.isDraggingHandle()) {
-					val newPosition = state.getOffsetAtPosition(currentPosition)
+					// Offset the finger position well above where the finger is touching
+					// so the user can clearly see the text being selected above their finger.
+					// This includes: handle visual offset + handle size + extra clearance for finger
+					val dragOffset = SELECTION_HANDLE_OFFSET + SELECTION_HANDLE_DIAMETER + 60f
+					val adjustedPosition = currentPosition.copy(y = currentPosition.y - dragOffset)
+					val newPosition = state.getOffsetAtPosition(adjustedPosition)
 					val selection = state.selector.selection
 					if (selection != null) {
 						if (state.selector.isDraggingStartHandle()) {
@@ -116,14 +121,15 @@ private fun findHandleAtPosition(
 	val selection = state.selector.selection ?: return null
 
 	val startMetrics = state.getPositionForOffset(selection.start)
-	val startHandleY = startMetrics.position.y + startMetrics.height + SELECTION_HANDLE_RADIUS
+	val startHandleY = startMetrics.position.y + startMetrics.height + SELECTION_HANDLE_OFFSET + SELECTION_HANDLE_RADIUS
 	val startHandlePos = startMetrics.position.copy(y = startHandleY)
 
 	val endMetrics = state.getPositionForOffset(selection.end)
-	val endHandleY = endMetrics.position.y + startMetrics.height + SELECTION_HANDLE_RADIUS
+	val endHandleY = endMetrics.position.y + endMetrics.height + SELECTION_HANDLE_OFFSET + SELECTION_HANDLE_RADIUS
 	val endHandlePos = endMetrics.position.copy(y = endHandleY)
 
-	val handleHitArea = 64f
+	// Larger hit area for easier touch targeting
+	val handleHitArea = 80f
 
 	return if ((position - startHandlePos).getDistance() < handleHitArea) {
 		SelectionHandle(selection.start, true, startHandlePos)
