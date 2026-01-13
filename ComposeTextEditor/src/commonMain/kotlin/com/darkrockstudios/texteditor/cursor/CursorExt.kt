@@ -14,7 +14,11 @@ fun TextEditorState.calculateCursorPosition(): CursorMetrics {
 	val layout = currentWrappedLine.textLayoutResult
 	val virtualLineIndex = currentWrappedLine.virtualLineIndex
 
-	val cursorX = layout.getHorizontalPosition(charIndex, usePrimaryDirection = true)
+	// Clamp charIndex to valid range to handle race conditions when text changes asynchronously
+	val textLength = layout.layoutInput.text.length
+	val safeCharIndex = charIndex.coerceIn(0, textLength)
+
+	val cursorX = layout.getHorizontalPosition(safeCharIndex, usePrimaryDirection = true)
 	val cursorY = currentWrappedLine.offset.y - scrollState.value
 	val lineHeight = layout.multiParagraph.getLineHeight(virtualLineIndex)
 
