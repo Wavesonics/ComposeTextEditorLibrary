@@ -250,7 +250,8 @@ private fun Modifier.handleTextInteractions(
 					}
 
 					PointerEventType.Release -> {
-						if (eventChange.type == PointerType.Touch && !didLongPress) {
+						// Only treat as a tap if there was no drag (scrolling) and no long press
+						if (eventChange.type == PointerType.Touch && !didLongPress && !wasDrag) {
 							val position = eventChange.position
 							handleSpanInteraction(
 								state,
