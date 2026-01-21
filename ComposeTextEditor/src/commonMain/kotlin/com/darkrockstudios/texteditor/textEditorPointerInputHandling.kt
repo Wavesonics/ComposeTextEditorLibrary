@@ -171,11 +171,13 @@ private fun Modifier.handleTextInteractions(
 	onContextMenuRequest: ((Offset) -> Unit)?
 ): Modifier {
 	return pointerInput(Unit) {
+		val touchSlop = viewConfiguration.touchSlop
 		awaitEachGesture {
 			var didHandlePress = false
 			var longPressJob: Job? = null
 			var didLongPress = false
 			var wasDrag = false
+			var initialPressPosition: Offset? = null
 
 			while (true) {
 				val event = awaitPointerEvent()
@@ -199,6 +201,7 @@ private fun Modifier.handleTextInteractions(
 							PointerType.Touch -> {
 								wasDrag = false
 								didLongPress = false
+								initialPressPosition = position
 								// Capture selection state before delay
 								val existingSelection = state.selector.selection
 								longPressJob = state.scope.launch {
@@ -271,10 +274,17 @@ private fun Modifier.handleTextInteractions(
 
 					PointerEventType.Move -> {
 						val movement = event.changes.first()
-						if (movement.positionChanged()) {
-							wasDrag = true
-							longPressJob?.cancel()
-							longPressJob = null
+						// Only consider it a drag if movement exceeds touch slop threshold
+						// This prevents high-precision touch screens from treating micro-movements as drags
+						initialPressPosition?.let { pressPosition ->
+							if (movement.positionChanged()) {
+								val distance = (movement.position - pressPosition).getDistance()
+								if (distance > touchSlop) {
+									wasDrag = true
+									longPressJob?.cancel()
+									longPressJob = null
+								}
+							}
 						}
 					}
 				}
