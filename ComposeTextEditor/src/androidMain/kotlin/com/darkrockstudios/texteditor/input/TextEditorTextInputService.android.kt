@@ -603,7 +603,19 @@ private class TextEditorInputConnection(
 				true
 			}
 
-			else -> false
+			else -> {
+				// Handle regular character input from physical keyboards
+				val unicodeChar = event.unicodeChar
+				if (unicodeChar != 0) {
+					if (state.selector.hasSelection()) {
+						state.selector.deleteSelection()
+					}
+					state.insertStringAtCursor(Char(unicodeChar).toString())
+					true
+				} else {
+					false
+				}
+			}
 		}
 
 		// Update the expected cursor position for IME sync after any handled key event
