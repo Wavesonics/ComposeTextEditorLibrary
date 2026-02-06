@@ -4,21 +4,21 @@ android-minSdk = "26"
 agp = "8.12.3"
 jvm = "17"
 androidx-lifecycle = "2.9.6"
-compose-multiplatform = "1.9.3"
-kotlin = "2.3.0"
+compose-multiplatform = "1.10.0"
+kotlin = "2.3.10"
 kotlinx-coroutines = "1.10.2"
 markdown = "0.7.3"
-mockk = "1.14.7"
+mockk = "1.14.9"
 
-activity-ktx = "1.12.2"
+activity-ktx = "1.12.3"
 lifecycleRuntimeKtx = "2.10.0"
-activityCompose = "1.12.2"
-composeBom = "2025.11.01"
+activityCompose = "1.12.3"
+composeBom = "2026.01.01"
 
 symspellkt = "3.4.0"
 spellcheckerkt = "1.0.0"
 
-maven-publish = "0.35.0"
+maven-publish = "0.36.0"
 
 [libraries]
 jetbrains-kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test" }
