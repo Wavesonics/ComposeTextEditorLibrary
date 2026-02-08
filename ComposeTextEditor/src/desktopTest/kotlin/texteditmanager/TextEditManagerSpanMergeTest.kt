@@ -4,9 +4,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import com.darkrockstudios.texteditor.state.SpanManager
 import com.darkrockstudios.texteditor.utils.mergeAnnotatedStrings
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -296,5 +299,40 @@ class TextEditManagerSpanMergeTest {
 
 		val blueSpan = result.spanStyles.first { it.start == 12 && it.end == 15 }
 		assertEquals(Color.Blue, blueSpan.item.color)
+	}
+
+	@Test
+	fun `test insert character into overlapping styled text - bold and underline`() {
+		// Arrange - create text with overlapping bold and underline spans
+		val original = buildAnnotatedString {
+			append("Welcome")
+			addStyle(SpanStyle(fontWeight = FontWeight.Bold), 0, 7) // bold
+			addStyle(SpanStyle(textDecoration = TextDecoration.Underline), 0, 7) // underline
+		}
+
+		// Simulate inserting "a" at position 3 (between "l" and "c")
+		val newText = buildAnnotatedString {
+			append("a")
+			addStyle(SpanStyle(fontWeight = FontWeight.Bold), 0, 1) // bold
+			addStyle(SpanStyle(textDecoration = TextDecoration.Underline), 0, 1) // underline
+		}
+		val insertionIndex = 3
+
+		// Act
+		val result = manager.mergeAnnotatedStrings(original, start = insertionIndex, newText = newText)
+
+		// Assert
+		assertEquals("Welacome", result.text)
+		// Should have 2 spans: bold(0-8) and underline(0-8)
+		assertEquals(2, result.spanStyles.size)
+
+		val boldSpan = result.spanStyles.find { it.item.fontWeight == FontWeight.Bold }
+		val underlineSpan = result.spanStyles.find { it.item.textDecoration == TextDecoration.Underline }
+
+		assertNotNull(boldSpan)
+		assertNotNull(underlineSpan)
+
+		boldSpan?.let { assertEquals(0, it.start); assertEquals(8, it.end) }
+		underlineSpan?.let { assertEquals(0, it.start); assertEquals(8, it.end) }
 	}
 }
