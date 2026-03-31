@@ -279,6 +279,109 @@ class EscapedCharactersTest {
 	}
 
 	@Test
+	fun `Test digit-hyphen round-trip`() {
+		// Reported bug: "1-" becomes "1\-" after round-trip
+		val originalText = "1-"
+		val original = AnnotatedString(originalText)
+		val markdown = original.toMarkdown()
+		val roundTripped = markdown.toAnnotatedStringFromMarkdown()
+		assertEquals(
+			originalText,
+			roundTripped.text,
+			"Digit-hyphen round-trip failed. Markdown was: $markdown"
+		)
+	}
+
+	@Test
+	fun `Test digit-hyphen variations round-trip`() {
+		// Various digit-hyphen patterns that might trigger ordered list parsing
+		val cases = listOf("1-", "1- ", "1-foo", "2-bar", "10-baz", "1-2-3", "Room 1-A")
+		cases.forEach { text ->
+			val original = AnnotatedString(text)
+			val markdown = original.toMarkdown()
+			val roundTripped = markdown.toAnnotatedStringFromMarkdown()
+			assertEquals(
+				text,
+				roundTripped.text,
+				"Digit-hyphen variation '$text' round-trip failed. Markdown was: $markdown"
+			)
+		}
+	}
+
+	@Test
+	fun `Test digit-hyphen on its own line round-trip`() {
+		val originalText = "some text\n1-\nmore text"
+		val original = AnnotatedString(originalText)
+		val markdown = original.toMarkdown()
+		val roundTripped = markdown.toAnnotatedStringFromMarkdown()
+		assertEquals(
+			originalText,
+			roundTripped.text,
+			"Digit-hyphen on own line round-trip failed. Markdown was: $markdown"
+		)
+	}
+
+	@Test
+	fun `Test digit-period round-trip`() {
+		// "1." at line start would trigger ordered list without escaping
+		val cases = listOf("1.", "1. foo", "1.2.3", "version 2.0", "foo 1. bar")
+		cases.forEach { text ->
+			val original = AnnotatedString(text)
+			val markdown = original.toMarkdown()
+			val roundTripped = markdown.toAnnotatedStringFromMarkdown()
+			assertEquals(
+				text,
+				roundTripped.text,
+				"Digit-period variation '$text' round-trip failed. Markdown was: $markdown"
+			)
+		}
+	}
+
+	@Test
+	fun `Test digit-period multiline round-trip`() {
+		val originalText = "Step 1. do this\n2. then this\n10. finally this"
+		val original = AnnotatedString(originalText)
+		val markdown = original.toMarkdown()
+		val roundTripped = markdown.toAnnotatedStringFromMarkdown()
+		assertEquals(
+			originalText,
+			roundTripped.text,
+			"Digit-period multiline round-trip failed. Markdown was: $markdown"
+		)
+	}
+
+	@Test
+	fun `Test parsing markdown with literal backslash-hyphen`() {
+		// Simulate what a user might see if markdown file contains literal \-
+		val markdownText = "1\\-"
+		val parsed = markdownText.toAnnotatedStringFromMarkdown()
+		assertEquals("1-", parsed.text, "Parsing '1\\-' should produce '1-'")
+	}
+
+	@Test
+	fun `Test double round-trip preserves text`() {
+		// Ensure multiple round-trips don't accumulate escapes
+		val originalText = "1- hello-world"
+		val original = AnnotatedString(originalText)
+
+		val markdown1 = original.toMarkdown()
+		val roundTrip1 = markdown1.toAnnotatedStringFromMarkdown()
+		assertEquals(originalText, roundTrip1.text, "First round-trip failed. Markdown: $markdown1")
+
+		val markdown2 = roundTrip1.toMarkdown()
+		val roundTrip2 = markdown2.toAnnotatedStringFromMarkdown()
+		assertEquals(
+			originalText,
+			roundTrip2.text,
+			"Second round-trip failed. Markdown1: $markdown1, Markdown2: $markdown2"
+		)
+
+		val markdown3 = roundTrip2.toMarkdown()
+		val roundTrip3 = markdown3.toAnnotatedStringFromMarkdown()
+		assertEquals(originalText, roundTrip3.text, "Third round-trip failed. Markdown: $markdown3")
+	}
+
+	@Test
 	fun `Test hash at start of line round-trip`() {
 		// "#" at line start is a header
 		val originalText = "# not a header"

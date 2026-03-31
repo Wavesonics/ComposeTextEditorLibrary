@@ -80,7 +80,7 @@ fun AnnotatedString.toMarkdown(
 		currentIndex++
 	}
 
-	return result.toString()
+	return escapeOrderedListMarkers(result.toString())
 }
 
 private fun getStyleMarker(
