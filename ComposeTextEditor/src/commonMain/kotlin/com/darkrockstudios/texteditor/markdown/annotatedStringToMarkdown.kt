@@ -123,13 +123,3 @@ private data class StyleMarkerPair(
 	val closeMarker: String
 )
 
-/**
- * Escapes markdown special characters by adding a backslash before them.
- * Characters that need escaping: *, _, `, #, +, -, ., !, [, ], (, ), {, }, <, >, |, \
- */
-private fun escapeMarkdownChar(char: Char): String {
-	return when (char) {
-		'*', '_', '`', '#', '+', '-', '!', '[', ']', '(', ')', '{', '}', '<', '>', '|', '\\' -> "\\$char"
-		else -> char.toString()
-	}
-}

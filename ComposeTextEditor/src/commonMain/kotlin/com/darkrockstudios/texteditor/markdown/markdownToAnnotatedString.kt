@@ -9,10 +9,6 @@ import org.intellij.markdown.ast.getTextInNode
 import org.intellij.markdown.flavours.commonmark.CommonMarkFlavourDescriptor
 import org.intellij.markdown.parser.MarkdownParser
 
-private fun CharSequence.removeMarkdownEscapes(): String {
-	return replace("""\\([*_`#\[\](){}+\-!\\])""".toRegex(), "$1")
-}
-
 fun String.toAnnotatedStringFromMarkdown(
 	configuration: MarkdownConfiguration = MarkdownConfiguration.DEFAULT
 ): AnnotatedString {
@@ -168,9 +164,9 @@ private fun AnnotatedString.Builder.appendMarkdownNode(
 		}
 
 		else -> {
-			// For any unhandled node types, just append the text
+			// For any unhandled node types, append text with escapes removed
 			if (nodeText.isNotEmpty()) {
-				append(nodeText)
+				append(nodeText.removeMarkdownEscapes())
 			} else {
 				appendMarkdownChildren(original, node, startOffset, styles)
 			}
