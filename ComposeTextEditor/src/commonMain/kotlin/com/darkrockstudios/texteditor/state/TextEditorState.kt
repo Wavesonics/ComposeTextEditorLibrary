@@ -423,10 +423,7 @@ class TextEditorState(
 			if (lineWrap.line != curRealLine.line) {
 				curRealLine = lineWrap
 			}
-			val textLayoutResult = textMeasurer.measure(
-				textLines[lineWrap.line],
-				constraints = Constraints(maxWidth = viewportSize.width.toInt())
-			)
+			val textLayoutResult = lineWrap.textLayoutResult
 
 			val relativeOffset = adjustedOffset - lineWrap.offset
 			if (adjustedOffset.y in curRealLine.offset.y..(curRealLine.offset.y + textLayoutResult.size.height)) {
