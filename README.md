@@ -74,15 +74,15 @@ All of the platforms supported by Compose Text Editor are now supported.
 
 Text Editor:
 
-`implementation("com.darkrockstudios:composetexteditor:1.5.0")`
+`implementation("com.darkrockstudios:composetexteditor:1.7.0")`
 
 Spell Checking addon:
 
-`implementation("com.darkrockstudios:composetexteditor-spellcheck:1.5.0")`
+`implementation("com.darkrockstudios:composetexteditor-spellcheck:1.7.0")`
 
 Find & Replace addon:
 
-`implementation("com.darkrockstudios:composetexteditor-find:1.5.0")`
+`implementation("com.darkrockstudios:composetexteditor-find:1.7.0")`
 
 
 [badge-android]: http://img.shields.io/badge/-android-6EDB8D.svg?style=flat
