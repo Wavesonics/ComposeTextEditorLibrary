@@ -17,6 +17,8 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalClipboard
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.toSize
 import com.darkrockstudios.texteditor.contextmenu.ContextMenuActions
@@ -55,9 +57,25 @@ fun BasicTextEditor(
 	val focusRequester = remember { FocusRequester() }
 	val interactionSource = remember { MutableInteractionSource() }
 	val clipboard = LocalClipboard.current
+	val density = LocalDensity.current
+	val layoutDirection = LocalLayoutDirection.current
 
 	val inputModifierElement = remember(state, clipboard, enabled) {
 		TextEditorInputModifierElement(state, clipboard, enabled)
+	}
+
+	val horizontalPadding = remember(contentPadding, layoutDirection) {
+		PaddingValues(
+			start = contentPadding.calculateStartPadding(layoutDirection),
+			end = contentPadding.calculateEndPadding(layoutDirection),
+		)
+	}
+
+	LaunchedEffect(contentPadding, density) {
+		with(density) {
+			state.scrollManager.topContentPaddingPx = contentPadding.calculateTopPadding().roundToPx()
+			state.scrollManager.bottomContentPaddingPx = contentPadding.calculateBottomPadding().roundToPx()
+		}
 	}
 
 	// Use provided context menu state or create internal one
@@ -100,7 +118,7 @@ fun BasicTextEditor(
 		) { editorModifier ->
 			Box(
 				modifier = editorModifier
-					.padding(contentPadding)
+					.padding(horizontalPadding)
 					.focusRequester(focusRequester)
 					.requestFocusOnPress(focusRequester)
 					.then(inputModifierElement)

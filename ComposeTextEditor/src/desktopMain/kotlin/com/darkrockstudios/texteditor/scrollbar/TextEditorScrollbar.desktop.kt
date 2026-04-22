@@ -60,18 +60,20 @@ private fun InternalVerticalScrollbar(
 	var dragStartY by remember { mutableStateOf(0f) }
 	var dragStartScrollPosition by remember { mutableStateOf(0) }
 
+	val scrollRange = (state.maxValue - state.minValue).coerceAtLeast(1)
+
 	// Calculate thumb size
 	val thumbHeight =
-		(componentSize.height * componentSize.height / (state.maxValue + componentSize.height))
+		(componentSize.height * componentSize.height / (scrollRange + componentSize.height))
 			.coerceAtLeast(style.minThumbSize.value)
 
 	val dragState = rememberDraggableState { delta ->
 		if (isDragging) {
 			// Calculate scroll in terms of the content, not the thumb position
-			val scrollRatio = state.maxValue.toFloat() / (componentSize.height - thumbHeight)
+			val scrollRatio = scrollRange.toFloat() / (componentSize.height - thumbHeight)
 			val scrollDelta = (delta * scrollRatio).roundToInt()
 			scope.launch {
-				state.scrollTo((state.value + scrollDelta).coerceIn(0, state.maxValue))
+				state.scrollTo((state.value + scrollDelta).coerceIn(state.minValue, state.maxValue))
 			}
 		}
 	}
@@ -98,7 +100,8 @@ private fun InternalVerticalScrollbar(
 				state = dragState,
 				onDragStarted = { offset ->
 					val scrollableHeight = componentSize.height - thumbHeight
-					val thumbPosition = (state.value.toFloat() / state.maxValue) * scrollableHeight
+					val valueFraction = (state.value - state.minValue).toFloat() / scrollRange
+					val thumbPosition = valueFraction * scrollableHeight
 					// Only start drag if we click on the thumb
 					if (offset.y in thumbPosition..(thumbPosition + thumbHeight)) {
 						isDragging = true
@@ -119,14 +122,14 @@ private fun InternalVerticalScrollbar(
 								// Handle clicks on track
 								val position = event.changes.first().position
 								val scrollableHeight = componentSize.height - thumbHeight
-								val thumbPosition =
-									(state.value.toFloat() / state.maxValue) * scrollableHeight
+								val valueFraction = (state.value - state.minValue).toFloat() / scrollRange
+								val thumbPosition = valueFraction * scrollableHeight
 
 								if (position.y < thumbPosition) {
 									// Click above thumb - scroll up by page
 									scope.launch {
 										state.animateScrollTo(
-											(state.value - componentSize.height).coerceAtLeast(0f)
+											(state.value - componentSize.height).coerceAtLeast(state.minValue.toFloat())
 												.toInt()
 										)
 									}
@@ -168,7 +171,8 @@ private fun InternalVerticalScrollbar(
 
 			// Calculate and draw thumb with rounded corners
 			val scrollableHeight = size.height - padding * 2 - thumbHeight
-			val thumbY = (state.value.toFloat() / state.maxValue) * scrollableHeight + padding
+			val valueFraction = (state.value - state.minValue).toFloat() / scrollRange
+			val thumbY = valueFraction * scrollableHeight + padding
 
 			drawRoundRect(
 				color = if (isHovered) style.thumbColorHovered else style.thumbColor,

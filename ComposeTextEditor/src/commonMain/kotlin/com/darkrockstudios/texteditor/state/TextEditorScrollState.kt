@@ -19,6 +19,7 @@ class TextEditorScrollState(
 	private val SCROLL_CONTENT_BUFFER = 32
 
 	private var _value by mutableStateOf(initial)
+	private var _minValue by mutableStateOf(0)
 	private var _maxValue by mutableStateOf(0)
 	private var _isScrollInProgress by mutableStateOf(false)
 	private val scrollMutex = MutatorMutex()
@@ -30,11 +31,19 @@ class TextEditorScrollState(
 	}
 
 	val value: Int get() = _value
+	var minValue: Int
+		get() = _minValue
+		set(value) {
+			val wasAtMin = _value == _minValue
+			_minValue = value
+			if (_maxValue < _minValue) _maxValue = _minValue
+			_value = if (wasAtMin) _minValue else _value.coerceIn(_minValue, _maxValue)
+		}
 	var maxValue: Int
 		get() = _maxValue
 		set(value) {
-			_maxValue = value.coerceAtLeast(0) + SCROLL_CONTENT_BUFFER
-			_value = _value.coerceIn(0, _maxValue)
+			_maxValue = (value + SCROLL_CONTENT_BUFFER).coerceAtLeast(_minValue)
+			_value = _value.coerceIn(_minValue, _maxValue)
 		}
 
 	override val isScrollInProgress: Boolean
@@ -59,7 +68,7 @@ class TextEditorScrollState(
 
 		val oldValue = _value
 		val newValue = (oldValue - delta).roundToInt()
-		val coercedValue = newValue.coerceIn(0, maxValue)
+		val coercedValue = newValue.coerceIn(_minValue, maxValue)
 
 		val consumed = (oldValue - coercedValue).toFloat()
 		_value = coercedValue
@@ -68,7 +77,7 @@ class TextEditorScrollState(
 	}
 
 	fun scrollTo(value: Int) {
-		_value = value.coerceIn(0, maxValue)
+		_value = value.coerceIn(_minValue, maxValue)
 	}
 
 	suspend fun animateScrollTo(
@@ -79,7 +88,7 @@ class TextEditorScrollState(
 		)
 	) {
 		scrollMutex.mutate {
-			val targetValue = value.coerceIn(0, maxValue).toFloat()
+			val targetValue = value.coerceIn(_minValue, maxValue).toFloat()
 			_isScrollInProgress = true
 			try {
 				animate(
@@ -97,7 +106,7 @@ class TextEditorScrollState(
 
 	fun scrollBy(delta: Float): Float {
 		val oldValue = _value
-		val newValue = (oldValue + delta).roundToInt().coerceIn(0, maxValue)
+		val newValue = (oldValue + delta).roundToInt().coerceIn(_minValue, maxValue)
 		val consumed = (newValue - oldValue).toFloat()
 		_value = newValue
 		return consumed

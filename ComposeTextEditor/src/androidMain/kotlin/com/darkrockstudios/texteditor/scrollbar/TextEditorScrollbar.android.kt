@@ -31,21 +31,21 @@ actual fun TextEditorScrollbar(
 
 		// Only show scrollbar if content is scrollable
 		val showScrollbar by remember {
-			derivedStateOf { scrollState.maxValue > 0 }
+			derivedStateOf { scrollState.maxValue > scrollState.minValue }
 		}
 
 		if (showScrollbar) {
 			val thumbHeight by remember {
 				derivedStateOf {
-					val viewportRatio = scrollState.maxValue.toFloat() / (scrollState.maxValue * 2)
-					0.15f.coerceAtLeast(viewportRatio)
+					0.15f
 				}
 			}
 
 			val thumbOffset by remember {
 				derivedStateOf {
+					val range = (scrollState.maxValue - scrollState.minValue).coerceAtLeast(1)
 					val maxOffset = 1f - thumbHeight
-					(scrollState.value.toFloat() / scrollState.maxValue.toFloat() * maxOffset)
+					((scrollState.value - scrollState.minValue).toFloat() / range) * maxOffset
 				}
 			}
 
