@@ -32,6 +32,7 @@ import com.darkrockstudios.texteditor.state.SpanClickType
 import com.darkrockstudios.texteditor.state.TextEditorState
 import com.darkrockstudios.texteditor.state.rememberTextEditorState
 import kotlinx.coroutines.delay
+import kotlin.time.Duration.Companion.milliseconds
 
 private const val CURSOR_BLINK_SPEED_MS = 500L
 
@@ -77,7 +78,7 @@ fun BasicTextEditor(
 		if (enabled && state.isFocused) {
 			state.cursor.setVisible()
 			while (state.isFocused) {
-				delay(CURSOR_BLINK_SPEED_MS)
+				delay(CURSOR_BLINK_SPEED_MS.milliseconds)
 				state.cursor.toggleVisibility()
 			}
 		}
