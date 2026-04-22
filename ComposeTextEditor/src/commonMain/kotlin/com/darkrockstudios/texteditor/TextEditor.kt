@@ -8,7 +8,7 @@ import androidx.compose.ui.unit.dp
 import com.darkrockstudios.texteditor.state.TextEditorState
 import com.darkrockstudios.texteditor.state.rememberTextEditorState
 
-private val DefaultContentPadding = PaddingValues(start = 8.dp)
+private val DefaultContentPadding = PaddingValues(16.dp)
 
 @Composable
 fun TextEditor(
