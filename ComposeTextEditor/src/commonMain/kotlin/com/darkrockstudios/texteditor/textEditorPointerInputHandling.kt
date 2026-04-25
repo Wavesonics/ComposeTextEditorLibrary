@@ -182,6 +182,9 @@ private fun Modifier.handleTextInteractions(
 			var didLongPress = false
 			var wasDrag = false
 			var initialPressPosition: Offset? = null
+			// Whether this gesture is a real finger touch (vs mouse / mouse-as-touch on Android).
+			// Set on Press; controls whether Release fires a TAP. See android_mouse_pointer_type memo.
+			var isFingerTouchGesture = false
 
 			while (true) {
 				val event = awaitPointerEvent()
@@ -190,10 +193,15 @@ private fun Modifier.handleTextInteractions(
 				when (event.type) {
 					PointerEventType.Press -> {
 						val position = eventChange.position
+						val hasPrimaryButton = event.buttons.isPrimaryPressed &&
+								!event.buttons.isSecondaryPressed
+						val hasSecondaryButton = event.buttons.isSecondaryPressed
+						val isMouseLike = eventChange.type == PointerType.Mouse ||
+								hasPrimaryButton || hasSecondaryButton
+						isFingerTouchGesture = !isMouseLike
 
-						// Only check for handle interaction on touch events
-						// Mouse right-clicks should always fall through to context menu
-						if (eventChange.type == PointerType.Touch) {
+						// Only check for handle interaction on real finger-touch events
+						if (isFingerTouchGesture) {
 							val handle = findHandleAtPosition(position, state)
 							if (handle != null) {
 								didHandlePress = true
@@ -201,64 +209,57 @@ private fun Modifier.handleTextInteractions(
 							}
 						}
 
-						when (eventChange.type) {
-							PointerType.Touch -> {
-								wasDrag = false
-								didLongPress = false
-								initialPressPosition = position
-								// Capture selection state before delay
-								val existingSelection = state.selector.selection
-								longPressJob = state.scope.launch {
-									delay(500)
-									val wordPosition = state.getOffsetAtPosition(position)
-
-									// Check if long press is on already-selected text
-									val isOnSelection = existingSelection != null &&
-											(wordPosition isAfterOrEqual existingSelection.start) &&
-											(wordPosition isBeforeOrEqual existingSelection.end)
-
-									if (isOnSelection) {
-										// Long press on existing selection: show context menu
-										onContextMenuRequest?.invoke(position)
-									} else {
-										// Long press on unselected text: select word, no menu
-										state.selector.startSelection(wordPosition, isTouch = true)
-										state.selector.selectWordAt(wordPosition)
-									}
-
-									didLongPress = true
-									didHandlePress = true
-								}
+						if (isMouseLike) {
+							if (hasPrimaryButton) {
+								handleSpanInteraction(
+									state,
+									position,
+									SpanClickType.PRIMARY_CLICK,
+									onSpanClick
+								)
+								didHandlePress = true
+							} else if (hasSecondaryButton) {
+								handleSpanInteraction(
+									state,
+									position,
+									SpanClickType.SECONDARY_CLICK,
+									onSpanClick
+								)
+								onContextMenuRequest?.invoke(position)
+								didHandlePress = true
 							}
+						} else {
+							// Real finger touch: long-press to select word / show context menu.
+							wasDrag = false
+							didLongPress = false
+							initialPressPosition = position
+							val existingSelection = state.selector.selection
+							longPressJob = state.scope.launch {
+								delay(500)
+								val wordPosition = state.getOffsetAtPosition(position)
 
-							PointerType.Mouse -> {
-								if (event.buttons.isPrimaryPressed) {
-									handleSpanInteraction(
-										state,
-										position,
-										SpanClickType.PRIMARY_CLICK,
-										onSpanClick
-									)
-									didHandlePress = true
-								} else if (event.buttons.isSecondaryPressed) {
-									handleSpanInteraction(
-										state,
-										position,
-										SpanClickType.SECONDARY_CLICK,
-										onSpanClick
-									)
+								val isOnSelection = existingSelection != null &&
+										(wordPosition isAfterOrEqual existingSelection.start) &&
+										(wordPosition isBeforeOrEqual existingSelection.end)
+
+								if (isOnSelection) {
 									onContextMenuRequest?.invoke(position)
-									didHandlePress = true
+								} else {
+									state.selector.startSelection(wordPosition, isTouch = true)
+									state.selector.selectWordAt(wordPosition)
 								}
-							}
 
-							else -> {}
+								didLongPress = true
+								didHandlePress = true
+							}
 						}
 					}
 
 					PointerEventType.Release -> {
-						// Only treat as a tap if there was no drag (scrolling) and no long press
-						if (eventChange.type == PointerType.Touch && !didLongPress && !wasDrag) {
+						// Only treat as a tap on real finger touch — mouse-like presses already
+						// positioned the cursor on Press, and a TAP here would clobber any
+						// selection a parallel double-click handler just set.
+						if (isFingerTouchGesture && !didLongPress && !wasDrag) {
 							val position = eventChange.position
 							handleSpanInteraction(
 								state,
@@ -311,11 +312,16 @@ private fun Modifier.detectMouseClicksImperatively(
 			var secondLastTapPosition: Offset? = null
 
 			while (true) {
-				val down = awaitFirstDown()
+				val down = awaitFirstDown(requireUnconsumed = false)
 
-				// Skip if not a mouse event
-				if (down.type != PointerType.Mouse) {
-					// Consume events until release
+				// Treat anything with a primary mouse button as mouse-like, since Android
+				// reports external mice as PointerType.Touch (see android_mouse_pointer_type
+				// memo). Real finger touches have no buttons and are skipped here so they
+				// don't trigger the click/double-click handlers.
+				val hasPrimaryButton = currentEvent.buttons.isPrimaryPressed &&
+						!currentEvent.buttons.isSecondaryPressed
+				val isMouseLike = down.type == PointerType.Mouse || hasPrimaryButton
+				if (!isMouseLike) {
 					do {
 						val event = awaitPointerEvent()
 					} while (event.changes.any { it.pressed })
