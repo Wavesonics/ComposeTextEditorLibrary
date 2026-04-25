@@ -523,16 +523,25 @@ class TextEditorState(
 					lineIndex in affectedLines ||
 					lineIndex > (affectedLines.lastOrNull() ?: -1)
 
+			// Use a tight width constraint (minWidth == maxWidth) so the paragraph lays out
+			// at the full viewport width rather than shrinking to its natural content width.
+			// The shrinking behavior interacts badly with TextIndent: if the paragraph
+			// shrinks to its natural width W and then TextIndent consumes X pixels of
+			// first-line width, the first line has only W-X pixels available instead of
+			// viewportWidth-X — causing wraps that shouldn't happen.
+			val lineConstraints = Constraints(
+				minWidth = maxOf(1, viewportSize.width.toInt()),
+				maxWidth = maxOf(1, viewportSize.width.toInt()),
+				minHeight = 0,
+				maxHeight = Constraints.Infinity
+			)
+
 			val textLayoutResult = if (shouldRemeasure) {
 				try {
 					textMeasurer.measure(
 						text = line,
 						style = textStyle,
-						constraints = Constraints(
-							maxWidth = maxOf(1, viewportSize.width.toInt()),
-							minHeight = 0,
-							maxHeight = Constraints.Infinity
-						)
+						constraints = lineConstraints
 					)
 				} catch (e: IllegalArgumentException) {
 					println(e)
@@ -540,11 +549,7 @@ class TextEditorState(
 					textMeasurer.measure(
 						text = AnnotatedString(""),
 						style = textStyle,
-						constraints = Constraints(
-							maxWidth = maxOf(1, viewportSize.width.toInt()),
-							minHeight = 0,
-							maxHeight = Constraints.Infinity
-						)
+						constraints = lineConstraints
 					)
 				}
 			} else {
@@ -555,11 +560,7 @@ class TextEditorState(
 					textMeasurer.measure(
 						text = line,
 						style = textStyle,
-						constraints = Constraints(
-							maxWidth = maxOf(1, viewportSize.width.toInt()),
-							minHeight = 0,
-							maxHeight = Constraints.Infinity
-						)
+						constraints = lineConstraints
 					)
 				}
 			}
@@ -567,13 +568,7 @@ class TextEditorState(
 			val virtualLineCount = textLayoutResult.multiParagraph.lineCount
 
 			for (virtualLineIndex in 0 until virtualLineCount) {
-				val lineWrapsAt = if (virtualLineIndex == 0) {
-					0
-				} else {
-					val prevEnd =
-						textLayoutResult.getLineEnd(virtualLineIndex - 1, visibleEnd = true)
-					(prevEnd + 1).coerceIn(0, line.length)
-				}
+				val lineWrapsAt = textLayoutResult.getLineStart(virtualLineIndex)
 
 				val lineLength =
 					textLayoutResult.getLineEnd(virtualLineIndex) - textLayoutResult.getLineStart(

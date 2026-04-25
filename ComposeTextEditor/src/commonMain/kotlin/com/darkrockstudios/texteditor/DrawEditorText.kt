@@ -29,20 +29,15 @@ internal fun DrawScope.DrawEditorText(
 
 		if (lineBottom >= minY && lineTop <= maxY) {
 			if (lastLine != virtualLine.line && state.textLines.size > virtualLine.line) {
-				val line = state.textLines[virtualLine.line]
-
 				val offset = virtualLine.offset.copy(y = virtualLine.offset.y - scrollY)
 				decorateLine?.let {
 					decorateLine(virtualLine.line, offset, state, style)
 				}
 
 				drawText(
-					textMeasurer = state.textMeasurer,
-					text = line,
+					textLayoutResult = virtualLine.textLayoutResult,
+					color = style.textColor,
 					topLeft = offset,
-					style = state.textStyle.copy(
-						color = style.textColor,
-					)
 				)
 
 				lastLine = virtualLine.line
