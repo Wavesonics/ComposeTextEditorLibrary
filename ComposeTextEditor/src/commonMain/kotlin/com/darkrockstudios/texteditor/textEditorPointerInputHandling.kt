@@ -48,27 +48,30 @@ internal fun Modifier.textEditorPointerInputHandling(
 private fun Modifier.handleDragInput(state: TextEditorState): Modifier {
 	return pointerInput(Unit) {
 		awaitEachGesture {
-			val down = awaitFirstDown()
-			val isTouch = down.type == PointerType.Touch
-			val isMouse = down.type == PointerType.Mouse
+			val down = awaitFirstDown(requireUnconsumed = false)
+
+			// Android reports external mouse input as PointerType.Touch but still populates
+			// PointerButtons correctly, so detect "mouse-like" input by the presence of a
+			// primary button rather than the pointer type alone. A real finger has no buttons.
+			val hasPrimaryButton = currentEvent.buttons.isPrimaryPressed &&
+					!currentEvent.buttons.isSecondaryPressed
+			val isMouseLike = down.type == PointerType.Mouse || hasPrimaryButton
+			val isFingerTouch = down.type == PointerType.Touch && !hasPrimaryButton
 
 			val initialPosition = down.position
 
 			var mouseSelectionAnchor: CharLineOffset? = null
 
-			if (isTouch) {
+			if (isFingerTouch) {
 				val handle = findHandleAtPosition(initialPosition, state)
 				if (handle != null) {
 					state.selector.setDraggingHandle(handle.isStart)
 				}
-			} else if (isMouse) {
-
+			} else if (isMouseLike && hasPrimaryButton) {
 				// Only start selection drag on primary (left) mouse button
 				// Secondary (right) click should preserve existing selection for context menu
-				if (currentEvent.buttons.isPrimaryPressed && !currentEvent.buttons.isSecondaryPressed) {
-					mouseSelectionAnchor = state.getOffsetAtPosition(initialPosition)
-					state.selector.startSelection(position = mouseSelectionAnchor, isTouch = false)
-				}
+				mouseSelectionAnchor = state.getOffsetAtPosition(initialPosition)
+				state.selector.startSelection(position = mouseSelectionAnchor, isTouch = false)
 			}
 
 			val pointerId = down.id
@@ -103,10 +106,11 @@ private fun Modifier.handleDragInput(state: TextEditorState): Modifier {
 					}
 					dragEvent.consume()
 				} else {
-					if (isMouse && mouseSelectionAnchor != null) {
+					if (isMouseLike && mouseSelectionAnchor != null) {
 						val currentOffset = state.getOffsetAtPosition(currentPosition)
 						state.selector.updateSelection(mouseSelectionAnchor, currentOffset)
 						state.cursor.updatePosition(currentOffset)
+						dragEvent.consume()
 					}
 				}
 			}
