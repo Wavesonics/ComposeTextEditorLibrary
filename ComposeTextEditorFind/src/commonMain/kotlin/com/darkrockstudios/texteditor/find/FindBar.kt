@@ -119,6 +119,7 @@ fun FindBar(
 								modifier = Modifier
 									.fillMaxWidth()
 									.focusRequester(focusRequester)
+									.findShortcut { onClose() }
 									.onPreviewKeyEvent { event ->
 										if (event.type == KeyEventType.KeyDown) {
 											when {

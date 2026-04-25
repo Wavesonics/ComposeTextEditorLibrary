@@ -8,12 +8,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.key.*
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.darkrockstudios.texteditor.TextEditor
 import com.darkrockstudios.texteditor.find.FindBar
+import com.darkrockstudios.texteditor.find.findShortcut
 import com.darkrockstudios.texteditor.find.rememberFindState
 import com.darkrockstudios.texteditor.rememberTextEditorStyle
 import com.darkrockstudios.texteditor.state.rememberTextEditorState
@@ -50,20 +50,7 @@ fun FindTextEditorDemoUi(
 	val findState = rememberFindState(textState)
 	var showFindBar by remember { mutableStateOf(false) }
 
-	Column(
-		modifier = modifier.onPreviewKeyEvent { event ->
-			// Handle Ctrl+F / Cmd+F to show find bar
-			if (event.type == KeyEventType.KeyDown &&
-				event.key == Key.F &&
-				(event.isCtrlPressed || event.isMetaPressed)
-			) {
-				showFindBar = true
-				true
-			} else {
-				false
-			}
-		}
-	) {
+	Column(modifier = modifier) {
 		Row {
 			Text(
 				"Find Demo",
@@ -105,7 +92,8 @@ fun FindTextEditorDemoUi(
 			state = textState,
 			modifier = Modifier
 				.padding(8.dp)
-				.fillMaxSize(),
+				.fillMaxSize()
+				.findShortcut { showFindBar = !showFindBar },
 			style = style,
 		)
 	}
