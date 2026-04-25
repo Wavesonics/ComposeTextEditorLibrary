@@ -1,14 +1,17 @@
 package com.darkrockstudios.texteditor.input
 
+import android.content.Context
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.text.InputType
+import android.text.TextUtils
 import android.view.KeyEvent
 import android.view.inputmethod.*
 import androidx.annotation.RequiresApi
 import androidx.compose.ui.platform.PlatformTextInputMethodRequest
 import androidx.compose.ui.platform.PlatformTextInputSession
+import com.darkrockstudios.texteditor.CharLineOffset
 import com.darkrockstudios.texteditor.TextEditorRange
 import com.darkrockstudios.texteditor.state.TextEditorState
 import com.darkrockstudios.texteditor.state.moveCursorDown
@@ -17,7 +20,7 @@ import com.darkrockstudios.texteditor.state.moveCursorUp
 
 /**
  * Android implementation of TextEditorTextInputService.
- * This creates a PlatformTextInputMethodRequest that provides an InputConnection
+ * Creates a PlatformTextInputMethodRequest that provides an InputConnection
  * to bridge the Android IME (soft keyboard) to the TextEditorState.
  */
 actual class TextEditorTextInputService actual constructor(
@@ -29,10 +32,6 @@ actual class TextEditorTextInputService actual constructor(
 	}
 }
 
-/**
- * Android-specific implementation of PlatformTextInputMethodRequest.
- * Creates an InputConnection that bridges the IME to TextEditorState.
- */
 private class TextEditorInputMethodRequest(
 	private val state: TextEditorState
 ) : PlatformTextInputMethodRequest {
@@ -43,21 +42,19 @@ private class TextEditorInputMethodRequest(
 	}
 
 	private fun configureEditorInfo(outAttributes: EditorInfo) {
-		// Basic text input with multi-line support
-		// Using TYPE_TEXT_VARIATION_NORMAL explicitly for standard text behavior
 		outAttributes.inputType = InputType.TYPE_CLASS_TEXT or
 				InputType.TYPE_TEXT_VARIATION_NORMAL or
-				InputType.TYPE_TEXT_FLAG_MULTI_LINE
+				InputType.TYPE_TEXT_FLAG_MULTI_LINE or
+				InputType.TYPE_TEXT_FLAG_AUTO_CORRECT or
+				InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
 
-		// Enable autocomplete and suggestions, prevent fullscreen mode
 		outAttributes.imeOptions = EditorInfo.IME_FLAG_NO_FULLSCREEN or
-				EditorInfo.IME_FLAG_NO_EXTRACT_UI or
-				EditorInfo.IME_ACTION_NONE
+				EditorInfo.IME_FLAG_NO_EXTRACT_UI
 
-		// Set initial selection/cursor position
+		outAttributes.imeOptions = outAttributes.imeOptions or EditorInfo.IME_ACTION_UNSPECIFIED
+
 		val cursorPos = state.getCharacterIndex(state.cursorPosition)
 		val selection = state.selector.selection
-
 		if (selection != null) {
 			outAttributes.initialSelStart = state.getCharacterIndex(selection.start)
 			outAttributes.initialSelEnd = state.getCharacterIndex(selection.end)
@@ -69,30 +66,47 @@ private class TextEditorInputMethodRequest(
 }
 
 /**
- * Custom InputConnection that bridges Android IME events to TextEditorState.
+ * InputConnection that bridges Android IME events to TextEditorState.
+ *
+ * Mirrors the structure of androidx.compose.foundation.text.input.internal.RecordingInputConnection
+ * and StatelessInputConnection — in particular: edit operations are queued during a batch edit
+ * and applied atomically when the batch completes; setSelection is treated as absolute
+ * (the IME's view is kept in sync via ImeCursorSync); state.composingRange is the single
+ * source of truth for composition.
  */
 private class TextEditorInputConnection(
 	private val state: TextEditorState
 ) : InputConnection {
 
-	// Composing text state (for autocomplete/suggestions preview)
-	// @Volatile ensures visibility across threads since IME callbacks may come from different threads
 	@Volatile
-	private var composingStart: Int = -1
-	@Volatile
-	private var composingEnd: Int = -1
+	private var isActive: Boolean = true
 
-	// Track what position the IME thinks the cursor is at
-	// This helps us handle relative cursor movements correctly when IME has stale data
-	@Volatile
-	private var imeExpectedCursorPos: Int = state.getCharacterIndex(state.cursorPosition)
+	/**
+	 * Queue of edit operations recorded during a batch edit. When the outermost batch
+	 * ends the operations are drained and applied in order, then a single
+	 * `updateSelection` (and, if the IME requested it, `updateExtractedText`) is sent.
+	 */
+	private val pendingOps = mutableListOf<() -> Unit>()
 
-	// ============ TEXT RETRIEVAL METHODS ============
+	private inline fun ensureActive(block: () -> Unit): Boolean {
+		if (!isActive) return false
+		block()
+		return true
+	}
 
-	override fun getTextBeforeCursor(n: Int, flags: Int): CharSequence? {
+	private inline fun runOrQueue(crossinline op: () -> Unit) {
+		if (state.platformExtensions.isInBatchEdit) {
+			pendingOps += { op() }
+		} else {
+			op()
+		}
+	}
+
+	// ============ TEXT RETRIEVAL ============
+
+	override fun getTextBeforeCursor(n: Int, flags: Int): CharSequence {
 		val cursorIndex = state.getCharacterIndex(state.cursorPosition)
 		val start = maxOf(0, cursorIndex - n)
-
 		return if (start < cursorIndex) {
 			state.getAllText().subSequence(start, cursorIndex)
 		} else {
@@ -100,11 +114,10 @@ private class TextEditorInputConnection(
 		}
 	}
 
-	override fun getTextAfterCursor(n: Int, flags: Int): CharSequence? {
+	override fun getTextAfterCursor(n: Int, flags: Int): CharSequence {
 		val cursorIndex = state.getCharacterIndex(state.cursorPosition)
 		val textLength = state.getTextLength()
 		val end = minOf(textLength, cursorIndex + n)
-
 		return if (cursorIndex < end) {
 			state.getAllText().subSequence(cursorIndex, end)
 		} else {
@@ -113,173 +126,120 @@ private class TextEditorInputConnection(
 	}
 
 	override fun getSelectedText(flags: Int): CharSequence? {
-		return state.selector.selection?.let { selection ->
-			state.getStringInRange(selection)
+		// Per Chromium / AndroidX convention: return null (not empty) when collapsed.
+		return state.selector.selection?.let { state.getStringInRange(it) }
+	}
+
+	// ============ TEXT MUTATION ============
+
+	override fun commitText(text: CharSequence?, newCursorPosition: Int): Boolean = ensureActive {
+		// Per Android contract: returning false signals a dead connection. Nullable text
+		// is a no-op but the connection is still valid.
+		if (text == null) return@ensureActive
+		runOrQueue {
+			val insertStart = replaceComposingOrInsert(text.toString())
+			val insertEnd = insertStart + text.length
+			state.clearComposingRange()
+			applyNewCursorPosition(insertStart, insertEnd, newCursorPosition)
 		}
 	}
 
-	// ============ TEXT MODIFICATION METHODS ============
-
-	override fun commitText(text: CharSequence?, newCursorPosition: Int): Boolean {
-		if (text == null) return false
-
-		when {
-			// If there's a composing region, replace it (inheriting styles for autocorrect)
-			composingStart >= 0 && composingEnd > composingStart -> {
-				val startOffset = state.getOffsetAtCharacter(composingStart)
-				val endOffset = state.getOffsetAtCharacter(composingEnd)
-				val range = TextEditorRange(startOffset, endOffset)
-				// Inherit styles from the text being replaced (e.g., preserve bold during autocorrect)
-				state.replace(range, text.toString(), inheritStyle = true)
+	override fun setComposingText(text: CharSequence?, newCursorPosition: Int): Boolean = ensureActive {
+		if (text == null) return@ensureActive
+		runOrQueue {
+			val insertStart = replaceComposingOrInsert(text.toString())
+			val insertEnd = insertStart + text.length
+			if (text.isNotEmpty()) {
+				state.updateComposingRange(insertStart, insertEnd)
+			} else {
+				state.clearComposingRange()
 			}
-
-			// Empty composing region - insert at composing position
-			composingStart >= 0 && composingEnd == composingStart -> {
-				if (state.selector.hasSelection()) {
-					state.selector.deleteSelection()
-				}
-				val insertOffset = state.getOffsetAtCharacter(composingStart)
-				state.cursor.updatePosition(insertOffset)
-				state.insertStringAtCursor(text.toString())
-			}
-
-			// No composing region - delete selection if present and insert at cursor
-			else -> {
-				if (state.selector.hasSelection()) {
-					state.selector.deleteSelection()
-				}
-				state.insertStringAtCursor(text.toString())
-			}
+			applyNewCursorPosition(insertStart, insertEnd, newCursorPosition)
 		}
-
-		// Clear composing state after handling the commit
-		finishComposingText()
-
-		// Update the expected cursor position for IME sync
-		imeExpectedCursorPos = state.getCharacterIndex(state.cursorPosition)
-
-		return true
-	}
-
-	override fun setComposingText(text: CharSequence?, newCursorPosition: Int): Boolean {
-		if (text == null) return false
-
-		when {
-			// If we have existing non-empty composing text, replace it
-			composingStart >= 0 && composingEnd > composingStart -> {
-				val startOffset = state.getOffsetAtCharacter(composingStart)
-				val endOffset = state.getOffsetAtCharacter(composingEnd)
-				val range = TextEditorRange(startOffset, endOffset)
-				// Inherit styles from the text being replaced (e.g., preserve bold during autocorrect)
-				state.replace(range, text.toString(), inheritStyle = true)
-
-				// Update composing range end
-				composingEnd = composingStart + text.length
-			}
-
-			// Empty composing region (composingStart == composingEnd) - insert at that position
-			// Some IMEs set empty composing regions before inserting text
-			composingStart >= 0 && composingEnd == composingStart -> {
-				// Delete selection if present
-				if (state.selector.hasSelection()) {
-					state.selector.deleteSelection()
-				}
-
-				// Move cursor to composing position and insert
-				val insertOffset = state.getOffsetAtCharacter(composingStart)
-				state.cursor.updatePosition(insertOffset)
-				state.insertStringAtCursor(text.toString())
-				composingEnd = composingStart + text.length
-			}
-
-			// No composing region - insert at current cursor position
-			else -> {
-				// Delete selection if present
-				if (state.selector.hasSelection()) {
-					state.selector.deleteSelection()
-				}
-
-				// Insert composing text at cursor
-				composingStart = state.getCharacterIndex(state.cursorPosition)
-				state.insertStringAtCursor(text.toString())
-				composingEnd = composingStart + text.length
-			}
-		}
-
-		// Update the expected cursor position for IME sync
-		imeExpectedCursorPos = state.getCharacterIndex(state.cursorPosition)
-
-		// Notify state about composing region for visual feedback
-		state.updateComposingRange(composingStart, composingEnd)
-
-		return true
-	}
-
-	override fun finishComposingText(): Boolean {
-		// Clear composing state
-		composingStart = -1
-		composingEnd = -1
-		// Clear visual feedback
-		state.clearComposingRange()
-		return true
-	}
-
-	override fun deleteSurroundingText(beforeLength: Int, afterLength: Int): Boolean {
-		val cursorIndex = state.getCharacterIndex(state.cursorPosition)
-
-		// Calculate delete range
-		val deleteStart = maxOf(0, cursorIndex - beforeLength)
-		val deleteEnd = minOf(state.getTextLength(), cursorIndex + afterLength)
-
-		if (deleteStart < deleteEnd) {
-			val startOffset = state.getOffsetAtCharacter(deleteStart)
-			val endOffset = state.getOffsetAtCharacter(deleteEnd)
-			val range = TextEditorRange(startOffset, endOffset)
-			state.delete(range)
-		}
-
-		// Update the expected cursor position for IME sync
-		imeExpectedCursorPos = state.getCharacterIndex(state.cursorPosition)
-
-		return true
-	}
-
-	override fun deleteSurroundingTextInCodePoints(beforeLength: Int, afterLength: Int): Boolean {
-		val cursorIndex = state.getCharacterIndex(state.cursorPosition)
-		val fullText = state.getAllText()
-		val textLength = fullText.length
-
-		// Convert code points to character counts, handling surrogate pairs
-		val charsBefore = codePointsToChars(fullText, cursorIndex, beforeLength, backwards = true)
-		val charsAfter = codePointsToChars(fullText, cursorIndex, afterLength, backwards = false)
-
-		// Calculate delete range in characters
-		val deleteStart = maxOf(0, cursorIndex - charsBefore)
-		val deleteEnd = minOf(textLength, cursorIndex + charsAfter)
-
-		if (deleteStart < deleteEnd) {
-			val startOffset = state.getOffsetAtCharacter(deleteStart)
-			val endOffset = state.getOffsetAtCharacter(deleteEnd)
-			val range = TextEditorRange(startOffset, endOffset)
-			state.delete(range)
-		}
-
-		// Update the expected cursor position for IME sync
-		imeExpectedCursorPos = state.getCharacterIndex(state.cursorPosition)
-
-		return true
 	}
 
 	/**
-	 * Converts a count of code points to a count of UTF-16 characters (code units).
-	 * Handles surrogate pairs correctly for emoji and characters outside the BMP.
+	 * Applies the inserted text either by replacing the current composing region or
+	 * (after deleting any selection) inserting at the cursor.
 	 *
-	 * @param text The full text
-	 * @param fromIndex Starting character index
-	 * @param codePointCount Number of code points to count
-	 * @param backwards If true, count backwards from fromIndex; if false, count forwards
-	 * @return Number of UTF-16 characters that represent the given code points
+	 * @return the character index at which the new text starts.
 	 */
+	private fun replaceComposingOrInsert(text: String): Int {
+		val composing = state.composingRange
+		return if (composing != null) {
+			val start = state.getCharacterIndex(composing.start)
+			val range = TextEditorRange(composing.start, composing.end)
+			// inheritStyle keeps autocorrect from stripping bold/italic etc.
+			state.replace(range, text, inheritStyle = true)
+			start
+		} else {
+			if (state.selector.hasSelection()) {
+				state.selector.deleteSelection()
+			}
+			val start = state.getCharacterIndex(state.cursorPosition)
+			state.insertStringAtCursor(text)
+			start
+		}
+	}
+
+	/**
+	 * Implements the Android `newCursorPosition` contract:
+	 * - `> 0`: position is relative to the end of the inserted text (1 = right after).
+	 * - `<= 0`: position is relative to the start (0 = at start, -1 = one before).
+	 */
+	private fun applyNewCursorPosition(insertStart: Int, insertEnd: Int, newCursorPosition: Int) {
+		val len = state.getTextLength()
+		val target = if (newCursorPosition > 0) {
+			(insertEnd + (newCursorPosition - 1)).coerceIn(0, len)
+		} else {
+			(insertStart + newCursorPosition).coerceIn(0, len)
+		}
+		state.cursor.updatePosition(state.getOffsetAtCharacter(target))
+		state.selector.clearSelection()
+	}
+
+	override fun finishComposingText(): Boolean = ensureActive {
+		runOrQueue {
+			state.clearComposingRange()
+		}
+	}
+
+	override fun deleteSurroundingText(beforeLength: Int, afterLength: Int): Boolean = ensureActive {
+		runOrQueue {
+			val cursorIndex = state.getCharacterIndex(state.cursorPosition)
+			val deleteStart = maxOf(0, cursorIndex - beforeLength)
+			val deleteEnd = minOf(state.getTextLength(), cursorIndex + afterLength)
+			if (deleteStart < deleteEnd) {
+				val range = TextEditorRange(
+					state.getOffsetAtCharacter(deleteStart),
+					state.getOffsetAtCharacter(deleteEnd)
+				)
+				state.delete(range)
+			}
+		}
+	}
+
+	override fun deleteSurroundingTextInCodePoints(
+		beforeLength: Int,
+		afterLength: Int
+	): Boolean = ensureActive {
+		runOrQueue {
+			val cursorIndex = state.getCharacterIndex(state.cursorPosition)
+			val fullText = state.getAllText()
+			val charsBefore = codePointsToChars(fullText, cursorIndex, beforeLength, backwards = true)
+			val charsAfter = codePointsToChars(fullText, cursorIndex, afterLength, backwards = false)
+			val deleteStart = maxOf(0, cursorIndex - charsBefore)
+			val deleteEnd = minOf(state.getTextLength(), cursorIndex + charsAfter)
+			if (deleteStart < deleteEnd) {
+				val range = TextEditorRange(
+					state.getOffsetAtCharacter(deleteStart),
+					state.getOffsetAtCharacter(deleteEnd)
+				)
+				state.delete(range)
+			}
+		}
+	}
+
 	private fun codePointsToChars(
 		text: CharSequence,
 		fromIndex: Int,
@@ -287,20 +247,16 @@ private class TextEditorInputConnection(
 		backwards: Boolean
 	): Int {
 		if (codePointCount <= 0) return 0
-
 		var charCount = 0
 		var codePointsRemaining = codePointCount
-
 		if (backwards) {
 			var index = fromIndex
 			while (codePointsRemaining > 0 && index > 0) {
 				index--
 				charCount++
-				// Check if this is the low surrogate of a surrogate pair
 				if (Character.isLowSurrogate(text[index]) && index > 0 &&
 					Character.isHighSurrogate(text[index - 1])
 				) {
-					// This is part of a surrogate pair, include the high surrogate too
 					index--
 					charCount++
 				}
@@ -310,11 +266,9 @@ private class TextEditorInputConnection(
 			var index = fromIndex
 			while (codePointsRemaining > 0 && index < text.length) {
 				charCount++
-				// Check if this is the high surrogate of a surrogate pair
 				if (Character.isHighSurrogate(text[index]) && index + 1 < text.length &&
 					Character.isLowSurrogate(text[index + 1])
 				) {
-					// This is a surrogate pair, include both characters
 					charCount++
 					index++
 				}
@@ -322,121 +276,63 @@ private class TextEditorInputConnection(
 				codePointsRemaining--
 			}
 		}
-
 		return charCount
 	}
 
-	// ============ SELECTION METHODS ============
+	// ============ SELECTION & COMPOSING ============
 
-	override fun setSelection(start: Int, end: Int): Boolean {
-		// For cursor movement (not selection), detect if IME is trying to move
-		// relative to a stale position and apply the delta to our actual position
-		if (start == end) {
-			val actualCursorPos = state.getCharacterIndex(state.cursorPosition)
-			val delta = start - imeExpectedCursorPos
-
-			// Determine if this looks like a relative move or absolute positioning
-			// Relative moves: IME requests position relative to what it thinks cursor is at
-			// Absolute positioning: IME requests specific position (e.g., user tap, select word)
-			val newPos = when {
-				// Zero delta means IME thinks cursor is already there - no move needed
-				delta == 0 -> start.coerceIn(0, state.getTextLength())
-
-				// Common relative move deltas from arrow keys and word movement:
-				// -1, +1: single character left/right
-				// -2 to -20, +2 to +20: word movement (varies by word length)
-				// Larger values are more likely to be absolute positioning
-				isLikelyRelativeMove(delta) -> {
-					// Apply delta to actual position to handle stale IME cursor data
-					(actualCursorPos + delta).coerceIn(0, state.getTextLength())
-				}
-
-				// Large delta or IME expected position matches actual - use absolute
-				else -> start.coerceIn(0, state.getTextLength())
+	override fun setSelection(start: Int, end: Int): Boolean = ensureActive {
+		// AndroidX contract: setSelection is ALWAYS absolute. The previous heuristic that
+		// applied `start - imeExpectedCursorPos` as a delta to the actual cursor caused
+		// drift whenever the IME's tracker disagreed with us. We now rely on
+		// ImeCursorSync to keep the IME in sync after any of our own edits.
+		runOrQueue {
+			val len = state.getTextLength()
+			val s = start.coerceIn(0, len)
+			val e = end.coerceIn(0, len)
+			if (s == e) {
+				state.selector.clearSelection()
+				state.cursor.updatePosition(state.getOffsetAtCharacter(s))
+			} else {
+				val lo = minOf(s, e)
+				val hi = maxOf(s, e)
+				state.selector.updateSelection(
+					state.getOffsetAtCharacter(lo),
+					state.getOffsetAtCharacter(hi)
+				)
+				// Cursor goes to the `end` arg per platform convention.
+				state.cursor.updatePosition(state.getOffsetAtCharacter(e))
 			}
-
-			val offset = state.getOffsetAtCharacter(newPos)
-			state.cursor.updatePosition(offset)
-			state.selector.clearSelection()
-
-			// Update expected position to where IME thinks cursor is now
-			imeExpectedCursorPos = start
-		} else {
-			// Selection (start != end) - use absolute positions
-			val startOffset = state.getOffsetAtCharacter(start.coerceIn(0, state.getTextLength()))
-			val endOffset = state.getOffsetAtCharacter(end.coerceIn(0, state.getTextLength()))
-			state.selector.updateSelection(startOffset, endOffset)
-			state.cursor.updatePosition(endOffset)
-			imeExpectedCursorPos = end
 		}
-
-		return true
 	}
 
-	/**
-	 * Determines if a cursor movement delta looks like a relative move vs absolute positioning.
-	 *
-	 * Relative moves come from keyboard navigation:
-	 * - Arrow keys: ±1 character
-	 * - Ctrl+Arrow (word movement): typically ±2 to ±20 depending on word length
-	 * - Home/End within a line: could be larger but usually < 100
-	 *
-	 * Absolute positioning comes from:
-	 * - User tapping to a specific location
-	 * - IME selecting a suggestion
-	 * - Document navigation (Ctrl+Home/End)
-	 *
-	 * We use a threshold that covers most navigation while excluding likely absolute positions.
-	 * A threshold of 50 covers typical line lengths for word navigation.
-	 */
-	private fun isLikelyRelativeMove(delta: Int): Boolean {
-		val absDelta = kotlin.math.abs(delta)
-		// Single char moves are definitely relative
-		if (absDelta == 1) return true
-		// Word/line navigation is typically under 50 chars
-		// Larger moves are more likely to be absolute positioning
-		return absDelta in 2..50
+	override fun setComposingRegion(start: Int, end: Int): Boolean = ensureActive {
+		runOrQueue {
+			val len = state.getTextLength()
+			val s = start.coerceIn(0, len)
+			val e = end.coerceIn(0, len)
+			if (s < e) {
+				state.updateComposingRange(s, e)
+			} else {
+				state.clearComposingRange()
+			}
+		}
 	}
-
-	// ============ CURSOR/COMPOSING EXTRACTION ============
 
 	override fun getCursorCapsMode(reqModes: Int): Int {
-		if (reqModes == 0) return 0
-
 		val cursorIndex = state.getCharacterIndex(state.cursorPosition)
-
-		// At the very start of the document, suggest sentence caps
-		if (cursorIndex == 0) {
-			return reqModes and (android.text.TextUtils.CAP_MODE_CHARACTERS or
-					android.text.TextUtils.CAP_MODE_WORDS or
-					android.text.TextUtils.CAP_MODE_SENTENCES)
-		}
-
-		// Get text before cursor for analysis
-		val textBefore = getTextBeforeCursor(cursorIndex, 0) ?: return 0
-
-		// Use Android's TextUtils to determine caps mode
-		return android.text.TextUtils.getCapsMode(textBefore, textBefore.length, reqModes)
+		return TextUtils.getCapsMode(state.getAllText(), cursorIndex, reqModes)
 	}
 
-	override fun getExtractedText(request: ExtractedTextRequest?, flags: Int): ExtractedText? {
-		if (request == null) return null
-
-		return ExtractedText().apply {
-			text = state.getAllText()
-			startOffset = 0
-
-			val cursorIndex = state.getCharacterIndex(state.cursorPosition)
-			val selection = state.selector.selection
-
-			if (selection != null) {
-				selectionStart = state.getCharacterIndex(selection.start)
-				selectionEnd = state.getCharacterIndex(selection.end)
-			} else {
-				selectionStart = cursorIndex
-				selectionEnd = cursorIndex
-			}
+	override fun getExtractedText(request: ExtractedTextRequest?, flags: Int): ExtractedText {
+		// Track monitor mode. AndroidX returns a populated ExtractedText regardless of
+		// whether `request` is null; some IMEs request null on initial bind.
+		val monitor = (flags and InputConnection.GET_EXTRACTED_TEXT_MONITOR) != 0
+		state.platformExtensions.extractedTextMonitorEnabled = monitor
+		if (monitor) {
+			state.platformExtensions.extractedTextMonitorToken = request?.token ?: 0
 		}
+		return state.toExtractedText()
 	}
 
 	@RequiresApi(Build.VERSION_CODES.S)
@@ -447,79 +343,59 @@ private class TextEditorInputConnection(
 	): SurroundingText {
 		val cursorIndex = state.getCharacterIndex(state.cursorPosition)
 		val textLength = state.getTextLength()
-
-		// Calculate the range of text to return
 		val start = maxOf(0, cursorIndex - beforeLength)
 		val end = minOf(textLength, cursorIndex + afterLength)
-
-		// Get the text in the range
 		val text = if (start < end) {
 			state.getAllText().subSequence(start, end).toString()
 		} else {
 			""
 		}
-
-		// Calculate selection within the returned text
 		val selection = state.selector.selection
 		val selectionStart: Int
 		val selectionEnd: Int
-
 		if (selection != null) {
 			val selStart = state.getCharacterIndex(selection.start)
 			val selEnd = state.getCharacterIndex(selection.end)
-			// Adjust selection positions relative to the returned text's start
 			selectionStart = (selStart - start).coerceIn(0, text.length)
 			selectionEnd = (selEnd - start).coerceIn(0, text.length)
 		} else {
-			// No selection, cursor position relative to returned text
 			selectionStart = (cursorIndex - start).coerceIn(0, text.length)
 			selectionEnd = selectionStart
 		}
-
 		return SurroundingText(text, selectionStart, selectionEnd, start)
 	}
 
-	// ============ COMPOSING REGION METHODS ============
+	// ============ BATCH EDITS ============
 
-	override fun setComposingRegion(start: Int, end: Int): Boolean {
-		composingStart = start
-		composingEnd = end
-		// Notify state about composing region for visual feedback
-		state.updateComposingRange(composingStart, composingEnd)
-		return true
-	}
-
-	// ============ OTHER REQUIRED METHODS ============
-
-	override fun beginBatchEdit(): Boolean {
+	override fun beginBatchEdit(): Boolean = ensureActive {
 		state.platformExtensions.beginBatchEdit()
-		return true
 	}
 
 	override fun endBatchEdit(): Boolean {
+		if (!isActive) return false
 		val batchEnded = state.platformExtensions.endBatchEdit()
 		if (batchEnded) {
-			// Force an IME selection update now that the batch has ended
-			// The IME cursor sync may have skipped updates during the batch
-			notifyImeSelectionChanged()
+			// Drain queued ops with isInBatchEdit == false so they apply directly.
+			if (pendingOps.isNotEmpty()) {
+				val ops = pendingOps.toList()
+				pendingOps.clear()
+				for (op in ops) op()
+			}
+			notifyImeOfCurrentState()
 		}
-		return true
+		// Per InputConnection contract: return true if a batch is still in progress.
+		return !batchEnded
 	}
 
-	/**
-	 * Notifies the IME of the current selection/cursor position.
-	 * Called when a batch edit ends to ensure the IME has the final state.
-	 */
-	private fun notifyImeSelectionChanged() {
+	private fun notifyImeOfCurrentState() {
 		val view = state.platformExtensions.view ?: return
-		val imm = view.context.getSystemService(android.content.Context.INPUT_METHOD_SERVICE)
+		val imm = view.context.getSystemService(Context.INPUT_METHOD_SERVICE)
 				as? InputMethodManager ?: return
 
 		val cursorIndex = state.getCharacterIndex(state.cursorPosition)
 		val selection = state.selector.selection
 		val selStart: Int
 		val selEnd: Int
-
 		if (selection != null) {
 			selStart = state.getCharacterIndex(selection.start)
 			selEnd = state.getCharacterIndex(selection.end)
@@ -528,88 +404,79 @@ private class TextEditorInputConnection(
 			selEnd = cursorIndex
 		}
 
-		// Get composing region if active
 		val composingRange = state.composingRange
 		val candidatesStart = composingRange?.let { state.getCharacterIndex(it.start) } ?: -1
 		val candidatesEnd = composingRange?.let { state.getCharacterIndex(it.end) } ?: -1
 
 		imm.updateSelection(view, selStart, selEnd, candidatesStart, candidatesEnd)
+
+		if (state.platformExtensions.extractedTextMonitorEnabled) {
+			imm.updateExtractedText(
+				view,
+				state.platformExtensions.extractedTextMonitorToken,
+				state.toExtractedText()
+			)
+		}
 	}
 
-	override fun clearMetaKeyStates(states: Int): Boolean = true
+	// ============ KEY EVENTS ============
 
 	override fun sendKeyEvent(event: KeyEvent?): Boolean {
-		if (event == null) return false
+		if (!isActive || event == null) return false
 
-		// Only handle key down events
-		if (event.action != KeyEvent.ACTION_DOWN) return false
+		// Forward UP events as handled when the matching DOWN was handled by us, so the
+		// system doesn't try to deliver them elsewhere.
+		if (event.action != KeyEvent.ACTION_DOWN) {
+			return event.action == KeyEvent.ACTION_UP &&
+					isHandledKeyCode(event.keyCode)
+		}
 
-		val handled = when (event.keyCode) {
-			KeyEvent.KEYCODE_DPAD_LEFT -> {
-				state.cursor.moveLeft()
-				true
-			}
+		val handled = handleKeyDown(event)
+		return handled
+	}
 
-			KeyEvent.KEYCODE_DPAD_RIGHT -> {
-				state.cursor.moveRight()
-				true
-			}
+	private fun isHandledKeyCode(keyCode: Int): Boolean = when (keyCode) {
+		KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_RIGHT,
+		KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_DPAD_DOWN,
+		KeyEvent.KEYCODE_MOVE_HOME, KeyEvent.KEYCODE_MOVE_END,
+		KeyEvent.KEYCODE_DEL, KeyEvent.KEYCODE_FORWARD_DEL,
+		KeyEvent.KEYCODE_ENTER -> true
 
-			KeyEvent.KEYCODE_DPAD_UP -> {
-				state.moveCursorUp()
-				true
-			}
+		else -> false
+	}
 
-			KeyEvent.KEYCODE_DPAD_DOWN -> {
-				state.moveCursorDown()
-				true
-			}
-
-			KeyEvent.KEYCODE_MOVE_HOME -> {
-				state.cursor.moveToLineStart()
-				true
-			}
-
-			KeyEvent.KEYCODE_MOVE_END -> {
-				state.moveCursorToLineEnd()
-				true
-			}
+	private fun handleKeyDown(event: KeyEvent): Boolean {
+		val shift = event.isShiftPressed
+		return when (event.keyCode) {
+			KeyEvent.KEYCODE_DPAD_LEFT -> moveCursorWithOptionalSelect(shift) { state.cursor.moveLeft() }
+			KeyEvent.KEYCODE_DPAD_RIGHT -> moveCursorWithOptionalSelect(shift) { state.cursor.moveRight() }
+			KeyEvent.KEYCODE_DPAD_UP -> moveCursorWithOptionalSelect(shift) { state.moveCursorUp() }
+			KeyEvent.KEYCODE_DPAD_DOWN -> moveCursorWithOptionalSelect(shift) { state.moveCursorDown() }
+			KeyEvent.KEYCODE_MOVE_HOME -> moveCursorWithOptionalSelect(shift) { state.cursor.moveToLineStart() }
+			KeyEvent.KEYCODE_MOVE_END -> moveCursorWithOptionalSelect(shift) { state.moveCursorToLineEnd() }
 
 			KeyEvent.KEYCODE_DEL -> {
-				// Backspace
-				if (state.selector.hasSelection()) {
-					state.selector.deleteSelection()
-				} else {
-					state.backspaceAtCursor()
-				}
+				if (state.selector.hasSelection()) state.selector.deleteSelection()
+				else state.backspaceAtCursor()
 				true
 			}
 
 			KeyEvent.KEYCODE_FORWARD_DEL -> {
-				// Delete
-				if (state.selector.hasSelection()) {
-					state.selector.deleteSelection()
-				} else {
-					state.deleteAtCursor()
-				}
+				if (state.selector.hasSelection()) state.selector.deleteSelection()
+				else state.deleteAtCursor()
 				true
 			}
 
 			KeyEvent.KEYCODE_ENTER -> {
-				if (state.selector.hasSelection()) {
-					state.selector.deleteSelection()
-				}
+				if (state.selector.hasSelection()) state.selector.deleteSelection()
 				state.insertNewlineAtCursor()
 				true
 			}
 
 			else -> {
-				// Handle regular character input from physical keyboards
 				val unicodeChar = event.unicodeChar
 				if (unicodeChar != 0) {
-					if (state.selector.hasSelection()) {
-						state.selector.deleteSelection()
-					}
+					if (state.selector.hasSelection()) state.selector.deleteSelection()
 					state.insertStringAtCursor(Char(unicodeChar).toString())
 					true
 				} else {
@@ -617,50 +484,97 @@ private class TextEditorInputConnection(
 				}
 			}
 		}
-
-		// Update the expected cursor position for IME sync after any handled key event
-		if (handled) {
-			imeExpectedCursorPos = state.getCharacterIndex(state.cursorPosition)
-		}
-
-		return handled
 	}
+
+	private inline fun moveCursorWithOptionalSelect(shift: Boolean, move: () -> Unit): Boolean {
+		val before: CharLineOffset = state.cursorPosition
+		if (!shift) state.selector.clearSelection()
+		move()
+		if (shift) extendSelectionForMovement(before)
+		return true
+	}
+
+	private fun extendSelectionForMovement(initialPosition: CharLineOffset) {
+		val current = state.selector.selection
+		when {
+			current == null ->
+				state.selector.updateSelection(initialPosition, state.cursorPosition)
+
+			initialPosition == current.start ->
+				state.selector.updateSelection(state.cursorPosition, current.end)
+
+			initialPosition == current.end ->
+				state.selector.updateSelection(current.start, state.cursorPosition)
+
+			else ->
+				state.selector.updateSelection(initialPosition, state.cursorPosition)
+		}
+	}
+
+	// ============ EDITOR ACTION / CONTEXT MENU ============
 
 	override fun performEditorAction(editorAction: Int): Boolean {
-		// Handle IME action button (e.g., "Done", "Go", "Search")
-		// For now, just return false
-		return false
+		// Even though we don't yet surface an action callback, return true per the
+		// Android contract — false signals a dead connection.
+		return isActive
 	}
 
-	override fun performContextMenuAction(id: Int): Boolean = false
+	override fun performContextMenuAction(id: Int): Boolean = ensureActive {
+		when (id) {
+			android.R.id.selectAll -> runOrQueue {
+				state.selector.selectAll()
+				val len = state.getTextLength()
+				state.cursor.updatePosition(state.getOffsetAtCharacter(len))
+			}
 
-	override fun performPrivateCommand(action: String?, data: Bundle?): Boolean = false
+			android.R.id.cut -> sendSynthesizedKeyEvent(KeyEvent.KEYCODE_CUT)
+			android.R.id.copy -> sendSynthesizedKeyEvent(KeyEvent.KEYCODE_COPY)
+			android.R.id.paste -> sendSynthesizedKeyEvent(KeyEvent.KEYCODE_PASTE)
+			else -> Unit
+		}
+	}
 
-	override fun requestCursorUpdates(cursorUpdateMode: Int): Boolean {
-		// Set monitoring flag for continuous updates
+	private fun sendSynthesizedKeyEvent(code: Int) {
+		sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, code))
+		sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, code))
+	}
+
+	// ============ MISC ============
+
+	override fun clearMetaKeyStates(states: Int): Boolean = false
+
+	override fun performPrivateCommand(action: String?, data: Bundle?): Boolean {
+		// Per docs: return true even for unknown commands, so long as the connection is alive.
+		return isActive
+	}
+
+	override fun requestCursorUpdates(cursorUpdateMode: Int): Boolean = ensureActive {
 		state.platformExtensions.cursorAnchorMonitoringEnabled =
 			(cursorUpdateMode and InputConnection.CURSOR_UPDATE_MONITOR) != 0
-
-		// If immediate update requested, send cursor info now
 		if (cursorUpdateMode and InputConnection.CURSOR_UPDATE_IMMEDIATE != 0) {
 			state.platformExtensions.sendCursorAnchorInfo()
 		}
-
-		// Return true to indicate we support cursor updates
-		return true
 	}
 
 	override fun getHandler(): Handler? = null
 
 	override fun closeConnection() {
-		finishComposingText()
-		// Stop monitoring cursor updates when connection closes
+		isActive = false
+		pendingOps.clear()
+		state.clearComposingRange()
 		state.platformExtensions.cursorAnchorMonitoringEnabled = false
+		state.platformExtensions.extractedTextMonitorEnabled = false
+		state.platformExtensions.extractedTextMonitorToken = 0
+		state.platformExtensions.resetBatchEdit()
 	}
 
 	override fun commitCompletion(text: CompletionInfo?): Boolean = false
 
-	override fun commitCorrection(correctionInfo: CorrectionInfo?): Boolean = false
+	override fun commitCorrection(correctionInfo: CorrectionInfo?): Boolean {
+		// We don't implement autocorrect highlight yet but the contract expects true
+		// to mean "accepted" rather than "connection dead".
+		return isActive
+	}
 
 	override fun reportFullscreenMode(enabled: Boolean): Boolean = false
 
@@ -668,9 +582,29 @@ private class TextEditorInputConnection(
 		inputContentInfo: InputContentInfo,
 		flags: Int,
 		opts: Bundle?
-	): Boolean {
-		// Handle rich content input (images, GIFs, etc.)
-		// For now, we don't support rich content insertion
-		return false
+	): Boolean = false
+}
+
+/**
+ * Builds the AndroidX-shaped [ExtractedText] for the current state. Mirrors
+ * `TextFieldValue.toExtractedText` from StatelessInputConnection.android.kt.
+ */
+internal fun TextEditorState.toExtractedText(): ExtractedText {
+	val res = ExtractedText()
+	val all = getAllText()
+	res.text = all
+	res.startOffset = 0
+	res.partialStartOffset = -1 // -1 means full text
+	res.partialEndOffset = all.length
+	val cursorIndex = getCharacterIndex(cursorPosition)
+	val selection = selector.selection
+	if (selection != null) {
+		res.selectionStart = getCharacterIndex(selection.start)
+		res.selectionEnd = getCharacterIndex(selection.end)
+	} else {
+		res.selectionStart = cursorIndex
+		res.selectionEnd = cursorIndex
 	}
+	res.flags = if ('\n' in all) 0 else ExtractedText.FLAG_SINGLE_LINE
+	return res
 }

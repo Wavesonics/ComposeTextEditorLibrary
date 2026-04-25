@@ -11,8 +11,12 @@ import kotlinx.coroutines.flow.combine
 
 /**
  * Android implementation of IME cursor synchronization.
- * Observes cursor and selection changes in TextEditorState and notifies
- * the InputMethodManager to keep the keyboard in sync.
+ *
+ * Observes cursor and selection changes in [TextEditorState] and notifies the
+ * [InputMethodManager] so the keyboard's mirror of the buffer stays in sync — including
+ * after IME-originated edits, which is what makes `setSelection` safe to treat as
+ * absolute. Also pushes [InputMethodManager.updateExtractedText] when the IME is in
+ * `GET_EXTRACTED_TEXT_MONITOR` mode.
  */
 actual class ImeCursorSync actual constructor(
 	private val state: TextEditorState
@@ -20,50 +24,72 @@ actual class ImeCursorSync actual constructor(
 	private var syncScope: CoroutineScope? = null
 	private var lastSelStart = -1
 	private var lastSelEnd = -1
+	private var lastCompStart = -2
+	private var lastCompEnd = -2
 
 	actual fun startSync() {
-		stopSync() // Cancel any existing sync
+		stopSync()
 
-		syncScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-		syncScope?.launch {
-			// Combine cursor position and selection flows
+		val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+		syncScope = scope
+
+		// Cursor / selection driven updates — these dedup so we only call updateSelection
+		// when the IME's view of the buffer would actually change.
+		scope.launch {
 			combine<CharLineOffset, TextEditorRange?, Pair<CharLineOffset, TextEditorRange?>>(
 				state.cursor.positionFlow,
 				state.selector.selectionRangeFlow
-			) { cursorPos, selection ->
-				Pair(cursorPos, selection)
-			}.collect { pair ->
-				val view = state.platformExtensions.view ?: return@collect
+			) { cursorPos, selection -> Pair(cursorPos, selection) }
+				.collect { (cursorPos, selection) ->
+					if (state.platformExtensions.isInBatchEdit) return@collect
+					val view = state.platformExtensions.view ?: return@collect
 
-				// Skip updates during batch edits - IME will get final state when batch ends
-				if (state.platformExtensions.isInBatchEdit) return@collect
+					val selStart: Int
+					val selEnd: Int
+					if (selection != null) {
+						selStart = state.getCharacterIndex(selection.start)
+						selEnd = state.getCharacterIndex(selection.end)
+					} else {
+						val cursorIndex = state.getCharacterIndex(cursorPos)
+						selStart = cursorIndex
+						selEnd = cursorIndex
+					}
 
-				val cursorPos = pair.first
-				val selection = pair.second
+					val composing = state.composingRange
+					val compStart = composing?.let { state.getCharacterIndex(it.start) } ?: -1
+					val compEnd = composing?.let { state.getCharacterIndex(it.end) } ?: -1
 
-				val selStart: Int
-				val selEnd: Int
+					val changed = selStart != lastSelStart || selEnd != lastSelEnd ||
+							compStart != lastCompStart || compEnd != lastCompEnd
+					if (!changed) return@collect
 
-				if (selection != null) {
-					selStart = state.getCharacterIndex(selection.start)
-					selEnd = state.getCharacterIndex(selection.end)
-				} else {
-					val cursorIndex = state.getCharacterIndex(cursorPos)
-					selStart = cursorIndex
-					selEnd = cursorIndex
-				}
-
-				// Only update if selection actually changed
-				if (selStart != lastSelStart || selEnd != lastSelEnd) {
 					lastSelStart = selStart
 					lastSelEnd = selEnd
-					updateImeSelection(view, selStart, selEnd)
+					lastCompStart = compStart
+					lastCompEnd = compEnd
+					updateImeSelection(view, selStart, selEnd, compStart, compEnd)
 
-					// Send cursor anchor info if monitoring is enabled
 					if (state.platformExtensions.cursorAnchorMonitoringEnabled) {
 						state.platformExtensions.sendCursorAnchorInfo()
 					}
 				}
+		}
+
+		// Edit-driven updateExtractedText pushes for IMEs in monitor mode. Edits always
+		// emit on this flow, even if cursor/selection don't change (e.g. autocorrect that
+		// replaces text with a same-length variant).
+		scope.launch {
+			state.editOperations.collect {
+				if (state.platformExtensions.isInBatchEdit) return@collect
+				if (!state.platformExtensions.extractedTextMonitorEnabled) return@collect
+				val view = state.platformExtensions.view ?: return@collect
+				val imm = view.context.getSystemService(Context.INPUT_METHOD_SERVICE)
+						as? InputMethodManager ?: return@collect
+				imm.updateExtractedText(
+					view,
+					state.platformExtensions.extractedTextMonitorToken,
+					state.toExtractedText()
+				)
 			}
 		}
 	}
@@ -73,27 +99,27 @@ actual class ImeCursorSync actual constructor(
 		syncScope = null
 		lastSelStart = -1
 		lastSelEnd = -1
+		lastCompStart = -2
+		lastCompEnd = -2
 	}
 
-	private fun updateImeSelection(view: View, selStart: Int, selEnd: Int) {
+	private fun updateImeSelection(
+		view: View,
+		selStart: Int,
+		selEnd: Int,
+		compStart: Int,
+		compEnd: Int
+	) {
 		val imm = view.context.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
 			?: return
+		imm.updateSelection(view, selStart, selEnd, compStart, compEnd)
 
-		// Get composing region if active
-		val composingRange = state.composingRange
-		val candidatesStart: Int
-		val candidatesEnd: Int
-		if (composingRange != null) {
-			candidatesStart = state.getCharacterIndex(composingRange.start)
-			candidatesEnd = state.getCharacterIndex(composingRange.end)
-		} else {
-			candidatesStart = -1
-			candidatesEnd = -1
+		if (state.platformExtensions.extractedTextMonitorEnabled) {
+			imm.updateExtractedText(
+				view,
+				state.platformExtensions.extractedTextMonitorToken,
+				state.toExtractedText()
+			)
 		}
-
-		// updateSelection parameters:
-		// selStart, selEnd: current selection (same value = cursor position)
-		// candidatesStart, candidatesEnd: composing region (-1 if none)
-		imm.updateSelection(view, selStart, selEnd, candidatesStart, candidatesEnd)
 	}
 }
