@@ -6,7 +6,9 @@ import org.intellij.markdown.MarkdownElementTypes
 import org.intellij.markdown.MarkdownTokenTypes
 import org.intellij.markdown.ast.ASTNode
 import org.intellij.markdown.ast.getTextInNode
-import org.intellij.markdown.flavours.commonmark.CommonMarkFlavourDescriptor
+import org.intellij.markdown.flavours.gfm.GFMElementTypes
+import org.intellij.markdown.flavours.gfm.GFMFlavourDescriptor
+import org.intellij.markdown.flavours.gfm.GFMTokenTypes
 import org.intellij.markdown.parser.MarkdownParser
 
 fun String.toAnnotatedStringFromMarkdown(
@@ -14,7 +16,7 @@ fun String.toAnnotatedStringFromMarkdown(
 ): AnnotatedString {
 	val styles = MarkdownStyles(configuration)
 
-	val flavour = CommonMarkFlavourDescriptor()
+	val flavour = GFMFlavourDescriptor()
 	val parsedTree = MarkdownParser(flavour).buildMarkdownTreeFromString(this)
 	return buildAnnotatedString {
 		appendMarkdownChildren(this@toAnnotatedStringFromMarkdown, parsedTree, 0, styles)
@@ -64,6 +66,12 @@ private fun AnnotatedString.Builder.appendMarkdownNode(
 
 		MarkdownElementTypes.STRONG -> {
 			pushStyle(styles.BOLD)
+			appendStyledContent(node, original, startOffset, styles)
+			pop()
+		}
+
+		GFMElementTypes.STRIKETHROUGH -> {
+			pushStyle(styles.STRIKETHROUGH)
 			appendStyledContent(node, original, startOffset, styles)
 			pop()
 		}
@@ -192,7 +200,8 @@ private fun AnnotatedString.Builder.appendStyledContent(
 			}
 			// Skip markdown syntax tokens
 			MarkdownTokenTypes.EMPH,
-			MarkdownTokenTypes.BACKTICK -> {
+			MarkdownTokenTypes.BACKTICK,
+			GFMTokenTypes.TILDE -> {
 			}
 			// Handle any nested elements by recursing
 			else -> {

@@ -103,6 +103,7 @@ private fun getStyleMarker(
 		style.matches(config.boldStyle) -> StyleMarkerPair("**", "**")
 		style.matches(config.italicStyle) -> StyleMarkerPair("*", "*")
 		style.matches(config.codeStyle) -> StyleMarkerPair("`", "`")
+		style.matches(config.strikethroughStyle) -> StyleMarkerPair("~~", "~~")
 		style.matches(config.linkStyle) -> StyleMarkerPair("[", "]()")
 		else -> null
 	}
@@ -113,6 +114,7 @@ private fun SpanStyle.matches(other: SpanStyle): Boolean {
 		this.fontWeight == FontWeight.Bold && other.fontWeight == FontWeight.Bold -> true
 		this.fontStyle == FontStyle.Italic && other.fontStyle == FontStyle.Italic -> true
 		this.fontFamily == FontFamily.Monospace && other.fontFamily == FontFamily.Monospace -> true
+		this.textDecoration == TextDecoration.LineThrough && other.textDecoration == TextDecoration.LineThrough -> true
 		this.textDecoration == TextDecoration.Underline && other.textDecoration == TextDecoration.Underline -> true
 		else -> false
 	}

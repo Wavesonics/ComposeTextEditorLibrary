@@ -14,19 +14,25 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.FormatBold
 import androidx.compose.material.icons.filled.FormatItalic
+import androidx.compose.material.icons.filled.FormatListBulleted
 import androidx.compose.material.icons.filled.FormatQuote
+import androidx.compose.material.icons.filled.FormatStrikethrough
+import androidx.compose.material.icons.filled.HorizontalRule
 import androidx.compose.material.icons.filled.FormatSize
 import androidx.compose.material.icons.filled.Highlight
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.Composable
@@ -41,7 +47,10 @@ import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.unit.dp
+import com.darkrockstudios.texteditor.CharLineOffset
+import com.darkrockstudios.texteditor.TextEditorRange
 import com.darkrockstudios.texteditor.markdown.MarkdownExtension
+import com.darkrockstudios.texteditor.richstyle.RichSpan
 import com.darkrockstudios.texteditor.state.TextEditorState
 import com.darkrockstudios.texteditor.state.getRichSpansAtPosition
 import com.darkrockstudios.texteditor.state.getRichSpansInRange
@@ -60,10 +69,13 @@ fun TextEditorToolbar(
 	var isBoldActive by remember { mutableStateOf(false) }
 	var isItalicActive by remember { mutableStateOf(false) }
 	var isCodeActive by remember { mutableStateOf(false) }
-	var isLinkActive by remember { mutableStateOf(false) }
+	var isStrikethroughActive by remember { mutableStateOf(false) }
+	var existingLinkSpan by remember { mutableStateOf<RichSpan?>(null) }
 	var isBlockquoteActive by remember { mutableStateOf(false) }
 	var currentHeaderLevel by remember { mutableStateOf(0) }
 	var isHighlightActive by remember { mutableStateOf(false) }
+	var linkDialogState by remember { mutableStateOf<LinkDialogRequest?>(null) }
+	val isLinkActive = existingLinkSpan != null
 
 	LaunchedEffect(Unit) {
 		state.cursorDataFlow.collect { (position, cursorStyles, selection) ->
@@ -82,7 +94,8 @@ fun TextEditorToolbar(
 			isBoldActive = styles.contains(mardkown.markdownStyles.BOLD)
 			isItalicActive = styles.contains(mardkown.markdownStyles.ITALICS)
 			isCodeActive = styles.contains(mardkown.markdownStyles.CODE)
-			isLinkActive = styles.contains(mardkown.markdownStyles.LINK)
+			isStrikethroughActive = styles.contains(mardkown.markdownStyles.STRIKETHROUGH)
+			existingLinkSpan = richSpans.firstOrNull { it.style is LinkSpanStyle }
 			isBlockquoteActive = styles.contains(mardkown.markdownStyles.BLOCKQUOTE)
 			currentHeaderLevel = (1..6).firstOrNull { lvl ->
 				styles.contains(mardkown.markdownStyles.header(lvl))
@@ -91,11 +104,11 @@ fun TextEditorToolbar(
 		}
 	}
 
-	Surface(
-		modifier = modifier.fillMaxWidth(),
-		//color = MaterialTheme.colorScheme.surfaceColorAtElevation(1.dp),
-		//tonalElevation = 2.dp,
-	) {
+	LaunchedEffect(Unit) {
+		state.editOperations.collect { reconcileHorizontalRules(state) }
+	}
+
+	Surface(modifier = modifier.fillMaxWidth()) {
 		Row(
 			modifier = Modifier
 				.horizontalScroll(rememberScrollState())
@@ -165,18 +178,34 @@ fun TextEditorToolbar(
 
 					FormatButton(
 						onClick = {
-							state.selector.selection?.let { range ->
-								if (isLinkActive) {
-									state.removeStyleSpan(range, mardkown.markdownStyles.LINK)
-								} else {
-									state.addStyleSpan(range, mardkown.markdownStyles.LINK)
-								}
+							toggleStyle(
+								state,
+								isStrikethroughActive,
+								mardkown.markdownStyles.STRIKETHROUGH
+							)
+						},
+						icon = Icons.Default.FormatStrikethrough,
+						contentDescription = "Strikethrough",
+						isActive = isStrikethroughActive,
+					)
+
+					Spacer(modifier = Modifier.width(4.dp))
+
+					FormatButton(
+						onClick = {
+							val targetRange =
+								state.selector.selection ?: existingLinkSpan?.range
+							if (targetRange != null) {
+								linkDialogState = LinkDialogRequest(
+									range = targetRange,
+									existingSpan = existingLinkSpan,
+								)
 							}
 						},
 						icon = Icons.Default.Link,
-						contentDescription = "Link",
+						contentDescription = if (isLinkActive) "Edit link" else "Add link",
 						isActive = isLinkActive,
-						enabled = state.selector.hasSelection()
+						enabled = state.selector.hasSelection() || isLinkActive,
 					)
 
 					Spacer(modifier = Modifier.width(4.dp))
@@ -206,6 +235,24 @@ fun TextEditorToolbar(
 						icon = Icons.Default.FormatQuote,
 						contentDescription = "Blockquote (style only)",
 						isActive = isBlockquoteActive,
+					)
+
+					Spacer(modifier = Modifier.width(4.dp))
+
+					FormatButton(
+						onClick = { insertLineBullet(state) },
+						icon = Icons.Default.FormatListBulleted,
+						contentDescription = "Bullet (single-line prefix)",
+						isActive = false,
+					)
+
+					Spacer(modifier = Modifier.width(4.dp))
+
+					FormatButton(
+						onClick = { insertHorizontalRule(state) },
+						icon = Icons.Default.HorizontalRule,
+						contentDescription = "Horizontal rule",
+						isActive = false,
 					)
 
 					Spacer(modifier = Modifier.width(12.dp))
@@ -259,6 +306,136 @@ fun TextEditorToolbar(
 			}
 		}
 	}
+
+	linkDialogState?.let { request ->
+		val isEditing = request.existingSpan != null
+		LinkDialog(
+			initialUrl = (request.existingSpan?.style as? LinkSpanStyle)?.url ?: "",
+			isEditing = isEditing,
+			onConfirm = { url ->
+				applyLink(state, mardkown, request, url)
+				linkDialogState = null
+			},
+			onRemove = if (isEditing) {
+				{
+					applyLink(state, mardkown, request, url = "")
+					linkDialogState = null
+				}
+			} else null,
+			onDismiss = { linkDialogState = null },
+		)
+	}
+}
+
+private data class LinkDialogRequest(
+	val range: TextEditorRange,
+	val existingSpan: RichSpan?,
+)
+
+@Composable
+private fun LinkDialog(
+	initialUrl: String,
+	isEditing: Boolean,
+	onConfirm: (String) -> Unit,
+	onRemove: (() -> Unit)?,
+	onDismiss: () -> Unit,
+) {
+	var url by remember(initialUrl) { mutableStateOf(initialUrl) }
+	AlertDialog(
+		onDismissRequest = onDismiss,
+		title = { Text(if (isEditing) "Edit link" else "Add link") },
+		text = {
+			OutlinedTextField(
+				value = url,
+				onValueChange = { url = it },
+				label = { Text("URL") },
+				placeholder = { Text("https://example.com") },
+				singleLine = true,
+			)
+		},
+		confirmButton = {
+			TextButton(
+				onClick = { onConfirm(url) },
+				enabled = url.isNotBlank(),
+			) { Text(if (isEditing) "Save" else "Add") }
+		},
+		dismissButton = {
+			Row {
+				if (onRemove != null) {
+					TextButton(onClick = onRemove) { Text("Remove") }
+					Spacer(modifier = Modifier.width(4.dp))
+				}
+				TextButton(onClick = onDismiss) { Text("Cancel") }
+			}
+		},
+	)
+}
+
+private fun applyLink(
+	state: TextEditorState,
+	markdown: MarkdownExtension,
+	request: LinkDialogRequest,
+	url: String,
+) {
+	request.existingSpan?.let { state.removeRichSpan(it) }
+	state.removeStyleSpan(request.range, markdown.markdownStyles.LINK)
+	if (url.isNotBlank()) {
+		state.addStyleSpan(request.range, markdown.markdownStyles.LINK)
+		state.addRichSpan(request.range.start, request.range.end, LinkSpanStyle(url))
+	}
+}
+
+private fun insertLineBullet(state: TextEditorState) {
+	val saved = state.cursorPosition
+	state.cursor.updatePosition(CharLineOffset(saved.line, 0))
+	state.insertStringAtCursor("• ")
+	state.cursor.updatePosition(CharLineOffset(saved.line, saved.char + 2))
+}
+
+private const val HR_PLACEHOLDER = " "
+
+private fun insertHorizontalRule(state: TextEditorState) {
+	state.insertNewlineAtCursor()
+	val hrLine = state.cursorPosition.line
+	state.insertStringAtCursor(HR_PLACEHOLDER)
+	state.insertNewlineAtCursor()
+	state.addRichSpan(
+		start = CharLineOffset(hrLine, 0),
+		end = CharLineOffset(hrLine, HR_PLACEHOLDER.length),
+		style = HorizontalRuleSpanStyle,
+	)
+}
+
+// Once a user types on an HR line, the placeholder space is gone — drop the rule and
+// strip the tracked placeholder so the line becomes plain text. A proper fix needs
+// block-level support in the editor.
+private fun reconcileHorizontalRules(state: TextEditorState) {
+	val hrSpans = state.richSpanManager.getAllRichSpans()
+		.filter { it.style === HorizontalRuleSpanStyle }
+	if (hrSpans.isEmpty()) return
+	hrSpans.forEach { span ->
+		val lineIndex = span.range.start.line
+		val lineText = state.textLines.getOrNull(lineIndex)?.text ?: return@forEach
+		if (lineText == HR_PLACEHOLDER) return@forEach
+
+		// Fallback to indexOf(' ') guards against paste/replace that didn't preserve the
+		// tracked position.
+		val placeholderChar = span.range.start.char
+		val deleteAt = if (lineText.getOrNull(placeholderChar) == ' ') {
+			placeholderChar
+		} else {
+			lineText.indexOf(' ').takeIf { it >= 0 }
+		}
+		if (deleteAt != null) {
+			state.delete(
+				TextEditorRange(
+					start = CharLineOffset(lineIndex, deleteAt),
+					end = CharLineOffset(lineIndex, deleteAt + 1),
+				)
+			)
+		}
+		state.removeRichSpan(span)
+	}
 }
 
 private fun toggleStyle(
@@ -274,11 +451,7 @@ private fun toggleStyle(
 			state.addStyleSpan(selection, spanStyle)
 		}
 	} else {
-		if (isActive) {
-			state.cursor.removeStyle(spanStyle)
-		} else {
-			state.cursor.addStyle(spanStyle)
-		}
+		state.cursor.toggleStyle(spanStyle)
 	}
 }
 

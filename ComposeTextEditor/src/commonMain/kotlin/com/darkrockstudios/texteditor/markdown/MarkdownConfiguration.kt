@@ -24,6 +24,9 @@ data class MarkdownConfiguration(
 		color = Color.Blue,
 		textDecoration = TextDecoration.Underline
 	),
+	val strikethroughStyle: SpanStyle = SpanStyle(
+		textDecoration = TextDecoration.LineThrough
+	),
 	val blockquoteStyle: SpanStyle = SpanStyle(
 		color = Color.Gray,
 		fontStyle = FontStyle.Italic
