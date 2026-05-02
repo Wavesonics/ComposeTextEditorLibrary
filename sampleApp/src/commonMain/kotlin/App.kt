@@ -18,7 +18,8 @@ enum class Destination {
 	EmptyTextEditor,
 	SpellChecking,
 	CodeEditor,
-	FindDemo
+	FindDemo,
+	RichTextView,
 }
 
 @Composable
@@ -86,6 +87,11 @@ fun App() {
 
 				Destination.FindDemo -> FindTextEditorDemoUi(
 					navigateTo = ::navigateTo,
+				)
+
+				Destination.RichTextView -> RichTextViewDemoUi(
+					navigateTo = ::navigateTo,
+					configuration = markdownScheme,
 				)
 			}
 		}

@@ -45,6 +45,10 @@ fun HomeMenu(
 			Button(onClick = { navigateTo(Destination.FindDemo) }) {
 				Text("Find Demo (Ctrl+F)")
 			}
+
+			Button(onClick = { navigateTo(Destination.RichTextView) }) {
+				Text("RichTextView (read-only)")
+			}
 		}
 	}
 }
