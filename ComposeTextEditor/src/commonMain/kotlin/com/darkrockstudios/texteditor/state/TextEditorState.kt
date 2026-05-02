@@ -515,6 +515,9 @@ class TextEditorState(
 	}
 
 	internal fun updateBookKeeping(affectedLines: IntRange? = null) {
+		// Defer until the viewport has a real size; the 1×1 sentinel forces character-wide wraps.
+		if (viewportSize.width <= 1f || viewportSize.height <= 1f) return
+
 		val offsets = mutableListOf<LineWrap>()
 		var yOffset = 0f
 

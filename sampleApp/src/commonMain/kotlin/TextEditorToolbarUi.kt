@@ -50,6 +50,8 @@ import androidx.compose.ui.unit.dp
 import com.darkrockstudios.texteditor.CharLineOffset
 import com.darkrockstudios.texteditor.TextEditorRange
 import com.darkrockstudios.texteditor.markdown.MarkdownExtension
+import com.darkrockstudios.texteditor.richstyle.HR_PLACEHOLDER
+import com.darkrockstudios.texteditor.richstyle.HorizontalRuleSpanStyle
 import com.darkrockstudios.texteditor.richstyle.RichSpan
 import com.darkrockstudios.texteditor.state.TextEditorState
 import com.darkrockstudios.texteditor.state.getRichSpansAtPosition
@@ -391,8 +393,6 @@ private fun insertLineBullet(state: TextEditorState) {
 	state.insertStringAtCursor("• ")
 	state.cursor.updatePosition(CharLineOffset(saved.line, saved.char + 2))
 }
-
-private const val HR_PLACEHOLDER = " "
 
 private fun insertHorizontalRule(state: TextEditorState) {
 	state.insertNewlineAtCursor()

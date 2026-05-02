@@ -1,6 +1,11 @@
 package com.darkrockstudios.texteditor.markdown
 
+import com.darkrockstudios.texteditor.CharLineOffset
+import com.darkrockstudios.texteditor.richstyle.HR_PLACEHOLDER
+import com.darkrockstudios.texteditor.richstyle.HorizontalRuleSpanStyle
 import com.darkrockstudios.texteditor.state.TextEditorState
+
+private val HR_LINE_TOKENS = setOf("---", "***", "___")
 
 /**
  * An extension to TextEditorState that provides markdown functionality.
@@ -20,12 +25,57 @@ class MarkdownExtension(
 		private set
 
 	fun exportAsMarkdown(): String {
-		return editorState.getAllText().toMarkdown(markdownConfiguration)
+		val hrLines = editorState.richSpanManager.getAllRichSpans()
+			.asSequence()
+			.filter { it.style === HorizontalRuleSpanStyle }
+			.map { it.range.start.line }
+			.toHashSet()
+
+		val annotated = editorState.getAllText()
+		val text = annotated.text
+		if (text.isEmpty() && hrLines.isEmpty()) return ""
+
+		val sb = StringBuilder()
+		var lineIndex = 0
+		var cursor = 0
+		while (true) {
+			val nextNewline = text.indexOf('\n', cursor)
+			val end = if (nextNewline == -1) text.length else nextNewline
+			val lineMarkdown = if (lineIndex in hrLines) {
+				"---"
+			} else {
+				annotated.subSequence(cursor, end).toMarkdown(markdownConfiguration)
+			}
+			sb.append(lineMarkdown)
+			if (nextNewline == -1) break
+			// Header export already ends with \n; don't double it.
+			if (!lineMarkdown.endsWith('\n')) sb.append('\n')
+			cursor = nextNewline + 1
+			lineIndex++
+		}
+		return sb.toString()
 	}
 
 	fun importMarkdown(markdownText: String) {
-		val annotatedString = markdownText.toAnnotatedStringFromMarkdown(markdownConfiguration)
+		val hrLineIndices = mutableListOf<Int>()
+		val processedLines = markdownText.lines().mapIndexed { index, line ->
+			if (line.trim() in HR_LINE_TOKENS) {
+				hrLineIndices += index
+				HR_PLACEHOLDER
+			} else {
+				line
+			}
+		}
+		val processedMarkdown = processedLines.joinToString("\n")
+		val annotatedString = processedMarkdown.toAnnotatedStringFromMarkdown(markdownConfiguration)
 		editorState.setText(annotatedString)
+		hrLineIndices.forEach { lineIdx ->
+			editorState.addRichSpan(
+				start = CharLineOffset(lineIdx, 0),
+				end = CharLineOffset(lineIdx, HR_PLACEHOLDER.length),
+				style = HorizontalRuleSpanStyle,
+			)
+		}
 	}
 
 	override fun equals(other: Any?): Boolean {

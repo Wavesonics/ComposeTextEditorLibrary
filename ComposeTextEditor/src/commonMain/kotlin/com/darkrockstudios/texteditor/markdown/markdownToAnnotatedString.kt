@@ -258,7 +258,4 @@ private fun AnnotatedString.Builder.handleHeader(
 
 	// Pop the header style
 	pop()
-
-	// Add a newline for formatting
-	append("\n")
 }
