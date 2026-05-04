@@ -3,6 +3,7 @@ package com.darkrockstudios.texteditor.richstyle
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.unit.Density
 import com.darkrockstudios.texteditor.CharLineOffset
 import com.darkrockstudios.texteditor.LineWrap
 import com.darkrockstudios.texteditor.TextEditorRange
@@ -13,6 +14,28 @@ interface RichSpanStyle {
 		lineWrap: LineWrap,
 		textRange: TextRange
 	)
+}
+
+/**
+ * A [RichSpanStyle] that occupies a full line as a block — its [blockHeight]
+ * overrides the line's text-derived height, so the line takes up the requested
+ * vertical space (image height, code-block padding, etc.).
+ *
+ * The line should contain only a placeholder character; the block's
+ * [drawCustomStyle] is responsible for the entire visual.
+ */
+interface BlockSpanStyle : RichSpanStyle {
+	/**
+	 * Returns the desired height of the block in pixels. Called during layout
+	 * book-keeping; should be cheap and deterministic for a given input.
+	 */
+	fun blockHeight(density: Density, viewportWidth: Float): Float
+
+	/**
+	 * If true, the editor skips drawing the underlying placeholder text on
+	 * this line — the block paints the full line itself.
+	 */
+	fun replacesText(): Boolean = true
 }
 
 data class RichSpan(

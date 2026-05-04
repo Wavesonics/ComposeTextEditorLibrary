@@ -4,6 +4,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.util.fastForEach
+import com.darkrockstudios.texteditor.richstyle.BlockSpanStyle
 import com.darkrockstudios.texteditor.state.TextEditorState
 import com.darkrockstudios.texteditor.utils.getBoundingBoxes
 
@@ -24,7 +25,7 @@ internal fun DrawScope.DrawEditorText(
 	state.lineOffsets.fastForEach { virtualLine ->
 		// Check if this line could be visible
 		val lineTop = virtualLine.offset.y
-		val lineHeight = virtualLine.textLayoutResult.size.height
+		val lineHeight = virtualLine.effectiveHeight
 		val lineBottom = lineTop + lineHeight
 
 		if (lineBottom >= minY && lineTop <= maxY) {
@@ -34,11 +35,16 @@ internal fun DrawScope.DrawEditorText(
 					decorateLine(virtualLine.line, offset, state, style)
 				}
 
-				drawText(
-					textLayoutResult = virtualLine.textLayoutResult,
-					color = style.textColor,
-					topLeft = offset,
-				)
+				val blockReplacesText = virtualLine.richSpans.any {
+					(it.style as? BlockSpanStyle)?.replacesText() == true
+				}
+				if (!blockReplacesText) {
+					drawText(
+						textLayoutResult = virtualLine.textLayoutResult,
+						color = style.textColor,
+						topLeft = offset,
+					)
+				}
 
 				lastLine = virtualLine.line
 			}

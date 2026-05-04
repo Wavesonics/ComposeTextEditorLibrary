@@ -1,11 +1,19 @@
 package com.darkrockstudios.texteditor.markdown
 
 import com.darkrockstudios.texteditor.CharLineOffset
-import com.darkrockstudios.texteditor.richstyle.HR_PLACEHOLDER
-import com.darkrockstudios.texteditor.richstyle.HorizontalRuleSpanStyle
+import com.darkrockstudios.texteditor.richstyle.*
 import com.darkrockstudios.texteditor.state.TextEditorState
 
 private val HR_LINE_TOKENS = setOf("---", "***", "___")
+
+/**
+ * Matches a line whose entire content is a single markdown image, optionally
+ * surrounded by whitespace. Captures alt text (group 1) and URL (group 2).
+ * URL must not contain whitespace or close-paren; alt text must not contain
+ * close-bracket.
+ */
+private val STANDALONE_IMAGE_REGEX =
+	Regex("""^\s*!\[([^\]]*)\]\(([^)\s]+)\)\s*$""")
 
 /**
  * An extension to TextEditorState that provides markdown functionality.
@@ -13,7 +21,8 @@ private val HR_LINE_TOKENS = setOf("---", "***", "___")
  */
 class MarkdownExtension(
 	val editorState: TextEditorState,
-	initialConfiguration: MarkdownConfiguration = MarkdownConfiguration.DEFAULT
+	initialConfiguration: MarkdownConfiguration = MarkdownConfiguration.DEFAULT,
+	var imageProvider: ImageProvider? = null,
 ) {
 	var markdownConfiguration: MarkdownConfiguration = initialConfiguration
 		set(value) {
@@ -25,15 +34,23 @@ class MarkdownExtension(
 		private set
 
 	fun exportAsMarkdown(): String {
-		val hrLines = editorState.richSpanManager.getAllRichSpans()
+		val allSpans = editorState.richSpanManager.getAllRichSpans()
+		val hrLines = allSpans
 			.asSequence()
 			.filter { it.style === HorizontalRuleSpanStyle }
 			.map { it.range.start.line }
 			.toHashSet()
+		val imageLines: Map<Int, ImageBlockSpanStyle> = allSpans
+			.asSequence()
+			.mapNotNull { span ->
+				val style = span.style as? ImageBlockSpanStyle ?: return@mapNotNull null
+				span.range.start.line to style
+			}
+			.toMap()
 
 		val annotated = editorState.getAllText()
 		val text = annotated.text
-		if (text.isEmpty() && hrLines.isEmpty()) return ""
+		if (text.isEmpty() && hrLines.isEmpty() && imageLines.isEmpty()) return ""
 
 		val sb = StringBuilder()
 		var lineIndex = 0
@@ -41,10 +58,14 @@ class MarkdownExtension(
 		while (true) {
 			val nextNewline = text.indexOf('\n', cursor)
 			val end = if (nextNewline == -1) text.length else nextNewline
-			val lineMarkdown = if (lineIndex in hrLines) {
-				"---"
-			} else {
-				annotated.subSequence(cursor, end).toMarkdown(markdownConfiguration)
+			val lineMarkdown = when {
+				lineIndex in hrLines -> "---"
+				imageLines.containsKey(lineIndex) -> {
+					val style = imageLines.getValue(lineIndex)
+					"![${style.alt}](${style.source})"
+				}
+
+				else -> annotated.subSequence(cursor, end).toMarkdown(markdownConfiguration)
 			}
 			sb.append(lineMarkdown)
 			if (nextNewline == -1) break
@@ -58,12 +79,28 @@ class MarkdownExtension(
 
 	fun importMarkdown(markdownText: String) {
 		val hrLineIndices = mutableListOf<Int>()
+		val imageLines = mutableListOf<Pair<Int, ImageBlockSpanStyle>>()
+		val provider = imageProvider
 		val processedLines = markdownText.lines().mapIndexed { index, line ->
-			if (line.trim() in HR_LINE_TOKENS) {
-				hrLineIndices += index
-				HR_PLACEHOLDER
-			} else {
-				line
+			val imageMatch = STANDALONE_IMAGE_REGEX.matchEntire(line)
+			when {
+				line.trim() in HR_LINE_TOKENS -> {
+					hrLineIndices += index
+					HR_PLACEHOLDER
+				}
+
+				imageMatch != null && provider != null -> {
+					val alt = imageMatch.groupValues[1]
+					val url = imageMatch.groupValues[2]
+					imageLines += index to ImageBlockSpanStyle(
+						source = url,
+						alt = alt,
+						provider = provider,
+					)
+					IMAGE_PLACEHOLDER
+				}
+
+				else -> line
 			}
 		}
 		val processedMarkdown = processedLines.joinToString("\n")
@@ -74,6 +111,13 @@ class MarkdownExtension(
 				start = CharLineOffset(lineIdx, 0),
 				end = CharLineOffset(lineIdx, HR_PLACEHOLDER.length),
 				style = HorizontalRuleSpanStyle,
+			)
+		}
+		imageLines.forEach { (lineIdx, style) ->
+			editorState.addRichSpan(
+				start = CharLineOffset(lineIdx, 0),
+				end = CharLineOffset(lineIdx, IMAGE_PLACEHOLDER.length),
+				style = style,
 			)
 		}
 	}
@@ -98,7 +142,8 @@ class MarkdownExtension(
 }
 
 fun TextEditorState.withMarkdown(
-	initialConfiguration: MarkdownConfiguration = MarkdownConfiguration.DEFAULT
+	initialConfiguration: MarkdownConfiguration = MarkdownConfiguration.DEFAULT,
+	imageProvider: ImageProvider? = null,
 ): MarkdownExtension {
-	return MarkdownExtension(this, initialConfiguration)
+	return MarkdownExtension(this, initialConfiguration, imageProvider)
 }

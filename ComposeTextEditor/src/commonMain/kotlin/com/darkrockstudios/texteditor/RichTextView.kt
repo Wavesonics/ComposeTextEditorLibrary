@@ -33,6 +33,10 @@ fun RichTextView(
 	}
 
 	val density = LocalDensity.current
+
+	LaunchedEffect(density) {
+		state.density = density
+	}
 	val layoutDirection = LocalLayoutDirection.current
 
 	BoxWithConstraints(modifier = modifier) {
@@ -51,8 +55,7 @@ fun RichTextView(
 		}
 
 		val contentHeightPx = state.lineOffsets.lastOrNull()?.let { last ->
-			last.offset.y +
-					last.textLayoutResult.multiParagraph.getLineHeight(last.virtualLineIndex)
+			last.offset.y + last.effectiveHeight
 		} ?: 0f
 
 		Box(modifier = Modifier.padding(contentPadding)) {

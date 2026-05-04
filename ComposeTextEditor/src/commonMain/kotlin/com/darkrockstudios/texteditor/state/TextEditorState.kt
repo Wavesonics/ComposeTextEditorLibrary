@@ -7,6 +7,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.text.*
 import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.Density
 import com.darkrockstudios.texteditor.CharLineOffset
 import com.darkrockstudios.texteditor.LineWrap
 import com.darkrockstudios.texteditor.TextEditorRange
@@ -15,6 +16,8 @@ import com.darkrockstudios.texteditor.annotatedstring.subSequence
 import com.darkrockstudios.texteditor.annotatedstring.toAnnotatedString
 import com.darkrockstudios.texteditor.cursor.CursorMetrics
 import com.darkrockstudios.texteditor.cursor.getWrappedLineIndex
+import com.darkrockstudios.texteditor.effectiveHeight
+import com.darkrockstudios.texteditor.richstyle.BlockSpanStyle
 import com.darkrockstudios.texteditor.richstyle.RichSpan
 import com.darkrockstudios.texteditor.richstyle.RichSpanStyle
 import kotlinx.coroutines.CoroutineScope
@@ -91,6 +94,18 @@ class TextEditorState(
 	val canRedo: Boolean get() = _canRedo
 
 	internal var viewportSize by mutableStateOf(Size(1f, 1f))
+
+	/**
+	 * Density used by [BlockSpanStyle] spans to convert their intrinsic size to
+	 * pixels. Set by the host composable from [androidx.compose.ui.platform.LocalDensity].
+	 */
+	internal var density: Density? = null
+		set(value) {
+			if (field != value) {
+				field = value
+				updateBookKeeping()
+			}
+		}
 
 	val scrollManager = TextEditorScrollManager(
 		scope = scope,
@@ -402,7 +417,7 @@ class TextEditorState(
 		val cursorX = layout.getHorizontalPosition(charIndex, usePrimaryDirection = true)
 		val cursorY = currentWrappedLine.offset.y - scrollState.value
 
-		val lineHeight = layout.multiParagraph.getLineHeight(currentWrappedLine.virtualLineIndex)
+		val lineHeight = currentWrappedLine.effectiveHeight
 
 		return CursorMetrics(
 			position = Offset(cursorX, cursorY),
@@ -426,7 +441,7 @@ class TextEditorState(
 			val textLayoutResult = lineWrap.textLayoutResult
 
 			val relativeOffset = adjustedOffset - lineWrap.offset
-			if (adjustedOffset.y in curRealLine.offset.y..(curRealLine.offset.y + textLayoutResult.size.height)) {
+			if (adjustedOffset.y in curRealLine.offset.y..(curRealLine.offset.y + lineWrap.effectiveHeight)) {
 				val charPos = textLayoutResult.multiParagraph.getOffsetForPosition(relativeOffset)
 				return CharLineOffset(lineWrap.line, min(charPos, textLines[lineWrap.line].length))
 			}
@@ -595,8 +610,18 @@ class TextEditorState(
 					}?.richSpans ?: emptyList()
 				}
 
-				offsets.add(lineWrap.copy(richSpans = richSpans))
-				yOffset += textLayoutResult.multiParagraph.getLineHeight(virtualLineIndex)
+				val blockHeight = density?.let { d ->
+					richSpans.firstNotNullOfOrNull { span ->
+						(span.style as? BlockSpanStyle)?.blockHeight(d, viewportSize.width)
+					}
+				}
+
+				val resolved = lineWrap.copy(
+					richSpans = richSpans,
+					blockHeight = blockHeight,
+				)
+				offsets.add(resolved)
+				yOffset += resolved.effectiveHeight
 			}
 		}
 

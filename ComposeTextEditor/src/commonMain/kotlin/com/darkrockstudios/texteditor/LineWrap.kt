@@ -14,7 +14,17 @@ data class LineWrap(
 	val offset: Offset,
 	val textLayoutResult: TextLayoutResult,
 	val richSpans: List<RichSpan> = emptyList(),
+	/**
+	 * If non-null, overrides the line's visual height. Used by [BlockSpanStyle]
+	 * spans (e.g. block images) to occupy more vertical space than the underlying
+	 * placeholder text would.
+	 */
+	val blockHeight: Float? = null,
 )
+
+val LineWrap.effectiveHeight: Float
+	get() = blockHeight
+		?: textLayoutResult.multiParagraph.getLineHeight(virtualLineIndex)
 
 fun LineWrap.wrapStartToCharacterIndex(state: TextEditorState): Int {
 	return state.wrapStartToCharacterIndex(this)

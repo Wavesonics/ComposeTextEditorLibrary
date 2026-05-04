@@ -78,6 +78,10 @@ fun BasicTextEditor(
 		}
 	}
 
+	LaunchedEffect(density) {
+		state.density = density
+	}
+
 	// Use provided context menu state or create internal one
 	val internalContextMenuState = remember { TextEditorContextMenuState() }
 	val effectiveContextMenuState = contextMenuState ?: internalContextMenuState
