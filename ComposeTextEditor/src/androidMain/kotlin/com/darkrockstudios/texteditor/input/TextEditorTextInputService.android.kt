@@ -513,10 +513,18 @@ private class TextEditorInputConnection(
 
 	// ============ EDITOR ACTION / CONTEXT MENU ============
 
-	override fun performEditorAction(editorAction: Int): Boolean {
-		// Even though we don't yet surface an action callback, return true per the
-		// Android contract — false signals a dead connection.
-		return isActive
+	override fun performEditorAction(editorAction: Int): Boolean = ensureActive {
+		// Multi-line field: some IMEs route Enter through here instead of
+		// commitText("\n") or sendKeyEvent(KEYCODE_ENTER).
+		when (editorAction) {
+			EditorInfo.IME_ACTION_UNSPECIFIED,
+			EditorInfo.IME_ACTION_NONE -> runOrQueue {
+				if (state.selector.hasSelection()) state.selector.deleteSelection()
+				state.insertNewlineAtCursor()
+			}
+
+			else -> Unit
+		}
 	}
 
 	override fun performContextMenuAction(id: Int): Boolean = ensureActive {
