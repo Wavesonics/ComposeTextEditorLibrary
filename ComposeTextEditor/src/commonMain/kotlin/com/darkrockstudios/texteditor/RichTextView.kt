@@ -51,7 +51,8 @@ fun RichTextView(
 		}
 
 		val contentHeightPx = state.lineOffsets.lastOrNull()?.let { last ->
-			last.offset.y + last.textLayoutResult.size.height
+			last.offset.y +
+					last.textLayoutResult.multiParagraph.getLineHeight(last.virtualLineIndex)
 		} ?: 0f
 
 		Box(modifier = Modifier.padding(contentPadding)) {
