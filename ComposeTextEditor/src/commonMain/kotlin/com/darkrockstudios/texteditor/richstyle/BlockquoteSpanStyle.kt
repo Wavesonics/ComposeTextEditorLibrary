@@ -4,6 +4,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.text.ParagraphStyle
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextRange
@@ -35,8 +36,13 @@ data object BlockquoteSpanStyle : RichSpanStyle {
 		state: TextEditorState,
 	) {
 		val lineHeight = layoutResult.multiParagraph.getLineHeight(lineWrap.virtualLineIndex)
+		val color = if (state.blockquoteBarColor.isSpecified) {
+			state.blockquoteBarColor
+		} else {
+			Color.Gray.copy(alpha = 0.6f)
+		}
 		drawRect(
-			color = Color.Gray.copy(alpha = 0.6f),
+			color = color,
 			topLeft = Offset(BAR_LEFT_DP.dp.toPx(), 0f),
 			size = Size(BAR_WIDTH_DP.dp.toPx(), lineHeight),
 		)

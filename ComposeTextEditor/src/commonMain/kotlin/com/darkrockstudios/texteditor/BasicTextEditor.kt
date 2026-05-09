@@ -113,6 +113,12 @@ fun BasicTextEditor(
 		state.textStyle = style.textStyle
 	}
 
+	LaunchedEffect(style.bulletColor, style.blockquoteBarColor, style.orderedListMarkerColor) {
+		state.bulletColor = style.bulletColor
+		state.blockquoteBarColor = style.blockquoteBarColor
+		state.orderedListMarkerColor = style.orderedListMarkerColor
+	}
+
 	// Re-run layout when an asynchronous block-state change (e.g. an image
 	// finishing its load) changes a [BlockSpanStyle]'s reported height.
 	// `updateBookKeeping` reads block heights but isn't itself snapshot-tracked,

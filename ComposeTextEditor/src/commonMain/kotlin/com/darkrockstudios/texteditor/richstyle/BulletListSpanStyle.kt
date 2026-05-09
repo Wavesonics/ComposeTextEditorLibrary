@@ -2,6 +2,7 @@ package com.darkrockstudios.texteditor.richstyle
 
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.text.ParagraphStyle
 import androidx.compose.ui.text.TextLayoutResult
@@ -35,8 +36,9 @@ data object BulletListSpanStyle : RichSpanStyle {
 	) {
 		if (lineWrap.virtualLineIndex != 0) return
 		val lineHeight = layoutResult.multiParagraph.getLineHeight(lineWrap.virtualLineIndex)
+		val color = if (state.bulletColor.isSpecified) state.bulletColor else Color.DarkGray
 		drawCircle(
-			color = Color.DarkGray,
+			color = color,
 			radius = BULLET_RADIUS_DP.dp.toPx(),
 			center = Offset(BULLET_CENTER_DP.dp.toPx(), lineHeight / 2f),
 		)

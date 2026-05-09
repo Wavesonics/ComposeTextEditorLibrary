@@ -65,9 +65,12 @@ data object OrderedListSpanStyle : RichSpanStyle {
 		val lineHeight = layoutResult.multiParagraph.getLineHeight(lineWrap.virtualLineIndex)
 		val y = (lineHeight - measured.size.height) / 2f
 
+		// `Color.Unspecified` means "use the layout's color" — i.e. inherit the
+		// editor's text color. Hosts override via `TextEditorStyle.orderedListMarkerColor`.
 		drawText(
 			textLayoutResult = measured,
 			topLeft = Offset(x, y),
+			color = state.orderedListMarkerColor,
 		)
 	}
 

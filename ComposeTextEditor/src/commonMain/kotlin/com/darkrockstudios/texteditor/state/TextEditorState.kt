@@ -5,6 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.*
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Density
@@ -41,6 +42,19 @@ class TextEditorState(
 				updateBookKeeping()
 			}
 		}
+
+	/**
+	 * Theming colors for line-block gutter markers, mirrored from
+	 * [TextEditorStyle] by `BasicTextEditor`. `Color.Unspecified` means "use the
+	 * span's hardcoded fallback" so a state created without a host editor (e.g.
+	 * tests) still renders sensibly.
+	 */
+	var bulletColor: Color by mutableStateOf(Color.Unspecified)
+		internal set
+	var blockquoteBarColor: Color by mutableStateOf(Color.Unspecified)
+		internal set
+	var orderedListMarkerColor: Color by mutableStateOf(Color.Unspecified)
+		internal set
 
 	internal val _textLines = mutableListOf<AnnotatedString>()
 	val textLines: List<AnnotatedString> get() = _textLines
