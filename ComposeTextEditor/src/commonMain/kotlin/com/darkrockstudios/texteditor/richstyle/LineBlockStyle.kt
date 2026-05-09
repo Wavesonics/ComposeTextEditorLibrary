@@ -69,6 +69,18 @@ internal val OrderedList = LineBlockStyle(
 internal val LINE_BLOCK_STYLES: List<LineBlockStyle> =
 	listOf(Blockquote, OrderedList, BulletList)
 
+/**
+ * Line-block styles that are mutually exclusive — applying one demotes any
+ * other in the set on the same line. Blockquote is intentionally NOT in this
+ * set: a quoted bullet (`> - item`) or quoted ordered item (`> 1. item`) is
+ * legitimate markdown and stacking the two is the right behavior.
+ *
+ * Without this, toggling ordered on a bullet line (or vice versa) would leave
+ * both [ParagraphStyle] indents on the same range — which Compose rejects as
+ * overlapping paragraph styles, blanking the line.
+ */
+internal val LIST_BLOCK_STYLES: Set<LineBlockStyle> = setOf(BulletList, OrderedList)
+
 internal fun TextEditorState.hasLineBlock(line: Int, block: LineBlockStyle): Boolean =
 	richSpanManager.getAllRichSpans().any { span ->
 		span.style === block.spanStyle && span.range.start.line == line
@@ -85,6 +97,14 @@ internal fun TextEditorState.hasLineBlock(line: Int, block: LineBlockStyle): Boo
  */
 internal fun TextEditorState.applyLineBlock(line: Int, block: LineBlockStyle) {
 	if (hasLineBlock(line, block)) return
+	// Demote any conflicting list-type block before applying — otherwise the new
+	// paragraph-style indent would overlap the old one and Compose blanks the
+	// line on the next measure pass.
+	if (block in LIST_BLOCK_STYLES) {
+		LIST_BLOCK_STYLES
+			.filter { it !== block && hasLineBlock(line, it) }
+			.forEach { demoteLineBlock(line, it) }
+	}
 	val existing = textLines.getOrNull(line) ?: return
 	val rebuilt = buildAnnotatedString {
 		withStyle(block.paragraphStyle) {

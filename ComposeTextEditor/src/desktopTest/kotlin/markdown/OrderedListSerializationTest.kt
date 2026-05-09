@@ -158,6 +158,33 @@ class OrderedListSerializationTest {
 	}
 
 	@Test
+	fun `toggleOrderedList on a bullet line replaces bullet with ordered`() = runTest {
+		// Bullets and ordered lists can't coexist on a line — Compose paragraph
+		// styles can't overlap, and visually the two gutter markers stack.
+		// Switching list type should swap, not stack.
+		val extension = createMarkdownExtension()
+		extension.importMarkdown("- item")
+		extension.toggleOrderedList(0..0)
+
+		assertEquals(listOf(0), extension.orderedLines())
+		// No bullet span should remain.
+		val bulletSpans = extension.editorState.richSpanManager.getAllRichSpans()
+			.filter { it.style === com.darkrockstudios.texteditor.richstyle.BulletListSpanStyle }
+		assertTrue(bulletSpans.isEmpty(), "bullet span should be replaced by ordered list")
+		assertEquals("1. item", extension.exportAsMarkdown())
+	}
+
+	@Test
+	fun `toggleBulletList on an ordered-list line replaces ordered with bullet`() = runTest {
+		val extension = createMarkdownExtension()
+		extension.importMarkdown("1. item")
+		extension.toggleBulletList(0..0)
+
+		assertTrue(extension.orderedLines().isEmpty(), "ordered span should be replaced")
+		assertEquals("- item", extension.exportAsMarkdown())
+	}
+
+	@Test
 	fun `toggleOrderedList adds span to a line`() = runTest {
 		val extension = createMarkdownExtension()
 		extension.importMarkdown("plain text")
