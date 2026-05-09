@@ -6,10 +6,6 @@ import com.darkrockstudios.texteditor.state.TextEditorState
 
 private val HR_LINE_TOKENS = setOf("---", "***", "___")
 
-/** Markdown line prefix used to emit blockquote / bullet items on export. */
-private const val BLOCKQUOTE_PREFIX = "> "
-private const val BULLET_PREFIX = "- "
-
 /**
  * Matches a line whose entire content is a single markdown image, optionally
  * surrounded by whitespace. Captures alt text (group 1) and URL (group 2).
@@ -18,20 +14,6 @@ private const val BULLET_PREFIX = "- "
  */
 private val STANDALONE_IMAGE_REGEX =
 	Regex("""^\s*!\[([^\]]*)\]\(([^)\s]+)\)\s*$""")
-
-/**
- * Matches a markdown blockquote line. Captures the inner content (group 1) so
- * the `> ` prefix can be stripped before passing the body to the markdown
- * parser. Single-level only — nested `> > ` collapses one level per pass.
- */
-private val BLOCKQUOTE_LINE_REGEX = Regex("""^>\s?(.*)$""")
-
-/**
- * Matches a markdown bullet-list line: `-`, `*`, or `+` followed by at least one
- * space. Captures the body (group 1) so the marker can be stripped before parsing.
- * Single-level only — nested (indented) bullets are not yet supported.
- */
-private val BULLET_LINE_REGEX = Regex("""^[-*+]\s+(.*)$""")
 
 /**
  * An extension to TextEditorState that provides markdown functionality.
@@ -65,16 +47,12 @@ class MarkdownExtension(
 				span.range.start.line to style
 			}
 			.toMap()
-		val blockquoteLines = allSpans
-			.asSequence()
-			.filter { it.style === BlockquoteSpanStyle }
-			.map { it.range.start.line }
-			.toHashSet()
-		val bulletLines = allSpans
-			.asSequence()
-			.filter { it.style === BulletListSpanStyle }
-			.map { it.range.start.line }
-			.toHashSet()
+		val blockLines: Map<LineBlockStyle, Set<Int>> = LINE_BLOCK_STYLES.associateWith { block ->
+			allSpans.asSequence()
+				.filter { it.style === block.spanStyle }
+				.map { it.range.start.line }
+				.toHashSet()
+		}
 
 		val annotated = editorState.getAllText()
 		val text = annotated.text
@@ -95,8 +73,9 @@ class MarkdownExtension(
 
 				else -> annotated.subSequence(cursor, end).toMarkdown(markdownConfiguration)
 			}
-			if (lineIndex in blockquoteLines) sb.append(BLOCKQUOTE_PREFIX)
-			if (lineIndex in bulletLines) sb.append(BULLET_PREFIX)
+			LINE_BLOCK_STYLES.forEach { block ->
+				if (lineIndex in blockLines.getValue(block)) sb.append(block.markdownPrefix)
+			}
 			sb.append(lineMarkdown)
 			if (nextNewline == -1) break
 			// Header export already ends with \n; don't double it.
@@ -110,13 +89,13 @@ class MarkdownExtension(
 	fun importMarkdown(markdownText: String) {
 		val hrLineIndices = mutableListOf<Int>()
 		val imageLines = mutableListOf<Pair<Int, ImageBlockSpanStyle>>()
-		val blockquoteLineIndices = mutableListOf<Int>()
-		val bulletLineIndices = mutableListOf<Int>()
+		val blockHits = mutableMapOf<LineBlockStyle, MutableList<Int>>()
 		val provider = imageProvider
 		val processedLines = markdownText.lines().mapIndexed { index, line ->
 			val imageMatch = STANDALONE_IMAGE_REGEX.matchEntire(line)
-			val blockquoteMatch = BLOCKQUOTE_LINE_REGEX.matchEntire(line)
-			val bulletMatch = BULLET_LINE_REGEX.matchEntire(line)
+			val blockMatch = LINE_BLOCK_STYLES.firstNotNullOfOrNull { block ->
+				block.markdownPattern.matchEntire(line)?.let { block to it }
+			}
 			when {
 				line.trim() in HR_LINE_TOKENS -> {
 					hrLineIndices += index
@@ -134,14 +113,10 @@ class MarkdownExtension(
 					IMAGE_PLACEHOLDER
 				}
 
-				blockquoteMatch != null -> {
-					blockquoteLineIndices += index
-					blockquoteMatch.groupValues[1]
-				}
-
-				bulletMatch != null -> {
-					bulletLineIndices += index
-					bulletMatch.groupValues[1]
+				blockMatch != null -> {
+					val (block, match) = blockMatch
+					blockHits.getOrPut(block) { mutableListOf() } += index
+					match.groupValues[1]
 				}
 
 				else -> line
@@ -164,44 +139,38 @@ class MarkdownExtension(
 				style = style,
 			)
 		}
-		blockquoteLineIndices.forEach { editorState.applyBlockquote(it) }
-		bulletLineIndices.forEach { editorState.applyBulletList(it) }
+		blockHits.forEach { (block, lineIndices) ->
+			lineIndices.forEach { editorState.applyLineBlock(it, block) }
+		}
 	}
 
 	/** Returns whether [line] is currently rendered as a blockquote. */
-	fun isBlockquote(line: Int): Boolean = editorState.hasBlockquote(line)
+	fun isBlockquote(line: Int): Boolean = editorState.hasLineBlock(line, Blockquote)
 
 	/** Returns whether [line] is currently rendered as a bullet-list item. */
-	fun isBulletList(line: Int): Boolean = editorState.hasBulletList(line)
+	fun isBulletList(line: Int): Boolean = editorState.hasLineBlock(line, BulletList)
 
 	/**
 	 * Adds blockquote rendering (left bar + indented text) to each line in
 	 * [lines] that doesn't already have it; removes it from lines that do.
 	 * Mixed selections enable on every line for predictable toolbar behavior.
 	 */
-	fun toggleBlockquote(lines: IntRange) =
-		toggleLineBlock(lines, ::isBlockquote, editorState::applyBlockquote, editorState::demoteBlockquote)
+	fun toggleBlockquote(lines: IntRange) = toggleLineBlock(lines, Blockquote)
 
 	/**
 	 * Adds bullet-list rendering (gutter dot + hanging indent) to each line in
 	 * [lines] that doesn't already have it; removes it from lines that do.
 	 * Mixed selections enable on every line for predictable toolbar behavior.
 	 */
-	fun toggleBulletList(lines: IntRange) =
-		toggleLineBlock(lines, ::isBulletList, editorState::applyBulletList, editorState::demoteBulletList)
+	fun toggleBulletList(lines: IntRange) = toggleLineBlock(lines, BulletList)
 
-	private inline fun toggleLineBlock(
-		lines: IntRange,
-		has: (Int) -> Boolean,
-		apply: (Int) -> Unit,
-		demote: (Int) -> Unit,
-	) {
-		val anyOff = lines.any { !has(it) }
+	private fun toggleLineBlock(lines: IntRange, block: LineBlockStyle) {
+		val anyOff = lines.any { !editorState.hasLineBlock(it, block) }
 		for (lineIdx in lines) {
 			if (anyOff) {
-				if (!has(lineIdx)) apply(lineIdx)
+				if (!editorState.hasLineBlock(lineIdx, block)) editorState.applyLineBlock(lineIdx, block)
 			} else {
-				demote(lineIdx)
+				editorState.demoteLineBlock(lineIdx, block)
 			}
 		}
 	}

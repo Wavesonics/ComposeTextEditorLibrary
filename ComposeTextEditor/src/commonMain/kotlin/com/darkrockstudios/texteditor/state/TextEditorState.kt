@@ -174,22 +174,15 @@ class TextEditorState(
 
 	fun insertNewlineAtCursor() {
 		val originalLine = cursorPosition.line
-		val isBullet = hasBulletList(originalLine)
-		val isQuote = hasBlockquote(originalLine)
+		val activeBlock = detectLineBlock(originalLine)
 		val lineText = textLines.getOrNull(originalLine)?.text ?: ""
 
 		// Enter on an empty bullet/quote item exits the block — drop the gutter
 		// marker and indent, eat the keystroke. Matches Notion / Google Docs and
 		// gives a discoverable way to leave a list or quote without backspacing.
-		if (lineText.isEmpty()) {
-			if (isBullet) {
-				demoteBulletList(originalLine)
-				return
-			}
-			if (isQuote) {
-				demoteBlockquote(originalLine)
-				return
-			}
+		if (lineText.isEmpty() && activeBlock != null) {
+			demoteLineBlock(originalLine, activeBlock)
+			return
 		}
 
 		val operation = TextEditOperation.Insert(
@@ -202,29 +195,21 @@ class TextEditorState(
 
 		// RichSpanManager's newline handling only keeps the span on one side when
 		// the cursor was at a span boundary, so apply to both lines so both halves
-		// of the split keep the gutter marker. apply* is idempotent.
-		if (isBullet) {
-			applyBulletList(originalLine)
-			applyBulletList(originalLine + 1)
-		}
-		if (isQuote) {
-			applyBlockquote(originalLine)
-			applyBlockquote(originalLine + 1)
+		// of the split keep the gutter marker. applyLineBlock is idempotent.
+		activeBlock?.let {
+			applyLineBlock(originalLine, it)
+			applyLineBlock(originalLine + 1, it)
 		}
 	}
 
 	fun backspaceAtCursor() {
-		// Backspace at column 0 of a blockquote or bullet-list line first demotes
+		// Backspace at column 0 of a line-block (blockquote, bullet) first demotes
 		// (removes the gutter marker and indent); a follow-up backspace then merges
-		// with the previous line. This matches Notion / Google Docs and gives a
+		// with the previous line. Matches Notion / Google Docs and gives a
 		// discoverable way to exit a block prefix without nuking the line content.
 		if (cursorPosition.char == 0) {
-			if (hasBlockquote(cursorPosition.line)) {
-				demoteBlockquote(cursorPosition.line)
-				return
-			}
-			if (hasBulletList(cursorPosition.line)) {
-				demoteBulletList(cursorPosition.line)
+			detectLineBlock(cursorPosition.line)?.let { block ->
+				demoteLineBlock(cursorPosition.line, block)
 				return
 			}
 		}

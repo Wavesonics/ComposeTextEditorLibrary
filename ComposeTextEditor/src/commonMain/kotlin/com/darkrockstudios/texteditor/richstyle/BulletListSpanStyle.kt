@@ -10,7 +10,6 @@ import androidx.compose.ui.text.style.TextIndent
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.darkrockstudios.texteditor.LineWrap
-import com.darkrockstudios.texteditor.state.TextEditorState
 
 /**
  * Decorative rich span that marks a line as a markdown bullet-list item — a small
@@ -53,12 +52,3 @@ data object BulletListSpanStyle : RichSpanStyle {
 val BULLET_LIST_PARAGRAPH_STYLE: ParagraphStyle = ParagraphStyle(
 	textIndent = TextIndent(firstLine = 16.sp, restLine = 16.sp),
 )
-
-internal fun TextEditorState.hasBulletList(line: Int): Boolean =
-	hasLineBlockStyle(line, BulletListSpanStyle)
-
-internal fun TextEditorState.applyBulletList(line: Int) =
-	applyLineBlockStyle(line, BulletListSpanStyle, BULLET_LIST_PARAGRAPH_STYLE)
-
-internal fun TextEditorState.demoteBulletList(line: Int) =
-	demoteLineBlockStyle(line, BulletListSpanStyle, BULLET_LIST_PARAGRAPH_STYLE)
