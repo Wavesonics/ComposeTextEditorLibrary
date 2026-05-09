@@ -151,11 +151,11 @@ private fun AnnotatedString.Builder.appendMarkdownNode(
 		}
 
 		MarkdownElementTypes.BLOCK_QUOTE -> {
-			pushStyle(styles.BLOCKQUOTE)
-			append("> ")
+			// MarkdownExtension's pre-pass strips `> ` line prefixes before parsing, so
+			// this branch only fires for blockquotes outside that pipeline (e.g. callers
+			// of toAnnotatedStringFromMarkdown directly). Recurse without injecting a
+			// literal `> ` marker so the body text isn't visually corrupted.
 			appendMarkdownChildren(original, node, startOffset, styles)
-			pop()
-			append("\n")
 		}
 
 		MarkdownTokenTypes.TEXT -> {

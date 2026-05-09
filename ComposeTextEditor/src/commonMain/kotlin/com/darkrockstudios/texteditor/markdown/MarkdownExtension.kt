@@ -1,5 +1,7 @@
 package com.darkrockstudios.texteditor.markdown
 
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 import com.darkrockstudios.texteditor.CharLineOffset
 import com.darkrockstudios.texteditor.richstyle.*
 import com.darkrockstudios.texteditor.state.TextEditorState
@@ -14,6 +16,13 @@ private val HR_LINE_TOKENS = setOf("---", "***", "___")
  */
 private val STANDALONE_IMAGE_REGEX =
 	Regex("""^\s*!\[([^\]]*)\]\(([^)\s]+)\)\s*$""")
+
+/**
+ * Matches a markdown blockquote line. Captures the inner content (group 1) so
+ * the `> ` prefix can be stripped before passing the body to the markdown
+ * parser. Single-level only — nested `> > ` collapses one level per pass.
+ */
+private val BLOCKQUOTE_LINE_REGEX = Regex("""^>\s?(.*)$""")
 
 /**
  * An extension to TextEditorState that provides markdown functionality.
@@ -47,6 +56,11 @@ class MarkdownExtension(
 				span.range.start.line to style
 			}
 			.toMap()
+		val blockquoteLines = allSpans
+			.asSequence()
+			.filter { it.style === BlockquoteSpanStyle }
+			.map { it.range.start.line }
+			.toHashSet()
 
 		val annotated = editorState.getAllText()
 		val text = annotated.text
@@ -67,6 +81,9 @@ class MarkdownExtension(
 
 				else -> annotated.subSequence(cursor, end).toMarkdown(markdownConfiguration)
 			}
+			if (lineIndex in blockquoteLines) {
+				sb.append("> ")
+			}
 			sb.append(lineMarkdown)
 			if (nextNewline == -1) break
 			// Header export already ends with \n; don't double it.
@@ -80,9 +97,11 @@ class MarkdownExtension(
 	fun importMarkdown(markdownText: String) {
 		val hrLineIndices = mutableListOf<Int>()
 		val imageLines = mutableListOf<Pair<Int, ImageBlockSpanStyle>>()
+		val blockquoteLineIndices = mutableListOf<Int>()
 		val provider = imageProvider
 		val processedLines = markdownText.lines().mapIndexed { index, line ->
 			val imageMatch = STANDALONE_IMAGE_REGEX.matchEntire(line)
+			val blockquoteMatch = BLOCKQUOTE_LINE_REGEX.matchEntire(line)
 			when {
 				line.trim() in HR_LINE_TOKENS -> {
 					hrLineIndices += index
@@ -98,6 +117,11 @@ class MarkdownExtension(
 						provider = provider,
 					)
 					IMAGE_PLACEHOLDER
+				}
+
+				blockquoteMatch != null -> {
+					blockquoteLineIndices += index
+					blockquoteMatch.groupValues[1]
 				}
 
 				else -> line
@@ -120,6 +144,66 @@ class MarkdownExtension(
 				style = style,
 			)
 		}
+		blockquoteLineIndices.forEach { lineIdx ->
+			val existing = editorState.textLines.getOrNull(lineIdx) ?: return@forEach
+			// Wrap the line's existing AnnotatedString in a paragraph style that
+			// indents the text, leaving room for the bar drawn by BlockquoteSpanStyle.
+			val rebuilt = buildAnnotatedString {
+				withStyle(BLOCKQUOTE_PARAGRAPH_STYLE) {
+					append(existing)
+				}
+			}
+			editorState.updateLine(lineIdx, rebuilt)
+			editorState.addRichSpan(
+				start = CharLineOffset(lineIdx, 0),
+				end = CharLineOffset(lineIdx, existing.length.coerceAtLeast(1)),
+				style = BlockquoteSpanStyle,
+			)
+		}
+	}
+
+	/**
+	 * Returns whether [line] is currently rendered as a blockquote.
+	 */
+	fun isBlockquote(line: Int): Boolean {
+		return editorState.richSpanManager.getAllRichSpans().any { span ->
+			span.style === BlockquoteSpanStyle && span.range.start.line == line
+		}
+	}
+
+	/**
+	 * Adds blockquote rendering (left bar + indented text) to each line in
+	 * [lines] that doesn't already have it; removes it from lines that do.
+	 * Mixed selections enable on every line for predictable toolbar behavior.
+	 */
+	fun toggleBlockquote(lines: IntRange) {
+		val anyOff = lines.any { !isBlockquote(it) }
+		for (lineIdx in lines) {
+			if (anyOff) {
+				if (!isBlockquote(lineIdx)) addBlockquote(lineIdx)
+			} else {
+				removeBlockquote(lineIdx)
+			}
+		}
+	}
+
+	private fun addBlockquote(lineIdx: Int) {
+		val existing = editorState.textLines.getOrNull(lineIdx) ?: return
+		val rebuilt = buildAnnotatedString {
+			withStyle(BLOCKQUOTE_PARAGRAPH_STYLE) {
+				append(existing)
+			}
+		}
+		editorState.updateLine(lineIdx, rebuilt)
+		editorState.addRichSpan(
+			start = CharLineOffset(lineIdx, 0),
+			end = CharLineOffset(lineIdx, existing.length.coerceAtLeast(1)),
+			style = BlockquoteSpanStyle,
+		)
+	}
+
+	private fun removeBlockquote(lineIdx: Int) {
+		editorState.demoteBlockquote(lineIdx)
 	}
 
 	override fun equals(other: Any?): Boolean {

@@ -50,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import com.darkrockstudios.texteditor.CharLineOffset
 import com.darkrockstudios.texteditor.TextEditorRange
 import com.darkrockstudios.texteditor.markdown.MarkdownExtension
+import com.darkrockstudios.texteditor.richstyle.BlockquoteSpanStyle
 import com.darkrockstudios.texteditor.richstyle.HR_PLACEHOLDER
 import com.darkrockstudios.texteditor.richstyle.HorizontalRuleSpanStyle
 import com.darkrockstudios.texteditor.richstyle.RichSpan
@@ -98,7 +99,7 @@ fun TextEditorToolbar(
 			isCodeActive = styles.contains(mardkown.markdownStyles.CODE)
 			isStrikethroughActive = styles.contains(mardkown.markdownStyles.STRIKETHROUGH)
 			existingLinkSpan = richSpans.firstOrNull { it.style is LinkSpanStyle }
-			isBlockquoteActive = styles.contains(mardkown.markdownStyles.BLOCKQUOTE)
+			isBlockquoteActive = richSpans.any { it.style === BlockquoteSpanStyle }
 			currentHeaderLevel = (1..6).firstOrNull { lvl ->
 				styles.contains(mardkown.markdownStyles.header(lvl))
 			} ?: 0
@@ -227,15 +228,9 @@ fun TextEditorToolbar(
 					Spacer(modifier = Modifier.width(4.dp))
 
 					FormatButton(
-						onClick = {
-							toggleStyle(
-								state,
-								isBlockquoteActive,
-								mardkown.markdownStyles.BLOCKQUOTE
-							)
-						},
+						onClick = { toggleBlockquote(state, mardkown) },
 						icon = Icons.Default.FormatQuote,
-						contentDescription = "Blockquote (style only)",
+						contentDescription = "Blockquote",
 						isActive = isBlockquoteActive,
 					)
 
@@ -385,6 +380,16 @@ private fun applyLink(
 		state.addStyleSpan(request.range, markdown.markdownStyles.LINK)
 		state.addRichSpan(request.range.start, request.range.end, LinkSpanStyle(url))
 	}
+}
+
+private fun toggleBlockquote(state: TextEditorState, markdown: MarkdownExtension) {
+	val selection = state.selector.selection
+	val lines = if (selection != null) {
+		selection.start.line..selection.end.line
+	} else {
+		state.cursorPosition.line..state.cursorPosition.line
+	}
+	markdown.toggleBlockquote(lines)
 }
 
 private fun insertLineBullet(state: TextEditorState) {

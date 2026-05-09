@@ -20,6 +20,8 @@ import com.darkrockstudios.texteditor.effectiveHeight
 import com.darkrockstudios.texteditor.richstyle.BlockSpanStyle
 import com.darkrockstudios.texteditor.richstyle.RichSpan
 import com.darkrockstudios.texteditor.richstyle.RichSpanStyle
+import com.darkrockstudios.texteditor.richstyle.demoteBlockquote
+import com.darkrockstudios.texteditor.richstyle.hasBlockquote
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
@@ -185,6 +187,14 @@ class TextEditorState(
 	}
 
 	fun backspaceAtCursor() {
+		// Backspace at column 0 of a blockquote line first demotes (removes the bar
+		// and indent); a follow-up backspace then merges with the previous line. This
+		// matches Notion / Google Docs and gives a discoverable way to exit a quote
+		// without nuking the line content.
+		if (cursorPosition.char == 0 && hasBlockquote(cursorPosition.line)) {
+			demoteBlockquote(cursorPosition.line)
+			return
+		}
 		if (cursorPosition.char > 0) {
 			val deleteRange = TextEditorRange(
 				CharLineOffset(cursorPosition.line, cursorPosition.char - 1),

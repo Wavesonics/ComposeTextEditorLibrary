@@ -62,4 +62,41 @@ internal fun SpanManager.mergeAnnotatedStrings(
 	processedSpans.forEach { span ->
 		addStyle(span.item, span.start, span.end)
 	}
+
+	// Paragraph styles: preserve through the edit, adjusting ranges. Without this,
+	// every delete/insert silently drops them — so e.g. the blockquote indent
+	// (BLOCKQUOTE_PARAGRAPH_STYLE) disappears after typing inside a quoted line.
+	val insertedLen = newText?.length ?: 0
+	val deletedLen = (end - start).coerceAtLeast(0)
+	val finalLen = original.length - deletedLen + insertedLen
+	original.paragraphStyles.forEach { para ->
+		val newStart = adjustPositionForEdit(para.start, start, end, insertedLen)
+		val newEnd = adjustPositionForEdit(para.end, start, end, insertedLen)
+		if (newStart < newEnd && newEnd <= finalLen) {
+			addStyle(para.item, newStart, newEnd)
+		}
+	}
+	newText?.paragraphStyles?.forEach { para ->
+		val newStart = (para.start + start).coerceAtMost(finalLen)
+		val newEnd = (para.end + start).coerceAtMost(finalLen)
+		if (newStart < newEnd) {
+			addStyle(para.item, newStart, newEnd)
+		}
+	}
+}
+
+/**
+ * Maps a position in the original text to its position in the post-edit text,
+ * given a deletion of [deleteStart, deleteEnd) and an insertion of [insertedLen]
+ * at [deleteStart]. Positions inside the deletion collapse to the edit point.
+ */
+private fun adjustPositionForEdit(
+	pos: Int,
+	deleteStart: Int,
+	deleteEnd: Int,
+	insertedLen: Int,
+): Int = when {
+	pos <= deleteStart -> pos
+	pos >= deleteEnd -> pos - (deleteEnd - deleteStart) + insertedLen
+	else -> deleteStart + insertedLen
 }
