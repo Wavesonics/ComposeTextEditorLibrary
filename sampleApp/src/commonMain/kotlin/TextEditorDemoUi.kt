@@ -31,6 +31,7 @@ fun TextEditorDemoUi(
 	demoContent: DemoContent,
 	configuration: MarkdownConfiguration
 ) {
+	val imageProvider = rememberDemoImageProvider()
 	val state: TextEditorState = when (demoContent) {
 		DemoContent.Rich -> {
 			rememberTextEditorState(createRichTextDemo())
@@ -39,14 +40,24 @@ fun TextEditorDemoUi(
 		}
 
 		DemoContent.Markdown -> {
-			rememberTextEditorState(SIMPLE_MARKDOWN.toAnnotatedStringFromMarkdown(configuration))
+			rememberTextEditorState()
 		}
 
 		DemoContent.Empty -> {
 			rememberTextEditorState()
 		}
 	}
-	val markdownExtension = remember(state, configuration) { state.withMarkdown(configuration) }
+	val markdownExtension = remember(state, configuration, imageProvider) {
+		state.withMarkdown(configuration, imageProvider = imageProvider)
+	}
+
+	LaunchedEffect(state, demoContent) {
+		if (demoContent == DemoContent.Markdown) {
+			// importMarkdown resolves block-level constructs (HR, images) into rich spans;
+			// toAnnotatedStringFromMarkdown alone leaves them as raw text.
+			markdownExtension.importMarkdown(SIMPLE_MARKDOWN)
+		}
+	}
 
 	LaunchedEffect(Unit) {
 		if (demoContent == DemoContent.Rich) {

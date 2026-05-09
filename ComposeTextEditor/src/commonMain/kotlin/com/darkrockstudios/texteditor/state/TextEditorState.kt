@@ -440,8 +440,11 @@ class TextEditorState(
 			}
 			val textLayoutResult = lineWrap.textLayoutResult
 
+			// Full paragraph height — using a single sub-line's height misses clicks past the first wrap.
+			val paragraphHeight = lineWrap.blockHeight ?: textLayoutResult.size.height.toFloat()
+
 			val relativeOffset = adjustedOffset - lineWrap.offset
-			if (adjustedOffset.y in curRealLine.offset.y..(curRealLine.offset.y + lineWrap.effectiveHeight)) {
+			if (adjustedOffset.y in curRealLine.offset.y..(curRealLine.offset.y + paragraphHeight)) {
 				val charPos = textLayoutResult.multiParagraph.getOffsetForPosition(relativeOffset)
 				return CharLineOffset(lineWrap.line, min(charPos, textLines[lineWrap.line].length))
 			}
@@ -584,6 +587,7 @@ class TextEditorState(
 			}
 
 			val virtualLineCount = textLayoutResult.multiParagraph.lineCount
+			val paragraphTop = yOffset
 
 			for (virtualLineIndex in 0 until virtualLineCount) {
 				val lineWrapsAt = textLayoutResult.getLineStart(virtualLineIndex)
@@ -599,7 +603,8 @@ class TextEditorState(
 					virtualLength = lineLength,
 					virtualLineIndex = virtualLineIndex,
 					offset = Offset(0f, yOffset),
-					textLayoutResult = textLayoutResult
+					textLayoutResult = textLayoutResult,
+					paragraphTop = paragraphTop,
 				)
 
 				val richSpans = if (shouldRemeasure) {

@@ -15,6 +15,13 @@ data class LineWrap(
 	val textLayoutResult: TextLayoutResult,
 	val richSpans: List<RichSpan> = emptyList(),
 	/**
+	 * Y position of virtualLineIndex 0 of this paragraph — the same value across
+	 * every virtual sub-line of one paragraph. Used by drawing to anchor
+	 * `drawText` (which paints the whole textLayoutResult) at the paragraph's
+	 * top even when the first wrap is culled above the viewport.
+	 */
+	val paragraphTop: Float = offset.y,
+	/**
 	 * If non-null, overrides the line's visual height. Used by [BlockSpanStyle]
 	 * spans (e.g. block images) to occupy more vertical space than the underlying
 	 * placeholder text would.

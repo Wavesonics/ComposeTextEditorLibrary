@@ -30,7 +30,10 @@ internal fun DrawScope.DrawEditorText(
 
 		if (lineBottom >= minY && lineTop <= maxY) {
 			if (lastLine != virtualLine.line && state.textLines.size > virtualLine.line) {
-				val offset = virtualLine.offset.copy(y = virtualLine.offset.y - scrollY)
+				// drawText paints from sub-line 0 down; anchor at the paragraph top so a
+				// mid-paragraph entry (earlier sub-lines culled above the viewport) doesn't
+				// shift the whole paragraph down by one wrap-line.
+				val offset = Offset(virtualLine.offset.x, virtualLine.paragraphTop - scrollY)
 				decorateLine?.let {
 					decorateLine(virtualLine.line, offset, state, style)
 				}
