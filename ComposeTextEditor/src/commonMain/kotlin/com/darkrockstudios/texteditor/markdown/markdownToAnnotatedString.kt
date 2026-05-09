@@ -242,14 +242,27 @@ private fun AnnotatedString.Builder.handleHeader(
 			}
 
 			MarkdownTokenTypes.WHITE_SPACE -> {
-				// Skip leading whitespace (if it's part of the `#` header)
-				if (startOffset == 0) return@forEach
-				append(child.getTextInNode(original))
+				// Direct WHITE_SPACE children of an ATX_n element are the syntactic
+				// separator between `##` markers and content — never content itself.
 			}
 
 			MarkdownTokenTypes.ATX_CONTENT -> {
-				// Recursively process the header's content for nested styles
-				appendMarkdownChildren(original, child, startOffset, styles)
+				// The first child of ATX_CONTENT is typically a WHITE_SPACE token
+				// holding the syntactic space between `##` and the text. Skip leading
+				// whitespace tokens here so the styled header text doesn't accumulate
+				// a leading space on each export round-trip — the serializer already
+				// emits `## ` with its own trailing space.
+				var contentOffset = startOffset
+				var seenContent = false
+				child.children.forEach { gc ->
+					if (!seenContent && gc.type == MarkdownTokenTypes.WHITE_SPACE) {
+						contentOffset += gc.getTextInNode(original).length
+						return@forEach
+					}
+					seenContent = true
+					appendMarkdownNode(original, gc, contentOffset, styles)
+					contentOffset += gc.getTextInNode(original).length
+				}
 			}
 
 			else -> {

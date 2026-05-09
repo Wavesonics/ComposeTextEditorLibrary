@@ -382,6 +382,52 @@ class EscapedCharactersTest {
 	}
 
 	@Test
+	fun `Test header below first line does not accumulate leading space`() {
+		// A header that isn't at file offset 0 used to keep the syntactic space
+		// between `##` and the content as part of the styled text, so each export
+		// round-trip added another leading space.
+		val markdownText = "Some intro paragraph.\n\n## Escapes & Literal Syntax\n\nMore body text."
+
+		val parsed1 = markdownText.toAnnotatedStringFromMarkdown()
+		val markdown1 = parsed1.toMarkdown()
+		val parsed2 = markdown1.toAnnotatedStringFromMarkdown()
+		val markdown2 = parsed2.toMarkdown()
+
+		assertEquals(parsed1.text, parsed2.text, "Header text drifted. Markdown1: $markdown1")
+		assertEquals(markdown1, markdown2, "Header markdown drifted across round-trips")
+	}
+
+	@Test
+	fun `Test special characters inside code span do not accumulate escapes`() {
+		// CommonMark code spans take content literally — backslash escapes do not apply.
+		// The serializer must not escape special chars inside a code span, or each
+		// round-trip will double the backslashes.
+		val markdownText = "Inline code: `* _ # + - ! [ ] ( ) { } < > |` here."
+
+		val parsed1 = markdownText.toAnnotatedStringFromMarkdown()
+		assertEquals(
+			"Inline code: * _ # + - ! [ ] ( ) { } < > | here.",
+			parsed1.text,
+			"First parse: code span content should be literal"
+		)
+
+		val markdown1 = parsed1.toMarkdown()
+		val parsed2 = markdown1.toAnnotatedStringFromMarkdown()
+		assertEquals(
+			parsed1.text,
+			parsed2.text,
+			"Second parse: code span text drifted. Markdown: $markdown1"
+		)
+
+		val markdown2 = parsed2.toMarkdown()
+		assertEquals(
+			markdown1,
+			markdown2,
+			"Markdown form should be stable across round-trips"
+		)
+	}
+
+	@Test
 	fun `Test hash at start of line round-trip`() {
 		// "#" at line start is a header
 		val originalText = "# not a header"

@@ -44,11 +44,20 @@ fun AnnotatedString.toMarkdown(
 
 	val result = StringBuilder()
 	var currentIndex = 0
+	var codeSpanDepth = 0
 
 	boundaries.forEach { boundary ->
-		// Add any text between the last position and this boundary
+		// Add any text between the last position and this boundary. CommonMark code
+		// spans take their content literally — backslash escapes do not apply — so we
+		// must emit raw characters inside a code span, otherwise round-tripping doubles
+		// the escapes on each export.
 		while (currentIndex < boundary.index) {
-			result.append(escapeMarkdownChar(text[currentIndex]))
+			val ch = text[currentIndex]
+			if (codeSpanDepth > 0) {
+				result.append(ch)
+			} else {
+				result.append(escapeMarkdownChar(ch))
+			}
 			currentIndex++
 		}
 
@@ -63,7 +72,13 @@ fun AnnotatedString.toMarkdown(
 			} else {
 				result.append(boundary.marker.openMarker)
 			}
+			if (boundary.marker.openMarker == "`") {
+				codeSpanDepth++
+			}
 		} else {
+			if (boundary.marker.closeMarker == "`") {
+				codeSpanDepth--
+			}
 			result.append(boundary.marker.closeMarker)
 			if (boundary.marker.closeMarker == "\n") {
 				// Avoid duplicate newlines

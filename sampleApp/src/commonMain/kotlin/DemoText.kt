@@ -159,6 +159,14 @@ Bullet lists exercise the same gutter-marker pattern with a hanging indent so wr
 - Second item — toggle me with the bullet button or hit backspace at the start to demote
 - A longer third item that should wrap onto a second visual line; the wrap should hang under the text rather than under the bullet glyph
 
+## Escapes & Literal Syntax
+
+Every markdown special character can appear as literal text by escaping it with a backslash. This sentence contains all of them — \* \_ \` \# \+ \- \! \[ \] \( \) \{ \} \< \> \| \\ — and they all survive a save-and-reload round trip unchanged.
+
+Inside code spans the same characters appear verbatim because span contents are taken literally: `* _ # + - ! [ ] ( ) { } < > |`. Combine that with **bold containing a literal \* asterisk** and *italic containing a literal \_ underscore* to confirm the editor distinguishes syntax from content.
+
+Numeric edges round-trip too: version 2.0, Room 1-A, and "Step 1. do this" all stay as written rather than collapsing into an ordered list.
+
 ---
 
 When a text edit occurs, spans are adjusted to maintain consistency. If the operation is an *insertion*, spans may **expand** or **shift** depending on the location relative to the insertion point. For *deletions*, spans **shrink** or **merge** based on the removed range. Replacement operations are treated as a **combination** of deletion and insertion, ensuring spans adapt seamlessly.
