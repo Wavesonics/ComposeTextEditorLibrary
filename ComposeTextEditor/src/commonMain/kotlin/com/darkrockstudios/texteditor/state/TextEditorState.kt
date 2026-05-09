@@ -17,15 +17,7 @@ import com.darkrockstudios.texteditor.annotatedstring.toAnnotatedString
 import com.darkrockstudios.texteditor.cursor.CursorMetrics
 import com.darkrockstudios.texteditor.cursor.getWrappedLineIndex
 import com.darkrockstudios.texteditor.effectiveHeight
-import com.darkrockstudios.texteditor.richstyle.BlockSpanStyle
-import com.darkrockstudios.texteditor.richstyle.RichSpan
-import com.darkrockstudios.texteditor.richstyle.RichSpanStyle
-import com.darkrockstudios.texteditor.richstyle.applyBlockquote
-import com.darkrockstudios.texteditor.richstyle.applyBulletList
-import com.darkrockstudios.texteditor.richstyle.demoteBlockquote
-import com.darkrockstudios.texteditor.richstyle.demoteBulletList
-import com.darkrockstudios.texteditor.richstyle.hasBlockquote
-import com.darkrockstudios.texteditor.richstyle.hasBulletList
+import com.darkrockstudios.texteditor.richstyle.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
@@ -208,13 +200,9 @@ class TextEditorState(
 		)
 		editManager.applyOperation(operation)
 
-		// Continue the block style on whichever half didn't naturally inherit it
-		// from the rich-span split logic. RichSpanManager's newline handling only
-		// keeps the span on one side when the cursor was at a span boundary
-		// (start or end), so without this both Enter-at-start and Enter-at-end
-		// would leave one of the resulting lines un-bulleted. The apply* helpers
-		// are idempotent, so the mid-line-split case (where both halves already
-		// inherited the span) is unaffected.
+		// RichSpanManager's newline handling only keeps the span on one side when
+		// the cursor was at a span boundary, so apply to both lines so both halves
+		// of the split keep the gutter marker. apply* is idempotent.
 		if (isBullet) {
 			applyBulletList(originalLine)
 			applyBulletList(originalLine + 1)

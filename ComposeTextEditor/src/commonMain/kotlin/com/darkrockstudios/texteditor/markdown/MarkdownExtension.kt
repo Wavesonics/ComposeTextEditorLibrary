@@ -6,6 +6,10 @@ import com.darkrockstudios.texteditor.state.TextEditorState
 
 private val HR_LINE_TOKENS = setOf("---", "***", "___")
 
+/** Markdown line prefix used to emit blockquote / bullet items on export. */
+private const val BLOCKQUOTE_PREFIX = "> "
+private const val BULLET_PREFIX = "- "
+
 /**
  * Matches a line whose entire content is a single markdown image, optionally
  * surrounded by whitespace. Captures alt text (group 1) and URL (group 2).
@@ -91,12 +95,8 @@ class MarkdownExtension(
 
 				else -> annotated.subSequence(cursor, end).toMarkdown(markdownConfiguration)
 			}
-			if (lineIndex in blockquoteLines) {
-				sb.append("> ")
-			}
-			if (lineIndex in bulletLines) {
-				sb.append("- ")
-			}
+			if (lineIndex in blockquoteLines) sb.append(BLOCKQUOTE_PREFIX)
+			if (lineIndex in bulletLines) sb.append(BULLET_PREFIX)
 			sb.append(lineMarkdown)
 			if (nextNewline == -1) break
 			// Header export already ends with \n; don't double it.
@@ -168,70 +168,42 @@ class MarkdownExtension(
 		bulletLineIndices.forEach { editorState.applyBulletList(it) }
 	}
 
-	/**
-	 * Returns whether [line] is currently rendered as a blockquote.
-	 */
-	fun isBlockquote(line: Int): Boolean {
-		return editorState.richSpanManager.getAllRichSpans().any { span ->
-			span.style === BlockquoteSpanStyle && span.range.start.line == line
-		}
-	}
+	/** Returns whether [line] is currently rendered as a blockquote. */
+	fun isBlockquote(line: Int): Boolean = editorState.hasBlockquote(line)
+
+	/** Returns whether [line] is currently rendered as a bullet-list item. */
+	fun isBulletList(line: Int): Boolean = editorState.hasBulletList(line)
 
 	/**
 	 * Adds blockquote rendering (left bar + indented text) to each line in
 	 * [lines] that doesn't already have it; removes it from lines that do.
 	 * Mixed selections enable on every line for predictable toolbar behavior.
 	 */
-	fun toggleBlockquote(lines: IntRange) {
-		val anyOff = lines.any { !isBlockquote(it) }
-		for (lineIdx in lines) {
-			if (anyOff) {
-				if (!isBlockquote(lineIdx)) addBlockquote(lineIdx)
-			} else {
-				removeBlockquote(lineIdx)
-			}
-		}
-	}
-
-	private fun addBlockquote(lineIdx: Int) {
-		editorState.applyBlockquote(lineIdx)
-	}
-
-	private fun removeBlockquote(lineIdx: Int) {
-		editorState.demoteBlockquote(lineIdx)
-	}
-
-	/**
-	 * Returns whether [line] is currently rendered as a bullet-list item.
-	 */
-	fun isBulletList(line: Int): Boolean {
-		return editorState.richSpanManager.getAllRichSpans().any { span ->
-			span.style === BulletListSpanStyle && span.range.start.line == line
-		}
-	}
+	fun toggleBlockquote(lines: IntRange) =
+		toggleLineBlock(lines, ::isBlockquote, editorState::applyBlockquote, editorState::demoteBlockquote)
 
 	/**
 	 * Adds bullet-list rendering (gutter dot + hanging indent) to each line in
 	 * [lines] that doesn't already have it; removes it from lines that do.
 	 * Mixed selections enable on every line for predictable toolbar behavior.
 	 */
-	fun toggleBulletList(lines: IntRange) {
-		val anyOff = lines.any { !isBulletList(it) }
+	fun toggleBulletList(lines: IntRange) =
+		toggleLineBlock(lines, ::isBulletList, editorState::applyBulletList, editorState::demoteBulletList)
+
+	private inline fun toggleLineBlock(
+		lines: IntRange,
+		has: (Int) -> Boolean,
+		apply: (Int) -> Unit,
+		demote: (Int) -> Unit,
+	) {
+		val anyOff = lines.any { !has(it) }
 		for (lineIdx in lines) {
 			if (anyOff) {
-				if (!isBulletList(lineIdx)) addBulletList(lineIdx)
+				if (!has(lineIdx)) apply(lineIdx)
 			} else {
-				removeBulletList(lineIdx)
+				demote(lineIdx)
 			}
 		}
-	}
-
-	private fun addBulletList(lineIdx: Int) {
-		editorState.applyBulletList(lineIdx)
-	}
-
-	private fun removeBulletList(lineIdx: Int) {
-		editorState.demoteBulletList(lineIdx)
 	}
 
 	override fun equals(other: Any?): Boolean {

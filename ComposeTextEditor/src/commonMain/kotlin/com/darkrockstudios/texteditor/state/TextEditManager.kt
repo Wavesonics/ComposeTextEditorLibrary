@@ -397,19 +397,14 @@ class TextEditManager(private val state: TextEditorState) {
 				}
 
 				// Paragraph styles must survive a multi-line merge — without this, the
-				// blockquote/bullet indent paragraph attached to firstLine gets dropped
-				// when an empty line below is backspaced into it, and Compose renders
-				// the trailing chars (anything past the original paragraph's end) as a
-				// separate paragraph with a visual paragraph break.
+				// blockquote/bullet indent attached to firstLine gets dropped when an
+				// empty line below is backspaced into it, and Compose renders the
+				// trailing chars as a separate paragraph (visual paragraph break).
 				val lastLineHasParagraphAtJoin = lastLine.paragraphStyles
 					.any { it.start <= endChar && it.end > endChar }
 				firstLine.paragraphStyles.forEach { para ->
 					when {
 						para.end <= startChar -> {
-							// Paragraph lives in the surviving prefix. If it ends at the
-							// join boundary AND lastLine has nothing covering its remainder,
-							// extend the paragraph to absorb the join — otherwise the
-							// remainder gets a default paragraph and Compose breaks lines.
 							val newEnd = if (para.end == startChar && !lastLineHasParagraphAtJoin) {
 								mergedLength
 							} else {
@@ -419,7 +414,6 @@ class TextEditManager(private val state: TextEditorState) {
 						}
 
 						para.start < startChar -> {
-							// Spans the deletion start — truncate to the join point.
 							addStyle(para.item, para.start, startChar)
 						}
 					}
