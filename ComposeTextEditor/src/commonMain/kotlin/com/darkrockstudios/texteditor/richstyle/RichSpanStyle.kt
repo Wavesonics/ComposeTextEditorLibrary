@@ -14,6 +14,17 @@ interface RichSpanStyle {
 		lineWrap: LineWrap,
 		textRange: TextRange
 	)
+
+	/**
+	 * If true, an insert at the span's exact start boundary keeps `start` put
+	 * (greedy-at-start) so the new text lands inside the span. Default `false`
+	 * means standard text-span semantics — typing before a link doesn't extend
+	 * the link backward, etc. Line-anchored gutter markers (bullet, blockquote)
+	 * override this to `true`: they should track the whole line through edits,
+	 * so an insert at column 0 of an empty bullet line must absorb the new
+	 * character rather than push the span off the end.
+	 */
+	val stickyAtStart: Boolean get() = false
 }
 
 /**
@@ -58,6 +69,12 @@ data class RichSpan(
 
 		// For single-line spans on the same line
 		if (range.start.line == range.end.line && range.start.line == lineWrap.line) {
+			// Empty wrapped line: a positive-width span anchored at the line start
+			// still renders. Without this, gutter markers (bullet dot, blockquote
+			// bar) on an empty bullet/quote item disappear because the standard
+			// char-overlap check requires `lineEnd > range.start.char`, which fails
+			// when lineEnd == 0. Zero-width spans (start == end) remain non-intersecting.
+			if (lineEnd == lineStart && range.start.char == 0 && range.end.char > 0) return true
 			// Check if any part of the span overlaps with this wrapped segment
 			return (range.start.char < lineEnd && range.end.char > lineStart)
 		}

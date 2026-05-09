@@ -20,8 +20,12 @@ import com.darkrockstudios.texteditor.effectiveHeight
 import com.darkrockstudios.texteditor.richstyle.BlockSpanStyle
 import com.darkrockstudios.texteditor.richstyle.RichSpan
 import com.darkrockstudios.texteditor.richstyle.RichSpanStyle
+import com.darkrockstudios.texteditor.richstyle.applyBlockquote
+import com.darkrockstudios.texteditor.richstyle.applyBulletList
 import com.darkrockstudios.texteditor.richstyle.demoteBlockquote
+import com.darkrockstudios.texteditor.richstyle.demoteBulletList
 import com.darkrockstudios.texteditor.richstyle.hasBlockquote
+import com.darkrockstudios.texteditor.richstyle.hasBulletList
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
@@ -177,23 +181,64 @@ class TextEditorState(
 	}
 
 	fun insertNewlineAtCursor() {
+		val originalLine = cursorPosition.line
+		val isBullet = hasBulletList(originalLine)
+		val isQuote = hasBlockquote(originalLine)
+		val lineText = textLines.getOrNull(originalLine)?.text ?: ""
+
+		// Enter on an empty bullet/quote item exits the block — drop the gutter
+		// marker and indent, eat the keystroke. Matches Notion / Google Docs and
+		// gives a discoverable way to leave a list or quote without backspacing.
+		if (lineText.isEmpty()) {
+			if (isBullet) {
+				demoteBulletList(originalLine)
+				return
+			}
+			if (isQuote) {
+				demoteBlockquote(originalLine)
+				return
+			}
+		}
+
 		val operation = TextEditOperation.Insert(
 			position = cursorPosition,
 			text = cursor.applyCursorStyle("\n"),
 			cursorBefore = cursorPosition,
-			cursorAfter = CharLineOffset(cursorPosition.line + 1, 0)
+			cursorAfter = CharLineOffset(originalLine + 1, 0)
 		)
 		editManager.applyOperation(operation)
+
+		// Continue the block style on whichever half didn't naturally inherit it
+		// from the rich-span split logic. RichSpanManager's newline handling only
+		// keeps the span on one side when the cursor was at a span boundary
+		// (start or end), so without this both Enter-at-start and Enter-at-end
+		// would leave one of the resulting lines un-bulleted. The apply* helpers
+		// are idempotent, so the mid-line-split case (where both halves already
+		// inherited the span) is unaffected.
+		if (isBullet) {
+			applyBulletList(originalLine)
+			applyBulletList(originalLine + 1)
+		}
+		if (isQuote) {
+			applyBlockquote(originalLine)
+			applyBlockquote(originalLine + 1)
+		}
 	}
 
 	fun backspaceAtCursor() {
-		// Backspace at column 0 of a blockquote line first demotes (removes the bar
-		// and indent); a follow-up backspace then merges with the previous line. This
-		// matches Notion / Google Docs and gives a discoverable way to exit a quote
-		// without nuking the line content.
-		if (cursorPosition.char == 0 && hasBlockquote(cursorPosition.line)) {
-			demoteBlockquote(cursorPosition.line)
-			return
+		// Backspace at column 0 of a blockquote or bullet-list line first demotes
+		// (removes the gutter marker and indent); a follow-up backspace then merges
+		// with the previous line. This matches Notion / Google Docs and gives a
+		// discoverable way to exit a block prefix without nuking the line content.
+		if (cursorPosition.char == 0) {
+			if (hasBlockquote(cursorPosition.line)) {
+				demoteBlockquote(cursorPosition.line)
+				return
+			}
+			if (hasBulletList(cursorPosition.line)) {
+				demoteBulletList(cursorPosition.line)
+				return
+			}
 		}
 		if (cursorPosition.char > 0) {
 			val deleteRange = TextEditorRange(

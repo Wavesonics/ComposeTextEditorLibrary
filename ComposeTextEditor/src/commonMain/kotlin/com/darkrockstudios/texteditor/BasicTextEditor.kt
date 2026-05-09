@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.snapshotFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -28,6 +30,7 @@ import com.darkrockstudios.texteditor.contextmenu.TextEditorContextMenuState
 import com.darkrockstudios.texteditor.cursor.DrawCursor
 import com.darkrockstudios.texteditor.input.CaptureViewForIme
 import com.darkrockstudios.texteditor.input.TextEditorInputModifierElement
+import com.darkrockstudios.texteditor.richstyle.BlockSpanStyle
 import com.darkrockstudios.texteditor.richstyle.RichSpan
 import com.darkrockstudios.texteditor.scrollbar.TextEditorScrollbar
 import com.darkrockstudios.texteditor.state.SpanClickType
@@ -108,6 +111,24 @@ fun BasicTextEditor(
 
 	LaunchedEffect(style.textStyle) {
 		state.textStyle = style.textStyle
+	}
+
+	// Re-run layout when an asynchronous block-state change (e.g. an image
+	// finishing its load) changes a [BlockSpanStyle]'s reported height.
+	// `updateBookKeeping` reads block heights but isn't itself snapshot-tracked,
+	// so without this effect a freshly loaded image leaves stale Y offsets —
+	// subsequent paragraphs render at the placeholder height position and
+	// overlap the image until the user scrolls or resizes.
+	LaunchedEffect(state) {
+		snapshotFlow {
+			val d = state.density ?: return@snapshotFlow emptyList<Float>()
+			val viewportWidth = state.viewportSize.width
+			state.richSpanManager.getAllRichSpans().mapNotNull { span ->
+				(span.style as? BlockSpanStyle)?.blockHeight(d, viewportWidth)
+			}
+		}
+			.distinctUntilChanged()
+			.collect { state.updateBookKeeping() }
 	}
 
 	TextEditorContextMenuProvider(

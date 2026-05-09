@@ -9,8 +9,10 @@ import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextIndent
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.darkrockstudios.texteditor.CharLineOffset
 import com.darkrockstudios.texteditor.LineWrap
 import com.darkrockstudios.texteditor.state.TextEditorState
 
@@ -27,6 +29,8 @@ import com.darkrockstudios.texteditor.state.TextEditorState
  * continuous bar across the quoted block.
  */
 data object BlockquoteSpanStyle : RichSpanStyle {
+	override val stickyAtStart: Boolean = true
+
 	override fun DrawScope.drawCustomStyle(
 		layoutResult: TextLayoutResult,
 		lineWrap: LineWrap,
@@ -63,6 +67,30 @@ internal fun TextEditorState.hasBlockquote(line: Int): Boolean =
 	richSpanManager.getAllRichSpans().any { span ->
 		span.style === BlockquoteSpanStyle && span.range.start.line == line
 	}
+
+/**
+ * Attaches blockquote rendering to [line]: wraps the existing text in
+ * [BLOCKQUOTE_PARAGRAPH_STYLE] and adds a [BlockquoteSpanStyle] rich span.
+ *
+ * Idempotent — no-op if the line already has a blockquote span. Used both by
+ * toolbar toggles and by the smart-Enter path that continues a quote onto the
+ * next line.
+ */
+internal fun TextEditorState.applyBlockquote(line: Int) {
+	if (hasBlockquote(line)) return
+	val existing = textLines.getOrNull(line) ?: return
+	val rebuilt = buildAnnotatedString {
+		withStyle(BLOCKQUOTE_PARAGRAPH_STYLE) {
+			append(existing)
+		}
+	}
+	updateLine(line, rebuilt)
+	addRichSpan(
+		start = CharLineOffset(line, 0),
+		end = CharLineOffset(line, existing.length.coerceAtLeast(1)),
+		style = BlockquoteSpanStyle,
+	)
+}
 
 /**
  * Removes blockquote rendering from [line]: drops every [BlockquoteSpanStyle]

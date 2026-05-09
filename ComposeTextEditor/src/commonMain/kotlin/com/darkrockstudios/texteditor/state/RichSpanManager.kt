@@ -122,8 +122,18 @@ class RichSpanManager(
 				}
 			}
 		} else {
-			// Regular text insertion
-			val newStart = operation.transformOffset(start, state)
+			// Regular text insertion. For styles flagged stickyAtStart (line-anchored
+			// gutter markers), an insert at the span's exact start boundary keeps the
+			// start put so the new chars land inside the span. Without this, typing
+			// the first character into an empty bullet/blockquote line shifts the
+			// span past the line content and the gutter marker visually disappears.
+			val insertAtStart = operation.position.line == start.line &&
+					operation.position.char == start.char
+			val newStart = if (span.style.stickyAtStart && insertAtStart) {
+				start
+			} else {
+				operation.transformOffset(start, state)
+			}
 			val newEnd = operation.transformOffset(end, state)
 			updatedSpans.add(
 				span.copy(

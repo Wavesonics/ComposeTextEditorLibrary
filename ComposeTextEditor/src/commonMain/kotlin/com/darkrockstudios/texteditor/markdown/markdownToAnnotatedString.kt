@@ -140,14 +140,17 @@ private fun AnnotatedString.Builder.appendMarkdownNode(
 
 		MarkdownElementTypes.ORDERED_LIST,
 		MarkdownElementTypes.UNORDERED_LIST -> {
+			// MarkdownExtension's pre-pass strips bullet markers (`-`, `*`, `+`) from
+			// unordered list lines before parsing, so this branch only fires for
+			// ordered lists or list-like markup that bypassed the pre-pass. We just
+			// recurse into children — no glyph injection — so the body text survives
+			// without spurious bullet characters leaking into the AnnotatedString.
+			// Ordered list numbering is a follow-up.
 			appendMarkdownChildren(original, node, startOffset, styles)
-			append("\n")
 		}
 
 		MarkdownElementTypes.LIST_ITEM -> {
-			append("• ") // Using bullet for both ordered and unordered for simplicity
 			appendMarkdownChildren(original, node, startOffset, styles)
-			append("\n")
 		}
 
 		MarkdownElementTypes.BLOCK_QUOTE -> {

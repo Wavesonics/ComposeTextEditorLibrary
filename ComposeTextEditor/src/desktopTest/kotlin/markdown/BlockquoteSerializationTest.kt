@@ -182,13 +182,47 @@ class BlockquoteSerializationTest {
 		extension.importMarkdown("> hello")
 
 		val state = extension.editorState
-		state.cursor.updatePosition(CharLineOffset(0, 5))
+		state.cursor.updatePosition(CharLineOffset(0, 3))
 		state.insertStringAtCursor("!")
 
-		assertEquals("hello!", state.textLines[0].text)
+		assertEquals("hel!lo", state.textLines[0].text)
 		val hasIndent = state.textLines[0].paragraphStyles
 			.any { it.item == BLOCKQUOTE_PARAGRAPH_STYLE }
 		assertTrue(hasIndent, "indent paragraph style must survive in-line inserts")
+	}
+
+	@Test
+	fun `append at end of blockquote line keeps paragraph covering whole line`() = runTest {
+		val extension = createMarkdownExtension()
+		extension.importMarkdown("> hello")
+
+		val state = extension.editorState
+		state.cursor.updatePosition(CharLineOffset(0, 5))
+		state.insertStringAtCursor("X")
+
+		val line = state.textLines[0]
+		assertEquals("helloX", line.text)
+		val indents = line.paragraphStyles.filter { it.item == BLOCKQUOTE_PARAGRAPH_STYLE }
+		assertEquals(1, indents.size, "exactly one blockquote indent paragraph should remain")
+		assertEquals(0, indents[0].start)
+		assertEquals(line.length, indents[0].end, "paragraph must cover the appended char")
+	}
+
+	@Test
+	fun `prepend at start of blockquote line keeps paragraph covering whole line`() = runTest {
+		val extension = createMarkdownExtension()
+		extension.importMarkdown("> hello")
+
+		val state = extension.editorState
+		state.cursor.updatePosition(CharLineOffset(0, 0))
+		state.insertStringAtCursor("X")
+
+		val line = state.textLines[0]
+		assertEquals("Xhello", line.text)
+		val indents = line.paragraphStyles.filter { it.item == BLOCKQUOTE_PARAGRAPH_STYLE }
+		assertEquals(1, indents.size)
+		assertEquals(0, indents[0].start, "paragraph must still start at index 0")
+		assertEquals(line.length, indents[0].end)
 	}
 
 	@Test
@@ -234,6 +268,55 @@ class BlockquoteSerializationTest {
 
 		assertTrue(extension.blockquoteLines().isEmpty())
 		assertEquals("only line", state.getAllText().text)
+	}
+
+	@Test
+	fun `backspace at start of empty line below blockquote preserves quote on the merged line`() = runTest {
+		val extension = createMarkdownExtension()
+		extension.importMarkdown("> a quote\n\nbody")
+		val state = extension.editorState
+
+		state.cursor.updatePosition(CharLineOffset(1, 0))
+		state.backspaceAtCursor()
+
+		assertEquals("a quote", state.textLines[0].text)
+		assertEquals(listOf(0), extension.blockquoteLines())
+		val hasIndent = state.textLines[0].paragraphStyles
+			.any { it.item == BLOCKQUOTE_PARAGRAPH_STYLE }
+		assertTrue(hasIndent, "indent paragraph style must survive a multi-line merge")
+	}
+
+	@Test
+	fun `enter at end of blockquote line continues the quote`() = runTest {
+		val extension = createMarkdownExtension()
+		extension.importMarkdown("> a quote")
+		val state = extension.editorState
+
+		state.cursor.updatePosition(CharLineOffset(0, 7))  // end of "a quote"
+		state.insertNewlineAtCursor()
+
+		assertEquals(2, state.textLines.size)
+		assertEquals(listOf(0, 1), extension.blockquoteLines())
+		assertTrue(
+			state.textLines[1].paragraphStyles.any { it.item == BLOCKQUOTE_PARAGRAPH_STYLE },
+		)
+	}
+
+	@Test
+	fun `enter on empty blockquote line exits the quote`() = runTest {
+		val extension = createMarkdownExtension()
+		extension.importMarkdown("> first\n> ")
+		val state = extension.editorState
+		assertEquals("", state.textLines[1].text)
+
+		state.cursor.updatePosition(CharLineOffset(1, 0))
+		state.insertNewlineAtCursor()
+
+		assertEquals(2, state.textLines.size)
+		assertEquals(listOf(0), extension.blockquoteLines())
+		assertFalse(
+			state.textLines[1].paragraphStyles.any { it.item == BLOCKQUOTE_PARAGRAPH_STYLE },
+		)
 	}
 
 	@Test

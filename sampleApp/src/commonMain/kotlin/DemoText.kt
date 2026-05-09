@@ -153,6 +153,12 @@ The `RichSpanManager` plays a **critical role** in our text editor by efficientl
 
 > Blockquotes render with a left bar and an indent. The text inside still supports **bold**, *italic*, and `code` markdown — anything you'd write in a normal paragraph works here too.
 
+Bullet lists exercise the same gutter-marker pattern with a hanging indent so wrapped lines stay aligned under the text:
+
+- First item with **bold** content
+- Second item — toggle me with the bullet button or hit backspace at the start to demote
+- A longer third item that should wrap onto a second visual line; the wrap should hang under the text rather than under the bullet glyph
+
 ---
 
 When a text edit occurs, spans are adjusted to maintain consistency. If the operation is an *insertion*, spans may **expand** or **shift** depending on the location relative to the insertion point. For *deletions*, spans **shrink** or **merge** based on the removed range. Replacement operations are treated as a **combination** of deletion and insertion, ensuring spans adapt seamlessly.
