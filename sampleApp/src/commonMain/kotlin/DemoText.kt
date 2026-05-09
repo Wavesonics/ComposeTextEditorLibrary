@@ -159,6 +159,12 @@ Bullet lists exercise the same gutter-marker pattern with a hanging indent so wr
 - Second item — toggle me with the bullet button or hit backspace at the start to demote
 - A longer third item that should wrap onto a second visual line; the wrap should hang under the text rather than under the bullet glyph
 
+Ordered lists number themselves automatically — add or remove items and the numbers re-flow on the next layout pass:
+
+1. First numbered step
+2. Second step with **bold** and *italic*
+3. A third item that wraps onto a second visual line so we can confirm the hanging indent lines up under the text rather than the numeral
+
 ## Escapes & Literal Syntax
 
 Every markdown special character can appear as literal text by escaping it with a backslash. This sentence contains all of them — \* \_ \` \# \+ \- \! \[ \] \( \) \{ \} \< \> \| \\ — and they all survive a save-and-reload round trip unchanged.

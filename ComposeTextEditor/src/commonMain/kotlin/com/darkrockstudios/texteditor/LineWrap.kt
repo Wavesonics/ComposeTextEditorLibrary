@@ -27,6 +27,14 @@ data class LineWrap(
 	 * placeholder text would.
 	 */
 	val blockHeight: Float? = null,
+	/**
+	 * 1-based position within a contiguous run of ordered-list lines, or null if
+	 * this line isn't part of one. Filled in by `updateBookKeeping` so the
+	 * `OrderedListSpanStyle` can render the correct numeral without walking the
+	 * document at draw time. The same value is repeated across every virtual
+	 * sub-line of a wrapped list item.
+	 */
+	val orderedListNumber: Int? = null,
 )
 
 val LineWrap.effectiveHeight: Float

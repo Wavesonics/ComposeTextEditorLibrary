@@ -15,6 +15,7 @@ import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.FormatBold
 import androidx.compose.material.icons.filled.FormatItalic
 import androidx.compose.material.icons.filled.FormatListBulleted
+import androidx.compose.material.icons.filled.FormatListNumbered
 import androidx.compose.material.icons.filled.FormatQuote
 import androidx.compose.material.icons.filled.FormatStrikethrough
 import androidx.compose.material.icons.filled.HorizontalRule
@@ -53,6 +54,7 @@ import com.darkrockstudios.texteditor.markdown.MarkdownExtension
 import com.darkrockstudios.texteditor.richstyle.BlockquoteSpanStyle
 import com.darkrockstudios.texteditor.richstyle.BulletListSpanStyle
 import com.darkrockstudios.texteditor.richstyle.HR_PLACEHOLDER
+import com.darkrockstudios.texteditor.richstyle.OrderedListSpanStyle
 import com.darkrockstudios.texteditor.richstyle.HorizontalRuleSpanStyle
 import com.darkrockstudios.texteditor.richstyle.RichSpan
 import com.darkrockstudios.texteditor.state.TextEditorState
@@ -77,6 +79,7 @@ fun TextEditorToolbar(
 	var existingLinkSpan by remember { mutableStateOf<RichSpan?>(null) }
 	var isBlockquoteActive by remember { mutableStateOf(false) }
 	var isBulletListActive by remember { mutableStateOf(false) }
+	var isOrderedListActive by remember { mutableStateOf(false) }
 	var currentHeaderLevel by remember { mutableStateOf(0) }
 	var isHighlightActive by remember { mutableStateOf(false) }
 	var linkDialogState by remember { mutableStateOf<LinkDialogRequest?>(null) }
@@ -103,6 +106,7 @@ fun TextEditorToolbar(
 			existingLinkSpan = richSpans.firstOrNull { it.style is LinkSpanStyle }
 			isBlockquoteActive = richSpans.any { it.style === BlockquoteSpanStyle }
 			isBulletListActive = richSpans.any { it.style === BulletListSpanStyle }
+			isOrderedListActive = richSpans.any { it.style === OrderedListSpanStyle }
 			currentHeaderLevel = (1..6).firstOrNull { lvl ->
 				styles.contains(mardkown.markdownStyles.header(lvl))
 			} ?: 0
@@ -244,6 +248,15 @@ fun TextEditorToolbar(
 						icon = Icons.Default.FormatListBulleted,
 						contentDescription = "Bullet list",
 						isActive = isBulletListActive,
+					)
+
+					Spacer(modifier = Modifier.width(4.dp))
+
+					FormatButton(
+						onClick = { toggleOrderedList(state, mardkown) },
+						icon = Icons.Default.FormatListNumbered,
+						contentDescription = "Ordered list",
+						isActive = isOrderedListActive,
 					)
 
 					Spacer(modifier = Modifier.width(4.dp))
@@ -403,6 +416,16 @@ private fun toggleBulletList(state: TextEditorState, markdown: MarkdownExtension
 		state.cursorPosition.line..state.cursorPosition.line
 	}
 	markdown.toggleBulletList(lines)
+}
+
+private fun toggleOrderedList(state: TextEditorState, markdown: MarkdownExtension) {
+	val selection = state.selector.selection
+	val lines = if (selection != null) {
+		selection.start.line..selection.end.line
+	} else {
+		state.cursorPosition.line..state.cursorPosition.line
+	}
+	markdown.toggleOrderedList(lines)
 }
 
 private fun insertHorizontalRule(state: TextEditorState) {

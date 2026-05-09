@@ -61,6 +61,11 @@ class MarkdownExtension(
 		val sb = StringBuilder()
 		var lineIndex = 0
 		var cursor = 0
+		// Tracks position-within-run for each block style so the markdown prefix
+		// callback can render position-dependent markers (1., 2., 3. for ordered
+		// lists). Resets when a block run ends — a non-block line between two OL
+		// runs restarts numbering.
+		val runPositions = mutableMapOf<LineBlockStyle, Int>()
 		while (true) {
 			val nextNewline = text.indexOf('\n', cursor)
 			val end = if (nextNewline == -1) text.length else nextNewline
@@ -74,7 +79,13 @@ class MarkdownExtension(
 				else -> annotated.subSequence(cursor, end).toMarkdown(markdownConfiguration)
 			}
 			LINE_BLOCK_STYLES.forEach { block ->
-				if (lineIndex in blockLines.getValue(block)) sb.append(block.markdownPrefix)
+				if (lineIndex in blockLines.getValue(block)) {
+					val pos = runPositions[block] ?: 0
+					sb.append(block.markdownPrefix(pos))
+					runPositions[block] = pos + 1
+				} else {
+					runPositions.remove(block)
+				}
 			}
 			sb.append(lineMarkdown)
 			if (nextNewline == -1) break
@@ -150,6 +161,9 @@ class MarkdownExtension(
 	/** Returns whether [line] is currently rendered as a bullet-list item. */
 	fun isBulletList(line: Int): Boolean = editorState.hasLineBlock(line, BulletList)
 
+	/** Returns whether [line] is currently rendered as an ordered-list item. */
+	fun isOrderedList(line: Int): Boolean = editorState.hasLineBlock(line, OrderedList)
+
 	/**
 	 * Adds blockquote rendering (left bar + indented text) to each line in
 	 * [lines] that doesn't already have it; removes it from lines that do.
@@ -163,6 +177,14 @@ class MarkdownExtension(
 	 * Mixed selections enable on every line for predictable toolbar behavior.
 	 */
 	fun toggleBulletList(lines: IntRange) = toggleLineBlock(lines, BulletList)
+
+	/**
+	 * Adds ordered-list rendering (gutter numeral + hanging indent) to each line
+	 * in [lines] that doesn't already have it; removes it from lines that do.
+	 * Mixed selections enable on every line for predictable toolbar behavior.
+	 * Numbering is recomputed automatically based on contiguous-run position.
+	 */
+	fun toggleOrderedList(lines: IntRange) = toggleLineBlock(lines, OrderedList)
 
 	private fun toggleLineBlock(lines: IntRange, block: LineBlockStyle) {
 		val anyOff = lines.any { !editorState.hasLineBlock(it, block) }

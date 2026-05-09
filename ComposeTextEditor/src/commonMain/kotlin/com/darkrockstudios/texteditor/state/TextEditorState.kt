@@ -577,6 +577,15 @@ class TextEditorState(
 		val offsets = mutableListOf<LineWrap>()
 		var yOffset = 0f
 
+		// Pre-collect ordered-list line indices so we can number each item by its
+		// position within a contiguous run without re-scanning the span set per line.
+		val orderedListLines = richSpanManager.getAllRichSpans()
+			.asSequence()
+			.filter { it.style === OrderedListSpanStyle }
+			.map { it.range.start.line }
+			.toHashSet()
+		var orderedListRunPosition = 0
+
 		textLines.forEachIndexed { lineIndex, line ->
 			val shouldRemeasure = affectedLines == null ||
 					lineIndex in affectedLines ||
@@ -627,6 +636,14 @@ class TextEditorState(
 			val virtualLineCount = textLayoutResult.multiParagraph.lineCount
 			val paragraphTop = yOffset
 
+			val orderedListNumber: Int? = if (lineIndex in orderedListLines) {
+				orderedListRunPosition += 1
+				orderedListRunPosition
+			} else {
+				orderedListRunPosition = 0
+				null
+			}
+
 			for (virtualLineIndex in 0 until virtualLineCount) {
 				val lineWrapsAt = textLayoutResult.getLineStart(virtualLineIndex)
 
@@ -662,6 +679,7 @@ class TextEditorState(
 				val resolved = lineWrap.copy(
 					richSpans = richSpans,
 					blockHeight = blockHeight,
+					orderedListNumber = orderedListNumber,
 				)
 				offsets.add(resolved)
 				yOffset += resolved.effectiveHeight

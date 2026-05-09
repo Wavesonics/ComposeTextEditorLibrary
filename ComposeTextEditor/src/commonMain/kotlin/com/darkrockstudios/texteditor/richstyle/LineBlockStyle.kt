@@ -7,25 +7,31 @@ import com.darkrockstudios.texteditor.CharLineOffset
 import com.darkrockstudios.texteditor.state.TextEditorState
 
 /**
- * A line-anchored block style — bullet, blockquote, or any future gutter-marker
- * style that pairs a [RichSpanStyle] decoration with a [ParagraphStyle] indent
- * and roundtrips through markdown via a single-line prefix. Bundling these four
- * pieces makes adding a new style (e.g. ordered lists) a one-instance change
- * instead of touching apply/demote/import/export/toggle/Enter/Backspace separately.
+ * A line-anchored block style — bullet, blockquote, ordered-list item, or any
+ * future gutter-marker style that pairs a [RichSpanStyle] decoration with a
+ * [ParagraphStyle] indent and roundtrips through markdown via a single-line
+ * prefix. Bundling these pieces makes adding a new style a one-instance change
+ * instead of touching apply/demote/import/export/toggle/Enter/Backspace
+ * separately.
  *
  * [markdownPattern] must capture the line body (after the marker) in group 1.
+ *
+ * [markdownPrefix] receives the 0-based position of the line within its
+ * contiguous run of this block style — fixed-marker styles ignore it
+ * (e.g. bullet always returns `"- "`); ordered lists use it to emit
+ * `"${pos + 1}. "`.
  */
 internal data class LineBlockStyle(
 	val spanStyle: RichSpanStyle,
 	val paragraphStyle: ParagraphStyle,
-	val markdownPrefix: String,
+	val markdownPrefix: (positionInRun: Int) -> String,
 	val markdownPattern: Regex,
 )
 
 internal val Blockquote = LineBlockStyle(
 	spanStyle = BlockquoteSpanStyle,
 	paragraphStyle = BLOCKQUOTE_PARAGRAPH_STYLE,
-	markdownPrefix = "> ",
+	markdownPrefix = { "> " },
 	// Single-level only — nested `> > ` collapses one level per pass.
 	markdownPattern = Regex("""^>\s?(.*)$"""),
 )
@@ -33,18 +39,35 @@ internal val Blockquote = LineBlockStyle(
 internal val BulletList = LineBlockStyle(
 	spanStyle = BulletListSpanStyle,
 	paragraphStyle = BULLET_LIST_PARAGRAPH_STYLE,
-	markdownPrefix = "- ",
+	markdownPrefix = { "- " },
 	// `-`, `*`, or `+` followed by at least one space. Nested (indented) bullets
 	// are not yet supported.
 	markdownPattern = Regex("""^[-*+]\s+(.*)$"""),
+)
+
+internal val OrderedList = LineBlockStyle(
+	spanStyle = OrderedListSpanStyle,
+	paragraphStyle = ORDERED_LIST_PARAGRAPH_STYLE,
+	// Always emit incrementing numerals from 1 — markdown renderers normalise
+	// any starting digit, but emitting `1. 2. 3.` matches what humans expect to
+	// see in the source.
+	markdownPrefix = { pos -> "${pos + 1}. " },
+	// Any digit run followed by `.` and at least one space. Nested (indented)
+	// lists aren't supported yet.
+	markdownPattern = Regex("""^\d+\.\s+(.*)$"""),
 )
 
 /**
  * Registry of every known line-block style. Iterated by import/export, by the
  * editor's smart Enter/Backspace, and by toolbar toggles so that adding a new
  * line-anchored style only needs an entry here.
+ *
+ * Order matters at import time: the first matching pattern wins. OrderedList
+ * comes before BulletList so a line like `1. item` isn't accidentally captured
+ * by a bullet regex (it isn't currently — but the ordering is still defensive).
  */
-internal val LINE_BLOCK_STYLES: List<LineBlockStyle> = listOf(Blockquote, BulletList)
+internal val LINE_BLOCK_STYLES: List<LineBlockStyle> =
+	listOf(Blockquote, OrderedList, BulletList)
 
 internal fun TextEditorState.hasLineBlock(line: Int, block: LineBlockStyle): Boolean =
 	richSpanManager.getAllRichSpans().any { span ->
