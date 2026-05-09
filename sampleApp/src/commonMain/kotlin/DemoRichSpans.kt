@@ -3,6 +3,7 @@ import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextRange
 import com.darkrockstudios.texteditor.LineWrap
 import com.darkrockstudios.texteditor.richstyle.RichSpanStyle
+import com.darkrockstudios.texteditor.state.TextEditorState
 
 // Carries the URL through edit operations; visuals are supplied by the LINK SpanStyle.
 data class LinkSpanStyle(val url: String) : RichSpanStyle {
@@ -10,5 +11,6 @@ data class LinkSpanStyle(val url: String) : RichSpanStyle {
 		layoutResult: TextLayoutResult,
 		lineWrap: LineWrap,
 		textRange: TextRange,
+		state: TextEditorState,
 	) = Unit
 }

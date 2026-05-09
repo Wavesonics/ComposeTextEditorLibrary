@@ -7,12 +7,20 @@ import androidx.compose.ui.unit.Density
 import com.darkrockstudios.texteditor.CharLineOffset
 import com.darkrockstudios.texteditor.LineWrap
 import com.darkrockstudios.texteditor.TextEditorRange
+import com.darkrockstudios.texteditor.state.TextEditorState
 
 interface RichSpanStyle {
+	/**
+	 * Paints the span's decoration. [state] is provided so styles that need
+	 * editor-wide context (the [TextEditorState.textMeasurer] for laying out a
+	 * marker glyph, the active [TextEditorState.textStyle], etc.) can reach
+	 * those without holding a back-reference. Most styles ignore it.
+	 */
 	fun DrawScope.drawCustomStyle(
 		layoutResult: TextLayoutResult,
 		lineWrap: LineWrap,
-		textRange: TextRange
+		textRange: TextRange,
+		state: TextEditorState,
 	)
 
 	/**

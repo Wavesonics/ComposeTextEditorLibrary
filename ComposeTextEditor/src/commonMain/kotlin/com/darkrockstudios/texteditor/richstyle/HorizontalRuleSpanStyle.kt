@@ -11,6 +11,7 @@ import androidx.compose.ui.unit.dp
 import com.darkrockstudios.texteditor.LineWrap
 import com.darkrockstudios.texteditor.effectiveHeight
 import com.darkrockstudios.texteditor.richstyle.HorizontalRuleSpanStyle.HEIGHT_DP
+import com.darkrockstudios.texteditor.state.TextEditorState
 
 /**
  * A [BlockSpanStyle] that draws a horizontal rule across its line. Pair with
@@ -31,6 +32,7 @@ data object HorizontalRuleSpanStyle : BlockSpanStyle {
 		layoutResult: TextLayoutResult,
 		lineWrap: LineWrap,
 		textRange: TextRange,
+		state: TextEditorState,
 	) {
 		val height = lineWrap.blockHeight ?: lineWrap.effectiveHeight
 		val midY = height / 2f

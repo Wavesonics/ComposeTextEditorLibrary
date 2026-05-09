@@ -54,7 +54,8 @@ internal fun DrawScope.drawRichSpans(lineWrap: LineWrap, state: TextEditorState)
 					drawCustomStyle(
 						layoutResult = textLayoutResult,
 						lineWrap = lineWrap,
-						textRange = localRange
+						textRange = localRange,
+						state = state,
 					)
 				}
 			}

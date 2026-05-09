@@ -13,6 +13,7 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.darkrockstudios.texteditor.LineWrap
 import com.darkrockstudios.texteditor.effectiveHeight
+import com.darkrockstudios.texteditor.state.TextEditorState
 
 /**
  * A [BlockSpanStyle] that renders a full-width image. Pair with [IMAGE_PLACEHOLDER]
@@ -53,6 +54,7 @@ data class ImageBlockSpanStyle(
 		layoutResult: TextLayoutResult,
 		lineWrap: LineWrap,
 		textRange: TextRange,
+		state: TextEditorState,
 	) {
 		val height = lineWrap.blockHeight ?: lineWrap.effectiveHeight
 		val width = size.width

@@ -11,6 +11,7 @@ import androidx.compose.ui.text.style.TextIndent
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.darkrockstudios.texteditor.LineWrap
+import com.darkrockstudios.texteditor.state.TextEditorState
 
 /**
  * Decorative rich span that marks a line as a markdown blockquote — a left bar
@@ -31,6 +32,7 @@ data object BlockquoteSpanStyle : RichSpanStyle {
 		layoutResult: TextLayoutResult,
 		lineWrap: LineWrap,
 		textRange: TextRange,
+		state: TextEditorState,
 	) {
 		val lineHeight = layoutResult.multiParagraph.getLineHeight(lineWrap.virtualLineIndex)
 		drawRect(
