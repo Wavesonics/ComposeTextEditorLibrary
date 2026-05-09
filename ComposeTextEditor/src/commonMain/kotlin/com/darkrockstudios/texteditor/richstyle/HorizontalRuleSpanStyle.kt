@@ -6,35 +6,44 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.dp
 import com.darkrockstudios.texteditor.LineWrap
+import com.darkrockstudios.texteditor.effectiveHeight
+import com.darkrockstudios.texteditor.richstyle.HorizontalRuleSpanStyle.HEIGHT_DP
 
 /**
- * Custom rich-span style that draws a horizontal rule across the line it covers.
+ * A [BlockSpanStyle] that draws a horizontal rule across its line. Pair with
+ * [HR_PLACEHOLDER] (a single space) on a line of its own — the editor sizes the
+ * line to [HEIGHT_DP] (giving the rule breathing room above and below) and the
+ * placeholder text is suppressed via [replacesText].
  *
- * Pair with the placeholder space character ([HR_PLACEHOLDER]) — the editor needs at least
- * one character on the line for the span to anchor to. The line should contain only the
- * placeholder; once the user types on the line the rule should be removed (see
- * `MarkdownExtension`'s import/export which handle the markdown-side roundtrip via `---`).
+ * Markdown roundtrip is handled by `MarkdownExtension`, which detects `---` /
+ * `***` / `___` lines on import and re-emits `---` for any line carrying this
+ * style on export.
  */
-data object HorizontalRuleSpanStyle : RichSpanStyle {
+data object HorizontalRuleSpanStyle : BlockSpanStyle {
+
+	override fun blockHeight(density: Density, viewportWidth: Float): Float =
+		with(density) { HEIGHT_DP.dp.toPx() }
+
 	override fun DrawScope.drawCustomStyle(
 		layoutResult: TextLayoutResult,
 		lineWrap: LineWrap,
 		textRange: TextRange,
 	) {
-		val lineHeight = layoutResult.multiParagraph.getLineHeight(lineWrap.virtualLineIndex)
-		val left = layoutResult.getLineLeft(lineWrap.virtualLineIndex)
-		val right = layoutResult.getLineRight(lineWrap.virtualLineIndex)
-		val end = if (right > left) right else size.width
-		val midY = lineHeight / 2f
+		val height = lineWrap.blockHeight ?: lineWrap.effectiveHeight
+		val midY = height / 2f
 		drawLine(
 			color = Color.Gray,
-			start = Offset(x = left, y = midY),
-			end = Offset(x = end, y = midY),
+			start = Offset(x = 0f, y = midY),
+			end = Offset(x = size.width, y = midY),
 			strokeWidth = 1.5f,
 			cap = Stroke.DefaultCap,
 		)
 	}
+
+	private const val HEIGHT_DP = 24f
 }
 
 /** Single space character that anchors a [HorizontalRuleSpanStyle] to a line. */
