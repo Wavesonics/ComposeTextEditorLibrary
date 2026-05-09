@@ -258,6 +258,24 @@ class BlockquoteSerializationTest {
 	}
 
 	@Test
+	fun `backspace at column 0 of blockquote with blockquote above merges with previous`() = runTest {
+		val extension = createMarkdownExtension()
+		extension.importMarkdown("> first\n> second")
+		val state = extension.editorState
+		assertEquals(listOf(0, 1), extension.blockquoteLines())
+
+		state.cursor.updatePosition(CharLineOffset(1, 0))
+		state.backspaceAtCursor()
+
+		assertEquals(1, state.textLines.size)
+		assertEquals("firstsecond", state.textLines[0].text)
+		assertEquals(listOf(0), extension.blockquoteLines())
+		val hasIndent = state.textLines[0].paragraphStyles
+			.any { it.item == BLOCKQUOTE_PARAGRAPH_STYLE }
+		assertTrue(hasIndent, "indent paragraph style must survive the merge")
+	}
+
+	@Test
 	fun `backspace at column 0 of blockquote on first line demotes`() = runTest {
 		val extension = createMarkdownExtension()
 		extension.importMarkdown("> only line")

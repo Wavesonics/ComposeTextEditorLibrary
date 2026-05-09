@@ -69,13 +69,13 @@ data class RichSpan(
 
 		// For single-line spans on the same line
 		if (range.start.line == range.end.line && range.start.line == lineWrap.line) {
-			// Empty wrapped line: a positive-width span anchored at the line start
-			// still renders. Without this, gutter markers (bullet dot, blockquote
-			// bar) on an empty bullet/quote item disappear because the standard
-			// char-overlap check requires `lineEnd > range.start.char`, which fails
-			// when lineEnd == 0. Zero-width spans (start == end) remain non-intersecting.
-			if (lineEnd == lineStart && range.start.char == 0 && range.end.char > 0) return true
-			// Check if any part of the span overlaps with this wrapped segment
+			// Empty wrapped line: line-anchored gutter markers (sticky-at-start)
+			// render even when the span is zero-width, so an empty bullet/quote
+			// item keeps its dot/bar. Other styles need the standard positive-
+			// overlap check, which fails on an empty line because `lineEnd == 0`.
+			if (lineEnd == lineStart && range.start.char == 0) {
+				return style.stickyAtStart || range.end.char > 0
+			}
 			return (range.start.char < lineEnd && range.end.char > lineStart)
 		}
 

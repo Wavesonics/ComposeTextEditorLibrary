@@ -3,6 +3,7 @@ package com.darkrockstudios.texteditor.cursor
 import androidx.compose.ui.geometry.Offset
 import com.darkrockstudios.texteditor.CharLineOffset
 import com.darkrockstudios.texteditor.LineWrap
+import com.darkrockstudios.texteditor.richstyle.detectLineBlock
 import com.darkrockstudios.texteditor.state.TextEditorState
 
 fun TextEditorState.calculateCursorPosition(): CursorMetrics {
@@ -18,7 +19,8 @@ fun TextEditorState.calculateCursorPosition(): CursorMetrics {
 	val textLength = layout.layoutInput.text.length
 	val safeCharIndex = charIndex.coerceIn(0, textLength)
 
-	val cursorX = layout.getHorizontalPosition(safeCharIndex, usePrimaryDirection = true)
+	val cursorX = layout.getHorizontalPosition(safeCharIndex, usePrimaryDirection = true) +
+			emptyLineBlockIndent()
 	val cursorY = currentWrappedLine.offset.y - scrollState.value
 	val lineHeight = layout.multiParagraph.getLineHeight(virtualLineIndex)
 
@@ -35,6 +37,24 @@ fun TextEditorState.calculateCursorPosition(): CursorMetrics {
 		lineBaseline = lineBaseline,
 		lineBottom = lineBottom
 	)
+}
+
+/**
+ * Compose's `getHorizontalPosition` returns 0 on an empty line because the
+ * paragraph style's [androidx.compose.ui.text.style.TextIndent] doesn't apply
+ * to a degenerate `[0, 0)` paragraph range. Add the indent manually so the
+ * cursor sits at the indented position on an empty bullet/quote line — without
+ * this it jumps from `x=0` to `x=indent` the moment the user types the first
+ * character. Returns 0 if the line isn't an empty line-block.
+ */
+private fun TextEditorState.emptyLineBlockIndent(): Float {
+	if (cursorPosition.char != 0) return 0f
+	val line = textLines.getOrNull(cursorPosition.line) ?: return 0f
+	if (line.text.isNotEmpty()) return 0f
+	val block = detectLineBlock(cursorPosition.line) ?: return 0f
+	val indent = block.paragraphStyle.textIndent?.firstLine ?: return 0f
+	val d = density ?: return 0f
+	return with(d) { indent.toPx() }
 }
 
 internal fun List<LineWrap>.getWrappedLineIndex(position: CharLineOffset): Int {

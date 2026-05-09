@@ -205,12 +205,20 @@ class TextEditorState(
 	fun backspaceAtCursor() {
 		// Backspace at column 0 of a line-block (blockquote, bullet) first demotes
 		// (removes the gutter marker and indent); a follow-up backspace then merges
-		// with the previous line. Matches Notion / Google Docs and gives a
-		// discoverable way to exit a block prefix without nuking the line content.
+		// with the previous line. Matches Notion / Google Docs — discoverable way
+		// to exit a block prefix without nuking the line content.
+		//
+		// Exception: if the previous line is the SAME line-block, fall through to
+		// merge directly. Otherwise demote-first turns "join two adjacent items"
+		// into a two-keystroke operation, which feels worse than Docs/Notion.
 		if (cursorPosition.char == 0) {
-			detectLineBlock(cursorPosition.line)?.let { block ->
-				demoteLineBlock(cursorPosition.line, block)
-				return
+			val activeBlock = detectLineBlock(cursorPosition.line)
+			if (activeBlock != null) {
+				val prevBlock = detectLineBlock(cursorPosition.line - 1)
+				if (prevBlock != activeBlock) {
+					demoteLineBlock(cursorPosition.line, activeBlock)
+					return
+				}
 			}
 		}
 		if (cursorPosition.char > 0) {

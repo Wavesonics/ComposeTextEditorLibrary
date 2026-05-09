@@ -54,6 +54,11 @@ internal fun TextEditorState.hasLineBlock(line: Int, block: LineBlockStyle): Boo
 /**
  * Idempotent — no-op if [line] already carries [block]. Otherwise wraps the
  * line's text in the indent paragraph style and attaches a fresh rich span.
+ *
+ * On an empty line the span is zero-width `[0, 0)` — `RichSpan.intersectsWith`
+ * special-cases sticky-at-start spans so the gutter marker still renders.
+ * As soon as the user types a character, sticky-at-start keeps the span anchored
+ * at column 0 while the end shifts forward, naturally tracking the line length.
  */
 internal fun TextEditorState.applyLineBlock(line: Int, block: LineBlockStyle) {
 	if (hasLineBlock(line, block)) return
@@ -66,7 +71,7 @@ internal fun TextEditorState.applyLineBlock(line: Int, block: LineBlockStyle) {
 	updateLine(line, rebuilt)
 	addRichSpan(
 		start = CharLineOffset(line, 0),
-		end = CharLineOffset(line, existing.length.coerceAtLeast(1)),
+		end = CharLineOffset(line, existing.length),
 		style = block.spanStyle,
 	)
 }

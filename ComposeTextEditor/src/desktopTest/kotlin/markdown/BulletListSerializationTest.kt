@@ -282,6 +282,25 @@ class BulletListSerializationTest {
 	}
 
 	@Test
+	fun `backspace at column 0 of bullet with bullet above merges with previous item`() = runTest {
+		val extension = createMarkdownExtension()
+		extension.importMarkdown("- first\n- second")
+		val state = extension.editorState
+		assertEquals(listOf(0, 1), extension.bulletLines())
+
+		state.cursor.updatePosition(CharLineOffset(1, 0))
+		state.backspaceAtCursor()
+
+		// Same-style line above: backspace merges directly, no demote-first dance.
+		assertEquals(1, state.textLines.size)
+		assertEquals("firstsecond", state.textLines[0].text)
+		assertEquals(listOf(0), extension.bulletLines())
+		val hasIndent = state.textLines[0].paragraphStyles
+			.any { it.item == BULLET_LIST_PARAGRAPH_STYLE }
+		assertTrue(hasIndent, "indent paragraph style must survive the merge")
+	}
+
+	@Test
 	fun `backspace at column 0 of bullet on first line demotes`() = runTest {
 		val extension = createMarkdownExtension()
 		extension.importMarkdown("- only line")

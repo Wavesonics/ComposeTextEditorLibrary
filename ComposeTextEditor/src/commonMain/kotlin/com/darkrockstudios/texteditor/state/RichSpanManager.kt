@@ -53,7 +53,33 @@ class RichSpanManager(
 		}
 
 		spans.clear()
-		spans.addAll(updatedSpans)
+		spans.addAll(mergeLineAnchoredDuplicates(updatedSpans))
+	}
+
+	/**
+	 * Collapses any same-line duplicates of line-anchored (sticky-at-start) styles
+	 * — bullet, blockquote, etc. — into a single span covering the union range.
+	 * A multi-line merge that joins two same-style line-anchored lines naturally
+	 * produces two adjacent spans on the joined line; this fold gives us the
+	 * "one gutter marker per line" invariant those styles assume.
+	 */
+	private fun mergeLineAnchoredDuplicates(spans: Set<RichSpan>): Set<RichSpan> {
+		val (anchored, others) = spans.partition { it.style.stickyAtStart }
+		val merged = anchored
+			.groupBy { it.style to it.range.start.line }
+			.map { (key, group) ->
+				if (group.size == 1) group.first() else {
+					val (style, line) = key
+					RichSpan(
+						range = TextEditorRange(
+							start = CharLineOffset(line, group.minOf { it.range.start.char }),
+							end = CharLineOffset(line, group.maxOf { it.range.end.char }),
+						),
+						style = style,
+					)
+				}
+			}
+		return (others + merged).toSet()
 	}
 
 	private fun TextEditorRange.handleInsert(
