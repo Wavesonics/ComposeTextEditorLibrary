@@ -13,6 +13,17 @@ class RichSpanManager(
 
 	fun getAllRichSpans(): Set<RichSpan> = spans
 
+	/**
+	 * Drops every rich span. Called by [TextEditorState.setText] because a full
+	 * content replacement leaves any prior spans pointing at stale line indices —
+	 * e.g. on a markdown roundtrip, leftover bullet/blockquote spans would block
+	 * `applyLineBlock` from re-attaching the paragraph indent and the gutter
+	 * marker would draw over the first character of the line.
+	 */
+	internal fun clear() {
+		spans.clear()
+	}
+
 	internal fun addRichSpan(range: TextEditorRange, style: RichSpanStyle) {
 		spans.add(RichSpan(range, style))
 	}

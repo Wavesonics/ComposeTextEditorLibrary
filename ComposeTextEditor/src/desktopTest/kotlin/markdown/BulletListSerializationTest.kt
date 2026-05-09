@@ -152,6 +152,24 @@ class BulletListSerializationTest {
 	}
 
 	@Test
+	fun `re-import after export keeps paragraph indent on bullet lines`() = runTest {
+		// Regression: setText didn't clear stale rich spans, so on a re-import the
+		// applyLineBlock guard hit a leftover span and skipped the paragraph-style
+		// re-application, leaving the bullet glyph on top of the first character.
+		val extension = createMarkdownExtension()
+		extension.importMarkdown("- one\n- two\n- three")
+
+		val markdown = extension.exportAsMarkdown()
+		extension.importMarkdown(markdown)
+
+		assertEquals(listOf(0, 1, 2), extension.bulletLines())
+		extension.editorState.textLines.forEachIndexed { index, line ->
+			val hasIndent = line.paragraphStyles.any { it.item == BULLET_LIST_PARAGRAPH_STYLE }
+			assertTrue(hasIndent, "line $index lost its bullet indent paragraph style on re-import")
+		}
+	}
+
+	@Test
 	fun `toggleBulletList adds span to a line`() = runTest {
 		val extension = createMarkdownExtension()
 		extension.importMarkdown("plain text")

@@ -131,12 +131,14 @@ class TextEditorState(
 
 	fun setText(text: String) {
 		_textLines.clear()
+		richSpanManager.clear()
 		_textLines.addAll(text.split("\n").map { it.toAnnotatedString() })
 		updateBookKeeping()
 	}
 
 	fun setText(text: AnnotatedString) {
 		_textLines.clear()
+		richSpanManager.clear()
 		_textLines.addAll(text.splitAnnotatedString())
 		updateBookKeeping()
 	}
