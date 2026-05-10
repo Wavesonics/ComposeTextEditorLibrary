@@ -8,8 +8,10 @@ import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.text.ParagraphStyle
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextIndent
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.darkrockstudios.texteditor.CodeFenceBoundary
 import com.darkrockstudios.texteditor.LineWrap
@@ -31,26 +33,24 @@ import com.darkrockstudios.texteditor.state.TextEditorState
 data object CodeFenceSpanStyle : RichSpanStyle {
 	override val stickyAtStart: Boolean = true
 
-	override fun DrawScope.drawCustomStyle(
+	/**
+	 * Painted before `drawText` so the fill can be fully opaque without obscuring
+	 * the code text on top. Borders stay in [drawCustomStyle] (the foreground
+	 * pass) so they overlay the text edges cleanly.
+	 */
+	override fun DrawScope.drawBackground(
 		layoutResult: TextLayoutResult,
 		lineWrap: LineWrap,
 		textRange: TextRange,
 		state: TextEditorState,
 	) {
-		val boundary = lineWrap.codeFenceBoundary ?: return
+		if (lineWrap.codeFenceBoundary == null) return
 		val lineHeight = layoutResult.multiParagraph.getLineHeight(lineWrap.virtualLineIndex)
-
 		val fillColor = if (state.codeFenceBackgroundColor.isSpecified) {
 			state.codeFenceBackgroundColor
 		} else {
 			Color.Gray.copy(alpha = 0.18f)
 		}
-		val borderColor = if (state.codeFenceBorderColor.isSpecified) {
-			state.codeFenceBorderColor
-		} else {
-			Color.Gray.copy(alpha = 0.55f)
-		}
-		val border = BORDER_WIDTH_DP.dp.toPx()
 
 		// Background fill across the full editor width on every virtual line so
 		// wrapped sub-lines also sit on the card.
@@ -59,6 +59,22 @@ data object CodeFenceSpanStyle : RichSpanStyle {
 			topLeft = Offset.Zero,
 			size = Size(size.width, lineHeight),
 		)
+	}
+
+	override fun DrawScope.drawCustomStyle(
+		layoutResult: TextLayoutResult,
+		lineWrap: LineWrap,
+		textRange: TextRange,
+		state: TextEditorState,
+	) {
+		val boundary = lineWrap.codeFenceBoundary ?: return
+		val lineHeight = layoutResult.multiParagraph.getLineHeight(lineWrap.virtualLineIndex)
+		val borderColor = if (state.codeFenceBorderColor.isSpecified) {
+			state.codeFenceBorderColor
+		} else {
+			Color.Gray.copy(alpha = 0.55f)
+		}
+		val border = BORDER_WIDTH_DP.dp.toPx()
 
 		// Side borders on every virtual line — these stack into one continuous
 		// vertical edge across the run.
@@ -105,7 +121,20 @@ data object CodeFenceSpanStyle : RichSpanStyle {
  * Visual indent applied to fenced code lines so the text breathes from the
  * left border. Same first-line and rest-line indent — code blocks don't have a
  * hanging indent.
+ *
+ * The taller [ParagraphStyle.lineHeight] (relative to the font's natural ~1.2em
+ * line height) plus [LineHeightStyle.Trim.None] keeps the extra space at the
+ * top of the first line and the bottom of the last line, giving the text a
+ * little breathing room from the top and bottom borders. Centered alignment
+ * splits the extra equally so multi-line fences look symmetric. Middle lines
+ * pick up a small amount of inter-line spacing as a side effect, which reads as
+ * looser line-spacing — typical for code blocks.
  */
 val CODE_FENCE_PARAGRAPH_STYLE: ParagraphStyle = ParagraphStyle(
 	textIndent = TextIndent(firstLine = 12.sp, restLine = 12.sp),
+	lineHeight = 1.5.em,
+	lineHeightStyle = LineHeightStyle(
+		alignment = LineHeightStyle.Alignment.Center,
+		trim = LineHeightStyle.Trim.None,
+	),
 )

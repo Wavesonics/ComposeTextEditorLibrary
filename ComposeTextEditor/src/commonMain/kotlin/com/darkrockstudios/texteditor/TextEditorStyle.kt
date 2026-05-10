@@ -77,10 +77,13 @@ fun rememberTextEditorStyle(
 	// readable since the fill paints on top of `drawText`.
 	blockquoteBackgroundColor: Color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f),
 	orderedListMarkerColor: Color = MaterialTheme.colorScheme.onSurface,
-	// Stronger tint than the blockquote so the two cards aren't confusable —
-	// the fill paints on top of `drawText` (rich spans render after text), so
-	// the alpha keeps the monospace body readable underneath.
-	codeFenceBackgroundColor: Color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
+	// `surfaceContainerHigh` is Material 3's "elevated surface" role — designed
+	// for cards, chips, and code blocks. It's clearly distinct from `surface`
+	// (the editor body) in both light and dark schemes, and pairs naturally with
+	// `onSurface`-colored text (the editor's text color), giving the monospace
+	// body solid contrast inside the card. Used at full opacity since the role
+	// already encodes the intended subtlety.
+	codeFenceBackgroundColor: Color = MaterialTheme.colorScheme.surfaceContainerHigh,
 	codeFenceBorderColor: Color = MaterialTheme.colorScheme.outline,
 ): TextEditorStyle = remember(
 	textColor, placeholderText, placeholderColor,
