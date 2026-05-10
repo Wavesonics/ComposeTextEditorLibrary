@@ -6,6 +6,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.ParagraphStyle
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.style.TextIndent
 import androidx.compose.ui.unit.sp
@@ -44,24 +45,19 @@ data object OrderedListSpanStyle : RichSpanStyle {
 		val number = lineWrap.orderedListNumber ?: 1
 		val text = "$number."
 
-		// Match the editor's text style so the numeral has the same font and color
-		// as the surrounding content. Measure on every paint — the cost is a single
-		// short string per visible item per frame and the document layout depends on
-		// the same measurer anyway.
+		// SpanStyle only — Compose Android applies the host's paragraph-level
+		// textIndent when measuring a bare AnnotatedString, inflating `size.width`
+		// and pushing the numeral past the gutter. Stripping ParagraphStyle gives
+		// pure glyph width consistently across platforms.
 		val measured = state.textMeasurer.measure(
 			text = AnnotatedString(text),
-			style = state.textStyle,
+			style = TextStyle.Default.merge(state.textStyle.toSpanStyle()),
 		)
 
-		// Right-align the numeral against the actual text-left position so digits
-		// of differing widths share a baseline (`9.` and `10.` both end where the
-		// text begins). Reading the text-left from the layout instead of a fixed
-		// gutter constant makes the marker counter-act *whatever* indent merge
-		// Compose actually applied — editor-wide `TextStyle.textIndent`, our own
-		// `ORDERED_LIST_PARAGRAPH_STYLE.textIndent`, or some platform-specific
-		// blend of the two. Compose Android doesn't reliably let a per-paragraph
-		// `TextIndent` override an editor-wide default, so a static gutter would
-		// land in the wrong place there.
+		// Right-align numerals against the layout's actual text-left so digit
+		// columns line up (`9.` and `10.` both end at the same x). Reading
+		// `getLineLeft` rather than hardcoding the gutter makes the marker track
+		// whatever indent the platform actually applied.
 		val rightPad = GUTTER_RIGHT_PAD_SP.sp.toPx()
 		val textLeft = layoutResult.getLineLeft(lineWrap.virtualLineIndex)
 		val markerWidth = measured.size.width.toFloat()
@@ -87,10 +83,9 @@ data object OrderedListSpanStyle : RichSpanStyle {
 }
 
 /**
- * Visual indent applied to ordered-list lines so the [OrderedListSpanStyle]
- * numeral has room before the text. Sized to fit `99.` comfortably; nested
- * lists (which would need wider gutters) are a follow-up.
+ * Indent for ordered-list lines. Matches [BULLET_LIST_PARAGRAPH_STYLE] so mixed
+ * bullet / ordered runs share one gutter; fits `1.`–`99.` but not larger.
  */
 val ORDERED_LIST_PARAGRAPH_STYLE: ParagraphStyle = ParagraphStyle(
-	textIndent = TextIndent(firstLine = 28.sp, restLine = 28.sp),
+	textIndent = TextIndent(firstLine = 16.sp, restLine = 16.sp),
 )

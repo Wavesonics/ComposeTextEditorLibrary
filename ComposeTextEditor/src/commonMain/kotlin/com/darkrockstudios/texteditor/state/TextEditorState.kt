@@ -7,6 +7,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.*
+import androidx.compose.ui.text.style.TextIndent
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Density
 import com.darkrockstudios.texteditor.CharLineOffset
@@ -616,6 +617,16 @@ class TextEditorState(
 			.map { it.range.start.line }
 			.toHashSet()
 
+		// Compose Android doesn't reliably honor per-paragraph ParagraphStyle
+		// .textIndent overriding an editor-wide TextStyle.textIndent, so we
+		// sidestep the merge: strip the indent from the outer style and bake it
+		// into plain lines as their own ParagraphStyle below. Block lines
+		// already carry a ParagraphStyle from `applyLineBlock`.
+		val outerIndent = textStyle.textIndent
+		val needsIndentBaking = outerIndent != null && outerIndent != TextIndent.None
+		val measureStyle = if (needsIndentBaking) textStyle.copy(textIndent = TextIndent.None) else textStyle
+		val bakedIndentStyle = if (needsIndentBaking) ParagraphStyle(textIndent = outerIndent) else null
+
 		textLines.forEachIndexed { lineIndex, line ->
 			val shouldRemeasure = affectedLines == null ||
 					lineIndex in affectedLines ||
@@ -634,11 +645,19 @@ class TextEditorState(
 				maxHeight = Constraints.Infinity
 			)
 
+			// Skip if the line already has a ParagraphStyle (block line) —
+			// Compose forbids overlapping ParagraphStyle ranges.
+			val measureLine = if (bakedIndentStyle != null && line.paragraphStyles.isEmpty()) {
+				buildAnnotatedString { withStyle(bakedIndentStyle) { append(line) } }
+			} else {
+				line
+			}
+
 			val textLayoutResult = if (shouldRemeasure) {
 				try {
 					textMeasurer.measure(
-						text = line,
-						style = textStyle,
+						text = measureLine,
+						style = measureStyle,
 						constraints = lineConstraints
 					)
 				} catch (e: IllegalArgumentException) {
@@ -646,7 +665,7 @@ class TextEditorState(
 					// If measurement fails, create an empty layout result
 					textMeasurer.measure(
 						text = AnnotatedString(""),
-						style = textStyle,
+						style = measureStyle,
 						constraints = lineConstraints
 					)
 				}
@@ -656,8 +675,8 @@ class TextEditorState(
 					existing
 				} else {
 					textMeasurer.measure(
-						text = line,
-						style = textStyle,
+						text = measureLine,
+						style = measureStyle,
 						constraints = lineConstraints
 					)
 				}
