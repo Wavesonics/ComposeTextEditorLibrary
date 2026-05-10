@@ -37,14 +37,22 @@ data object BulletListSpanStyle : RichSpanStyle {
 		if (lineWrap.virtualLineIndex != 0) return
 		val lineHeight = layoutResult.multiParagraph.getLineHeight(lineWrap.virtualLineIndex)
 		val color = if (state.bulletColor.isSpecified) state.bulletColor else Color.DarkGray
+		// Anchor the dot relative to the actual text-left position rather than a
+		// fixed canvas offset so it tracks whatever indent ends up applied to the
+		// line — editor-wide `TextStyle.textIndent`, the per-paragraph
+		// `BULLET_LIST_PARAGRAPH_STYLE.textIndent`, or whatever blend Compose
+		// actually produces (the merge is platform-dependent).
+		val textLeft = layoutResult.getLineLeft(lineWrap.virtualLineIndex)
+		val centerX = (textLeft - BULLET_GAP_DP.dp.toPx()).coerceAtLeast(BULLET_RADIUS_DP.dp.toPx())
 		drawCircle(
 			color = color,
 			radius = BULLET_RADIUS_DP.dp.toPx(),
-			center = Offset(BULLET_CENTER_DP.dp.toPx(), lineHeight / 2f),
+			center = Offset(centerX, lineHeight / 2f),
 		)
 	}
 
-	private const val BULLET_CENTER_DP = 8f
+	// Distance from the text-left edge to the bullet's center.
+	private const val BULLET_GAP_DP = 8f
 	private const val BULLET_RADIUS_DP = 2.5f
 }
 

@@ -53,12 +53,19 @@ data object OrderedListSpanStyle : RichSpanStyle {
 			style = state.textStyle,
 		)
 
-		// Right-align the numeral against the indent boundary so digits of differing
-		// widths share a baseline (`9.` and `10.` both end where the text begins).
-		val indentPx = GUTTER_WIDTH_SP.sp.toPx()
+		// Right-align the numeral against the actual text-left position so digits
+		// of differing widths share a baseline (`9.` and `10.` both end where the
+		// text begins). Reading the text-left from the layout instead of a fixed
+		// gutter constant makes the marker counter-act *whatever* indent merge
+		// Compose actually applied — editor-wide `TextStyle.textIndent`, our own
+		// `ORDERED_LIST_PARAGRAPH_STYLE.textIndent`, or some platform-specific
+		// blend of the two. Compose Android doesn't reliably let a per-paragraph
+		// `TextIndent` override an editor-wide default, so a static gutter would
+		// land in the wrong place there.
 		val rightPad = GUTTER_RIGHT_PAD_SP.sp.toPx()
+		val textLeft = layoutResult.getLineLeft(lineWrap.virtualLineIndex)
 		val markerWidth = measured.size.width.toFloat()
-		val x = (indentPx - rightPad - markerWidth).coerceAtLeast(0f)
+		val x = (textLeft - rightPad - markerWidth).coerceAtLeast(0f)
 
 		// Vertically center on the text line so single- and multi-digit numerals
 		// share a midline.
@@ -74,8 +81,8 @@ data object OrderedListSpanStyle : RichSpanStyle {
 		)
 	}
 
-	// Indent must match ORDERED_LIST_PARAGRAPH_STYLE so the gutter holds the marker.
-	private const val GUTTER_WIDTH_SP = 28f
+	// Pad between the numeral and the text it labels; the gutter width itself is
+	// taken from the layout's actual text-left position (see drawCustomStyle).
 	private const val GUTTER_RIGHT_PAD_SP = 4f
 }
 
