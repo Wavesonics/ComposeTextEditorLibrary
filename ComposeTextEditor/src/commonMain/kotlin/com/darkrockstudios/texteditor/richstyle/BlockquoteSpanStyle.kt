@@ -36,13 +36,26 @@ data object BlockquoteSpanStyle : RichSpanStyle {
 		state: TextEditorState,
 	) {
 		val lineHeight = layoutResult.multiParagraph.getLineHeight(lineWrap.virtualLineIndex)
-		val color = if (state.blockquoteBarColor.isSpecified) {
+
+		// Tinted background fill spans the full line width — drawn first so the
+		// bar paints over it, and the (translucent) tint sits on top of the
+		// already-rendered text without obscuring it. Skip when unset so callers
+		// who don't want the fill pay nothing.
+		if (state.blockquoteBackgroundColor.isSpecified) {
+			drawRect(
+				color = state.blockquoteBackgroundColor,
+				topLeft = Offset.Zero,
+				size = Size(size.width, lineHeight),
+			)
+		}
+
+		val barColor = if (state.blockquoteBarColor.isSpecified) {
 			state.blockquoteBarColor
 		} else {
 			Color.Gray.copy(alpha = 0.6f)
 		}
 		drawRect(
-			color = color,
+			color = barColor,
 			topLeft = Offset(BAR_LEFT_DP.dp.toPx(), 0f),
 			size = Size(BAR_WIDTH_DP.dp.toPx(), lineHeight),
 		)

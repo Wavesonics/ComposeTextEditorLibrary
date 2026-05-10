@@ -28,6 +28,14 @@ data class TextEditorStyle(
 	 */
 	val blockquoteBarColor: Color = Color.Unspecified,
 	/**
+	 * Tinted background fill drawn across the full width of every blockquote
+	 * line, behind the bar and the text. `Color.Unspecified` skips the fill
+	 * entirely — set to a low-alpha color to mark the quoted area as a soft
+	 * card. The fill is drawn on top of the text (rich spans render after
+	 * `drawText`), so use a low alpha to avoid muddying the body.
+	 */
+	val blockquoteBackgroundColor: Color = Color.Unspecified,
+	/**
 	 * Color of the ordered-list numeral drawn in the gutter. `Color.Unspecified`
 	 * inherits the editor's text color (via `drawText`'s color override).
 	 */
@@ -45,15 +53,21 @@ fun rememberTextEditorStyle(
 	focusedBorderColor: Color = MaterialTheme.colorScheme.outline,
 	unfocusedBorderColor: Color = MaterialTheme.colorScheme.outlineVariant,
 	textStyle: TextStyle = TextStyle.Default,
-	// Markers default to dimmed variants of the text color so they work in both
-	// light and dark themes without per-app configuration.
-	bulletColor: Color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
-	blockquoteBarColor: Color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.4f),
-	orderedListMarkerColor: Color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.85f),
+	// Markers default to Material color roles that read as "subtle but visible UI
+	// chrome" in both light and dark schemes — `onSurfaceVariant` for the bullet
+	// dot, `outline` (the role intended for dividers/borders) for the blockquote
+	// bar, and full `onSurface` for the ordered numeral since it's content-
+	// bearing and should match the text it's labeling.
+	bulletColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
+	blockquoteBarColor: Color = MaterialTheme.colorScheme.outline,
+	// Subtle tinted card behind the blockquote text — the alpha keeps the body
+	// readable since the fill paints on top of `drawText`.
+	blockquoteBackgroundColor: Color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f),
+	orderedListMarkerColor: Color = MaterialTheme.colorScheme.onSurface,
 ): TextEditorStyle = remember(
 	textColor, placeholderText, placeholderColor,
 	cursorColor, selectionColor, focusedBorderColor, unfocusedBorderColor, textStyle,
-	bulletColor, blockquoteBarColor, orderedListMarkerColor,
+	bulletColor, blockquoteBarColor, blockquoteBackgroundColor, orderedListMarkerColor,
 ) {
 	TextEditorStyle(
 		textColor = textColor,
@@ -67,6 +81,7 @@ fun rememberTextEditorStyle(
 		textStyle = textStyle,
 		bulletColor = bulletColor,
 		blockquoteBarColor = blockquoteBarColor,
+		blockquoteBackgroundColor = blockquoteBackgroundColor,
 		orderedListMarkerColor = orderedListMarkerColor,
 	)
 }

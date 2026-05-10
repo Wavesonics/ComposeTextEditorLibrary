@@ -53,6 +53,8 @@ class TextEditorState(
 		internal set
 	var blockquoteBarColor: Color by mutableStateOf(Color.Unspecified)
 		internal set
+	var blockquoteBackgroundColor: Color by mutableStateOf(Color.Unspecified)
+		internal set
 	var orderedListMarkerColor: Color by mutableStateOf(Color.Unspecified)
 		internal set
 

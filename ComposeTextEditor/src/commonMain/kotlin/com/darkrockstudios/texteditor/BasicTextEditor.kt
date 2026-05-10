@@ -113,9 +113,15 @@ fun BasicTextEditor(
 		state.textStyle = style.textStyle
 	}
 
-	LaunchedEffect(style.bulletColor, style.blockquoteBarColor, style.orderedListMarkerColor) {
+	LaunchedEffect(
+		style.bulletColor,
+		style.blockquoteBarColor,
+		style.blockquoteBackgroundColor,
+		style.orderedListMarkerColor,
+	) {
 		state.bulletColor = style.bulletColor
 		state.blockquoteBarColor = style.blockquoteBarColor
+		state.blockquoteBackgroundColor = style.blockquoteBackgroundColor
 		state.orderedListMarkerColor = style.orderedListMarkerColor
 	}
 
