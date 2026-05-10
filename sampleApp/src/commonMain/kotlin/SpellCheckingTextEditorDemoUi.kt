@@ -4,6 +4,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -13,7 +14,6 @@ import androidx.compose.ui.text.style.TextIndent
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.darkrockstudios.texteditor.markdown.MarkdownConfiguration
-import com.darkrockstudios.texteditor.markdown.toAnnotatedStringFromMarkdown
 import com.darkrockstudios.texteditor.rememberTextEditorStyle
 import com.darkrockstudios.texteditor.spellcheck.SpellCheckMode
 import com.darkrockstudios.texteditor.spellcheck.SpellCheckingTextEditor
@@ -27,14 +27,24 @@ fun SpellCheckingTextEditorDemoUi(
 	configuration: MarkdownConfiguration,
 ) {
 	val spellChecker by rememberSampleSpellChecker()
-	val state =
-		rememberSpellCheckState(
-			spellChecker,
-			SIMPLE_MARKDOWN.toAnnotatedStringFromMarkdown(configuration),
-			true,
-			SpellCheckMode.Word
-		)
-	val markdownExtension = remember(state) { state.withMarkdown(configuration) }
+	val imageProvider = rememberDemoImageProvider()
+	// Start with empty content and load via `importMarkdown` so the line-block
+	// pre-pass (HR, image, blockquote, list, code fence) gets a chance to run —
+	// `toAnnotatedStringFromMarkdown` alone only handles inline markdown and
+	// would leave block markers as literal text.
+	val state = rememberSpellCheckState(
+		spellChecker = spellChecker,
+		initialText = null,
+		enableSpellChecking = true,
+		spellCheckMode = SpellCheckMode.Word,
+	)
+	val markdownExtension = remember(state, configuration, imageProvider) {
+		state.withMarkdown(configuration, imageProvider = imageProvider)
+	}
+
+	LaunchedEffect(markdownExtension) {
+		markdownExtension.importMarkdown(SIMPLE_MARKDOWN)
+	}
 
 	Column(modifier = modifier) {
 		Row {
