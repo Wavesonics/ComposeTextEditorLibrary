@@ -1,32 +1,46 @@
 package com.darkrockstudios.texteditor.richstyle
 
 import androidx.compose.ui.text.ParagraphStyle
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.withStyle
 import com.darkrockstudios.texteditor.CharLineOffset
 import com.darkrockstudios.texteditor.state.TextEditorState
 
 /**
- * A line-anchored block style — bullet, blockquote, ordered-list item, or any
- * future gutter-marker style that pairs a [RichSpanStyle] decoration with a
- * [ParagraphStyle] indent and roundtrips through markdown via a single-line
- * prefix. Bundling these pieces makes adding a new style a one-instance change
+ * A line-anchored block style — bullet, blockquote, ordered-list item, fenced
+ * code line, or any future style that pairs a [RichSpanStyle] decoration with a
+ * [ParagraphStyle] indent and (optionally) a baked-in [SpanStyle] for the line
+ * text. Bundling these pieces makes adding a new style a one-instance change
  * instead of touching apply/demote/import/export/toggle/Enter/Backspace
  * separately.
  *
- * [markdownPattern] must capture the line body (after the marker) in group 1.
+ * [markdownPattern] must capture the line body (after the marker) in group 1
+ * for prefix-style blocks; wrap-style blocks (currently just `CodeFence`,
+ * which roundtrips through ` ``` ` markers around a contiguous run) use a
+ * never-matching regex and are handled out-of-band by `MarkdownExtension`.
  *
  * [markdownPrefix] receives the 0-based position of the line within its
  * contiguous run of this block style — fixed-marker styles ignore it
  * (e.g. bullet always returns `"- "`); ordered lists use it to emit
- * `"${pos + 1}. "`.
+ * `"${pos + 1}. "`. Wrap-style blocks return an empty string and rely on the
+ * out-of-band wrapper logic.
+ *
+ * [textStyle] is applied to the line text at apply time and stripped at
+ * demote time — used by `CodeFence` to bake in monospace. Null for blocks
+ * that don't change the line's text style.
  */
 internal data class LineBlockStyle(
 	val spanStyle: RichSpanStyle,
 	val paragraphStyle: ParagraphStyle,
 	val markdownPrefix: (positionInRun: Int) -> String,
 	val markdownPattern: Regex,
+	val textStyle: SpanStyle? = null,
 )
+
+/** Regex sentinel for wrap-style blocks that aren't matched per-line. */
+private val NEVER_MATCHES: Regex = Regex("(?!)")
 
 internal val Blockquote = LineBlockStyle(
 	spanStyle = BlockquoteSpanStyle,
@@ -57,29 +71,54 @@ internal val OrderedList = LineBlockStyle(
 	markdownPattern = Regex("""^\d+\.\s+(.*)$"""),
 )
 
+internal val CodeFence = LineBlockStyle(
+	spanStyle = CodeFenceSpanStyle,
+	paragraphStyle = CODE_FENCE_PARAGRAPH_STYLE,
+	// Code fences roundtrip via ` ``` ` markers wrapping a contiguous run, not a
+	// per-line prefix; export is handled in MarkdownExtension out-of-band.
+	markdownPrefix = { "" },
+	markdownPattern = NEVER_MATCHES,
+	textStyle = SpanStyle(fontFamily = FontFamily.Monospace),
+)
+
 /**
- * Registry of every known line-block style. Iterated by import/export, by the
- * editor's smart Enter/Backspace, and by toolbar toggles so that adding a new
- * line-anchored style only needs an entry here.
+ * Registry of every prefix-style line block — those that roundtrip through a
+ * single-line markdown prefix (`> `, `- `, `1. `). Iterated by
+ * import/export and the editor's smart Enter/Backspace.
  *
  * Order matters at import time: the first matching pattern wins. OrderedList
  * comes before BulletList so a line like `1. item` isn't accidentally captured
  * by a bullet regex (it isn't currently — but the ordering is still defensive).
+ *
+ * `CodeFence` is intentionally NOT in this list — it roundtrips via wrapping
+ * markers, not a per-line prefix, and is handled separately. See
+ * [ALL_BLOCK_STYLES] for the union used by `detectLineBlock`.
  */
 internal val LINE_BLOCK_STYLES: List<LineBlockStyle> =
 	listOf(Blockquote, OrderedList, BulletList)
 
+/** Every known line-block style, including wrap-style blocks like `CodeFence`. */
+internal val ALL_BLOCK_STYLES: List<LineBlockStyle> =
+	LINE_BLOCK_STYLES + CodeFence
+
 /**
- * Line-block styles that are mutually exclusive — applying one demotes any
- * other in the set on the same line. Blockquote is intentionally NOT in this
- * set: a quoted bullet (`> - item`) or quoted ordered item (`> 1. item`) is
- * legitimate markdown and stacking the two is the right behavior.
+ * Returns the set of line-block styles that should be demoted from a line
+ * before [applied] is added. Encodes the editor's stacking rules:
  *
- * Without this, toggling ordered on a bullet line (or vice versa) would leave
- * both [ParagraphStyle] indents on the same range — which Compose rejects as
- * overlapping paragraph styles, blanking the line.
+ * - List styles ([BulletList], [OrderedList]) are mutually exclusive — Compose
+ *   rejects overlapping paragraph styles, blanking the line.
+ * - [Blockquote] stacks with lists (`> - item` and `> 1. item` are legitimate
+ *   markdown).
+ * - [CodeFence] stacks with nothing — quoted/listed code blocks aren't
+ *   meaningful in our editor's model and the visual treatments would conflict.
  */
-internal val LIST_BLOCK_STYLES: Set<LineBlockStyle> = setOf(BulletList, OrderedList)
+private fun mutuallyExcluded(applied: LineBlockStyle): Set<LineBlockStyle> = when (applied) {
+	CodeFence -> setOf(Blockquote, BulletList, OrderedList)
+	BulletList -> setOf(OrderedList, CodeFence)
+	OrderedList -> setOf(BulletList, CodeFence)
+	Blockquote -> setOf(CodeFence)
+	else -> emptySet()
+}
 
 internal fun TextEditorState.hasLineBlock(line: Int, block: LineBlockStyle): Boolean =
 	richSpanManager.getAllRichSpans().any { span ->
@@ -87,8 +126,10 @@ internal fun TextEditorState.hasLineBlock(line: Int, block: LineBlockStyle): Boo
 	}
 
 /**
- * Idempotent — no-op if [line] already carries [block]. Otherwise wraps the
- * line's text in the indent paragraph style and attaches a fresh rich span.
+ * Idempotent — no-op if [line] already carries [block]. Otherwise demotes any
+ * mutually-exclusive block on the same line, wraps the line's text in the
+ * indent paragraph style (and the optional [LineBlockStyle.textStyle]), and
+ * attaches a fresh rich span.
  *
  * On an empty line the span is zero-width `[0, 0)` — `RichSpan.intersectsWith`
  * special-cases sticky-at-start spans so the gutter marker still renders.
@@ -97,18 +138,22 @@ internal fun TextEditorState.hasLineBlock(line: Int, block: LineBlockStyle): Boo
  */
 internal fun TextEditorState.applyLineBlock(line: Int, block: LineBlockStyle) {
 	if (hasLineBlock(line, block)) return
-	// Demote any conflicting list-type block before applying — otherwise the new
+	// Demote any conflicting block before applying — otherwise the new
 	// paragraph-style indent would overlap the old one and Compose blanks the
 	// line on the next measure pass.
-	if (block in LIST_BLOCK_STYLES) {
-		LIST_BLOCK_STYLES
-			.filter { it !== block && hasLineBlock(line, it) }
-			.forEach { demoteLineBlock(line, it) }
-	}
+	mutuallyExcluded(block)
+		.filter { hasLineBlock(line, it) }
+		.forEach { demoteLineBlock(line, it) }
 	val existing = textLines.getOrNull(line) ?: return
 	val rebuilt = buildAnnotatedString {
 		withStyle(block.paragraphStyle) {
-			append(existing)
+			if (block.textStyle != null) {
+				withStyle(block.textStyle) {
+					append(existing)
+				}
+			} else {
+				append(existing)
+			}
 		}
 	}
 	updateLine(line, rebuilt)
@@ -121,7 +166,8 @@ internal fun TextEditorState.applyLineBlock(line: Int, block: LineBlockStyle) {
 
 /**
  * Drops every span anchored to [line] for [block] and rebuilds the line without
- * its indent paragraph style. No-op if [line] is out of range or has no such span.
+ * its indent paragraph style (and without the baked-in text style, if any).
+ * No-op if [line] is out of range or has no such span.
  */
 internal fun TextEditorState.demoteLineBlock(line: Int, block: LineBlockStyle) {
 	val existing = textLines.getOrNull(line) ?: return
@@ -132,7 +178,9 @@ internal fun TextEditorState.demoteLineBlock(line: Int, block: LineBlockStyle) {
 	val rebuilt = buildAnnotatedString {
 		append(existing.text)
 		existing.spanStyles.forEach { range ->
-			addStyle(range.item, range.start, range.end)
+			if (block.textStyle == null || range.item != block.textStyle) {
+				addStyle(range.item, range.start, range.end)
+			}
 		}
 		existing.paragraphStyles.forEach { range ->
 			if (range.item != block.paragraphStyle) {
@@ -145,4 +193,4 @@ internal fun TextEditorState.demoteLineBlock(line: Int, block: LineBlockStyle) {
 
 /** Returns the [LineBlockStyle] currently attached to [line], or null if none. */
 internal fun TextEditorState.detectLineBlock(line: Int): LineBlockStyle? =
-	LINE_BLOCK_STYLES.firstOrNull { hasLineBlock(line, it) }
+	ALL_BLOCK_STYLES.firstOrNull { hasLineBlock(line, it) }

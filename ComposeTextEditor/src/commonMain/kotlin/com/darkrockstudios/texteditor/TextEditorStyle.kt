@@ -40,6 +40,19 @@ data class TextEditorStyle(
 	 * inherits the editor's text color (via `drawText`'s color override).
 	 */
 	val orderedListMarkerColor: Color = Color.Unspecified,
+	/**
+	 * Tinted background fill drawn behind every line in a fenced code block.
+	 * `Color.Unspecified` falls back to `Color.Gray.copy(alpha = 0.18f)`.
+	 * Use a stronger alpha than [blockquoteBackgroundColor] so the two cards
+	 * don't read as the same treatment.
+	 */
+	val codeFenceBackgroundColor: Color = Color.Unspecified,
+	/**
+	 * Hairline border drawn around the run of fenced code lines — top edge on
+	 * the first line, bottom edge on the last, sides on every line.
+	 * `Color.Unspecified` falls back to `Color.Gray.copy(alpha = 0.55f)`.
+	 */
+	val codeFenceBorderColor: Color = Color.Unspecified,
 )
 
 @Composable
@@ -64,10 +77,16 @@ fun rememberTextEditorStyle(
 	// readable since the fill paints on top of `drawText`.
 	blockquoteBackgroundColor: Color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f),
 	orderedListMarkerColor: Color = MaterialTheme.colorScheme.onSurface,
+	// Stronger tint than the blockquote so the two cards aren't confusable —
+	// the fill paints on top of `drawText` (rich spans render after text), so
+	// the alpha keeps the monospace body readable underneath.
+	codeFenceBackgroundColor: Color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
+	codeFenceBorderColor: Color = MaterialTheme.colorScheme.outline,
 ): TextEditorStyle = remember(
 	textColor, placeholderText, placeholderColor,
 	cursorColor, selectionColor, focusedBorderColor, unfocusedBorderColor, textStyle,
 	bulletColor, blockquoteBarColor, blockquoteBackgroundColor, orderedListMarkerColor,
+	codeFenceBackgroundColor, codeFenceBorderColor,
 ) {
 	TextEditorStyle(
 		textColor = textColor,
@@ -83,5 +102,7 @@ fun rememberTextEditorStyle(
 		blockquoteBarColor = blockquoteBarColor,
 		blockquoteBackgroundColor = blockquoteBackgroundColor,
 		orderedListMarkerColor = orderedListMarkerColor,
+		codeFenceBackgroundColor = codeFenceBackgroundColor,
+		codeFenceBorderColor = codeFenceBorderColor,
 	)
 }

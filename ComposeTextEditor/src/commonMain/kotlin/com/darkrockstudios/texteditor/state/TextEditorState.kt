@@ -10,6 +10,7 @@ import androidx.compose.ui.text.*
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Density
 import com.darkrockstudios.texteditor.CharLineOffset
+import com.darkrockstudios.texteditor.CodeFenceBoundary
 import com.darkrockstudios.texteditor.LineWrap
 import com.darkrockstudios.texteditor.TextEditorRange
 import com.darkrockstudios.texteditor.annotatedstring.splitAnnotatedString
@@ -56,6 +57,10 @@ class TextEditorState(
 	var blockquoteBackgroundColor: Color by mutableStateOf(Color.Unspecified)
 		internal set
 	var orderedListMarkerColor: Color by mutableStateOf(Color.Unspecified)
+		internal set
+	var codeFenceBackgroundColor: Color by mutableStateOf(Color.Unspecified)
+		internal set
+	var codeFenceBorderColor: Color by mutableStateOf(Color.Unspecified)
 		internal set
 
 	internal val _textLines = mutableListOf<AnnotatedString>()
@@ -602,6 +607,15 @@ class TextEditorState(
 			.toHashSet()
 		var orderedListRunPosition = 0
 
+		// Pre-collect code-fence line indices so each line can compute its boundary
+		// (top/middle/bottom/only) by checking neighbors — driving which edges of
+		// the card border `CodeFenceSpanStyle` paints.
+		val codeFenceLines = richSpanManager.getAllRichSpans()
+			.asSequence()
+			.filter { it.style === CodeFenceSpanStyle }
+			.map { it.range.start.line }
+			.toHashSet()
+
 		textLines.forEachIndexed { lineIndex, line ->
 			val shouldRemeasure = affectedLines == null ||
 					lineIndex in affectedLines ||
@@ -660,6 +674,17 @@ class TextEditorState(
 				null
 			}
 
+			val codeFenceBoundary: CodeFenceBoundary? = if (lineIndex in codeFenceLines) {
+				val prevIn = (lineIndex - 1) in codeFenceLines
+				val nextIn = (lineIndex + 1) in codeFenceLines
+				when {
+					!prevIn && !nextIn -> CodeFenceBoundary.Only
+					!prevIn -> CodeFenceBoundary.First
+					!nextIn -> CodeFenceBoundary.Last
+					else -> CodeFenceBoundary.Middle
+				}
+			} else null
+
 			for (virtualLineIndex in 0 until virtualLineCount) {
 				val lineWrapsAt = textLayoutResult.getLineStart(virtualLineIndex)
 
@@ -696,6 +721,7 @@ class TextEditorState(
 					richSpans = richSpans,
 					blockHeight = blockHeight,
 					orderedListNumber = orderedListNumber,
+					codeFenceBoundary = codeFenceBoundary,
 				)
 				offsets.add(resolved)
 				yOffset += resolved.effectiveHeight

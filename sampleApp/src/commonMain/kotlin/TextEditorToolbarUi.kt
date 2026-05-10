@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.FormatSize
 import androidx.compose.material.icons.filled.Highlight
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledTonalButton
@@ -53,6 +54,7 @@ import com.darkrockstudios.texteditor.TextEditorRange
 import com.darkrockstudios.texteditor.markdown.MarkdownExtension
 import com.darkrockstudios.texteditor.richstyle.BlockquoteSpanStyle
 import com.darkrockstudios.texteditor.richstyle.BulletListSpanStyle
+import com.darkrockstudios.texteditor.richstyle.CodeFenceSpanStyle
 import com.darkrockstudios.texteditor.richstyle.HR_PLACEHOLDER
 import com.darkrockstudios.texteditor.richstyle.OrderedListSpanStyle
 import com.darkrockstudios.texteditor.richstyle.HorizontalRuleSpanStyle
@@ -80,6 +82,7 @@ fun TextEditorToolbar(
 	var isBlockquoteActive by remember { mutableStateOf(false) }
 	var isBulletListActive by remember { mutableStateOf(false) }
 	var isOrderedListActive by remember { mutableStateOf(false) }
+	var isCodeFenceActive by remember { mutableStateOf(false) }
 	var currentHeaderLevel by remember { mutableStateOf(0) }
 	var isHighlightActive by remember { mutableStateOf(false) }
 	var linkDialogState by remember { mutableStateOf<LinkDialogRequest?>(null) }
@@ -107,6 +110,7 @@ fun TextEditorToolbar(
 			isBlockquoteActive = richSpans.any { it.style === BlockquoteSpanStyle }
 			isBulletListActive = richSpans.any { it.style === BulletListSpanStyle }
 			isOrderedListActive = richSpans.any { it.style === OrderedListSpanStyle }
+			isCodeFenceActive = richSpans.any { it.style === CodeFenceSpanStyle }
 			currentHeaderLevel = (1..6).firstOrNull { lvl ->
 				styles.contains(mardkown.markdownStyles.header(lvl))
 			} ?: 0
@@ -257,6 +261,15 @@ fun TextEditorToolbar(
 						icon = Icons.Default.FormatListNumbered,
 						contentDescription = "Ordered list",
 						isActive = isOrderedListActive,
+					)
+
+					Spacer(modifier = Modifier.width(4.dp))
+
+					FormatButton(
+						onClick = { toggleCodeFence(state, mardkown) },
+						icon = Icons.Default.Terminal,
+						contentDescription = "Code block",
+						isActive = isCodeFenceActive,
 					)
 
 					Spacer(modifier = Modifier.width(4.dp))
@@ -426,6 +439,16 @@ private fun toggleOrderedList(state: TextEditorState, markdown: MarkdownExtensio
 		state.cursorPosition.line..state.cursorPosition.line
 	}
 	markdown.toggleOrderedList(lines)
+}
+
+private fun toggleCodeFence(state: TextEditorState, markdown: MarkdownExtension) {
+	val selection = state.selector.selection
+	val lines = if (selection != null) {
+		selection.start.line..selection.end.line
+	} else {
+		state.cursorPosition.line..state.cursorPosition.line
+	}
+	markdown.toggleCodeFence(lines)
 }
 
 private fun insertHorizontalRule(state: TextEditorState) {
