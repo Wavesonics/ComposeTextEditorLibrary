@@ -11,10 +11,19 @@ import com.darkrockstudios.texteditor.state.TextEditorState
 
 interface RichSpanStyle {
 	/**
-	 * Paints the span's decoration. [state] is provided so styles that need
-	 * editor-wide context (the [TextEditorState.textMeasurer] for laying out a
-	 * marker glyph, the active [TextEditorState.textStyle], etc.) can reach
-	 * those without holding a back-reference. Most styles ignore it.
+	 * Paints the span's decoration. Runs AFTER `drawText` for the line, so
+	 * anything painted here overlays the text — good for foreground glyphs
+	 * (bullet dots, ordered numerals), bars, borders, and underlines, but the
+	 * caller must use translucent fills or the text will be obscured.
+	 *
+	 * For opaque backgrounds (full-card code-block fill, etc.) override
+	 * [drawBackground] instead — that pass runs before `drawText` so the text
+	 * paints on top.
+	 *
+	 * [state] is provided so styles that need editor-wide context (the
+	 * [TextEditorState.textMeasurer] for laying out a marker glyph, the active
+	 * [TextEditorState.textStyle], etc.) can reach those without holding a
+	 * back-reference. Most styles ignore it.
 	 */
 	fun DrawScope.drawCustomStyle(
 		layoutResult: TextLayoutResult,
@@ -22,6 +31,22 @@ interface RichSpanStyle {
 		textRange: TextRange,
 		state: TextEditorState,
 	)
+
+	/**
+	 * Paints behind the text — runs BEFORE `drawText` for the line, so opaque
+	 * fills don't obscure the text on top. Default no-op; styles that want a
+	 * transparent decoration over the text should keep using [drawCustomStyle].
+	 *
+	 * Use this for solid card fills (code blocks, callouts) where readability
+	 * inside the card matters more than seeing the body color through the fill.
+	 */
+	fun DrawScope.drawBackground(
+		layoutResult: TextLayoutResult,
+		lineWrap: LineWrap,
+		textRange: TextRange,
+		state: TextEditorState,
+	) {
+	}
 
 	/**
 	 * If true, an insert at the span's exact start boundary keeps `start` put

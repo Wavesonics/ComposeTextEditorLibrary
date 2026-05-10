@@ -21,6 +21,19 @@ internal fun DrawScope.DrawEditorText(
 	val minY = (scrollY - viewportHeight * 0.1f).coerceAtLeast(0f)
 	val maxY = scrollY + viewportHeight
 
+	// Pass 1: paint backgrounds for every visible virtual line BEFORE any text
+	// is drawn. Opaque fills (e.g. a code-fence card) need to land here so the
+	// text painted in pass 2 sits on top instead of being covered. Foreground
+	// rich-span decorations (bullets, borders, underlines) still run in pass 2
+	// after the text so they overlay correctly.
+	state.lineOffsets.fastForEach { virtualLine ->
+		val lineTop = virtualLine.offset.y
+		val lineBottom = lineTop + virtualLine.effectiveHeight
+		if (lineBottom >= minY && lineTop <= maxY) {
+			drawRichSpans(virtualLine, state, phase = RichSpanDrawPhase.Background)
+		}
+	}
+
 	var lastLine = -1
 	state.lineOffsets.fastForEach { virtualLine ->
 		// Check if this line could be visible
@@ -52,7 +65,7 @@ internal fun DrawScope.DrawEditorText(
 				lastLine = virtualLine.line
 			}
 
-			drawRichSpans(virtualLine, state)
+			drawRichSpans(virtualLine, state, phase = RichSpanDrawPhase.Foreground)
 
 			// Draw composing underline if this line intersects the composing region
 			state.composingRange?.let { composingRange ->
