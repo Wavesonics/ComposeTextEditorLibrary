@@ -189,6 +189,33 @@ When a text edit occurs, spans are adjusted to maintain consistency. If the oper
 
 Span deduplication plays a significant role by merging overlapping spans to reduce redundancy. Dynamic updates ensure that any changes in text instantly reflect on spans, keeping the document visually consistent. Efficient and robust, this approach simplifies complex text operations while maintaining **visual coherence**."""
 
+const val EXAMPLE_MARKDOWN = """# ComposeTextEditor
+
+A **rich text** editor for *Compose Multiplatform* with `markdown` support — [try it online](https://wavesonics.github.io/ComposeTextEditorLibrary/).
+
+![Highway at night](sample.jpg)
+
+## Features at a glance
+
+> Inline **bold**, *italic*, `code`, and ~~strike~~ all compose inside blockquotes, lists, and headings.
+
+- Headings, blockquotes, and **horizontal rules**
+- Bullet and ordered lists with hanging indents
+- Fenced code blocks rendered on a tinted card
+
+1. Type to edit
+2. Toggle styles from the toolbar
+3. Save round-trips through *CommonMark*
+
+```kotlin
+fun greet(name: String) =
+    "Hello, ${'$'}name!"
+```
+
+---
+
+Escapes survive a round trip: \*literal\* \_underscores\_ and version 2.0 stay as written."""
+
 fun createRichTextDemo2(): AnnotatedString = buildAnnotatedString {
 	append("1234567890123456789112345678921234567893")
 }
