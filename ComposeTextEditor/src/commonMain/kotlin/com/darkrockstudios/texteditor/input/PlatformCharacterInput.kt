@@ -15,7 +15,10 @@ import androidx.compose.ui.input.key.KeyEvent
  *   event). AWT also fires a separate `KEY_PRESSED` (`KeyDown`) for the same
  *   keystroke whose `keyChar` is the same character — accepting that too would
  *   double-insert every printable key.
- * - **iOS / WASM**: text input arrives via the IME's `commitText`; the rare key
+ * - **iOS**: text input arrives via the IME's `commitText`; the rare key
  *   events that surface use `Unknown` for typed characters.
+ * - **WASM**: there is no IME path — typed characters arrive as
+ *   [KeyEventType.KeyDown] events translated directly from the browser's
+ *   `keydown` DOM event. The browser does not emit an `Unknown`-type event.
  */
 internal expect fun KeyEvent.isCharacterInputCandidate(): Boolean

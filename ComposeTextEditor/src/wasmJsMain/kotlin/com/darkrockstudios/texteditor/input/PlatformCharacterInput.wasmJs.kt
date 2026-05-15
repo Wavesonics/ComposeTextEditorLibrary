@@ -5,4 +5,4 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.type
 
 internal actual fun KeyEvent.isCharacterInputCandidate(): Boolean =
-	type == KeyEventType.Unknown
+	type == KeyEventType.KeyDown
