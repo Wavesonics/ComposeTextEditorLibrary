@@ -71,6 +71,13 @@ kotlin {
     }
 }
 
+compose.resources {
+	// Make the generated `Res` class public so dependent modules
+	// (e.g. ComposeTextEditorSpellCheck) reuse the same string resources.
+	publicResClass = true
+	packageOfResClass = "com.darkrockstudios.texteditor.resources"
+}
+
 group = "com.darkrockstudios"
 version = providers.gradleProperty("library.version").getOrElse("0.0.0-SNAPSHOT")
 

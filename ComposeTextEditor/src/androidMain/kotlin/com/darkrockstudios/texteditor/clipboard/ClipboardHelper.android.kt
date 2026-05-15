@@ -9,17 +9,19 @@ import androidx.compose.ui.text.AnnotatedString
 @OptIn(ExperimentalComposeUiApi::class)
 actual object ClipboardHelper {
 	actual suspend fun getText(clipboard: Clipboard): AnnotatedString? {
-		return clipboard.getClipEntry()?.clipData?.let { clipData ->
-			if (clipData.itemCount > 0) {
-				clipData.getItemAt(0).text?.toString()?.let { text ->
-					AnnotatedString(text)
-				}
-			} else null
+		val clipData = clipboard.getClipEntry()?.clipData ?: return null
+		if (clipData.itemCount == 0) return null
+		val item = clipData.getItemAt(0)
+		val html = item.htmlText
+		if (!html.isNullOrEmpty()) {
+			return html.htmlToAnnotatedString()
 		}
+		val plain = item.text?.toString() ?: return null
+		return AnnotatedString(plain)
 	}
 
 	actual suspend fun setText(clipboard: Clipboard, text: AnnotatedString) {
-		val clipData = ClipData.newPlainText("text", text.text)
+		val clipData = ClipData.newHtmlText("text", text.text, text.toHtml())
 		clipboard.setClipEntry(clipData.toClipEntry())
 	}
 }

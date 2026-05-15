@@ -12,6 +12,7 @@ import com.darkrockstudios.texteditor.*
 import com.darkrockstudios.texteditor.contextmenu.ContextMenuItem
 import com.darkrockstudios.texteditor.contextmenu.ContextMenuStrings
 import com.darkrockstudios.texteditor.contextmenu.TextEditorContextMenuState
+import com.darkrockstudios.texteditor.contextmenu.rememberDefaultContextMenuStrings
 import com.darkrockstudios.texteditor.spellcheck.api.Correction
 import com.darkrockstudios.texteditor.spellcheck.api.EditorSpellChecker
 import com.darkrockstudios.texteditor.spellcheck.utils.debounceUntilQuiescentWithBatch
@@ -33,7 +34,7 @@ fun SpellCheckingTextEditor(
 	enabled: Boolean = true,
 	autoFocus: Boolean = false,
 	style: TextEditorStyle = rememberTextEditorStyle(),
-	contextMenuStrings: ContextMenuStrings = ContextMenuStrings.Default,
+	contextMenuStrings: ContextMenuStrings = rememberDefaultContextMenuStrings(),
 	onRichSpanClick: RichSpanClickListener? = null,
 ) {
 	val contextMenuState = remember { TextEditorContextMenuState() }

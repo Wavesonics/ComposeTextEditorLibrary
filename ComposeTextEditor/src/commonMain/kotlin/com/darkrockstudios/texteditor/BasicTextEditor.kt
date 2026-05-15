@@ -10,7 +10,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshotFlow
-import kotlinx.coroutines.flow.distinctUntilChanged
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -23,10 +22,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.toSize
-import com.darkrockstudios.texteditor.contextmenu.ContextMenuActions
-import com.darkrockstudios.texteditor.contextmenu.ContextMenuStrings
-import com.darkrockstudios.texteditor.contextmenu.TextEditorContextMenuProvider
-import com.darkrockstudios.texteditor.contextmenu.TextEditorContextMenuState
+import com.darkrockstudios.texteditor.contextmenu.*
 import com.darkrockstudios.texteditor.cursor.DrawCursor
 import com.darkrockstudios.texteditor.input.CaptureViewForIme
 import com.darkrockstudios.texteditor.input.TextEditorInputModifierElement
@@ -37,6 +33,7 @@ import com.darkrockstudios.texteditor.state.SpanClickType
 import com.darkrockstudios.texteditor.state.TextEditorState
 import com.darkrockstudios.texteditor.state.rememberTextEditorState
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlin.time.Duration.Companion.milliseconds
 
 private const val CURSOR_BLINK_SPEED_MS = 500L
@@ -49,7 +46,7 @@ fun BasicTextEditor(
 	enabled: Boolean = true,
 	autoFocus: Boolean = false,
 	style: TextEditorStyle = rememberTextEditorStyle(),
-	contextMenuStrings: ContextMenuStrings = ContextMenuStrings.Default,
+	contextMenuStrings: ContextMenuStrings = rememberDefaultContextMenuStrings(),
 	contextMenuState: TextEditorContextMenuState? = null,
 	onRichSpanClick: RichSpanClickListener? = null,
 	decorateLine: LineDecorator? = null,
