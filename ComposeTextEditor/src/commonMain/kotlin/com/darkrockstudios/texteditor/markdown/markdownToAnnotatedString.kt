@@ -6,19 +6,17 @@ import org.intellij.markdown.MarkdownElementTypes
 import org.intellij.markdown.MarkdownTokenTypes
 import org.intellij.markdown.ast.ASTNode
 import org.intellij.markdown.ast.getTextInNode
-import org.intellij.markdown.flavours.commonmark.CommonMarkFlavourDescriptor
+import org.intellij.markdown.flavours.gfm.GFMElementTypes
+import org.intellij.markdown.flavours.gfm.GFMFlavourDescriptor
+import org.intellij.markdown.flavours.gfm.GFMTokenTypes
 import org.intellij.markdown.parser.MarkdownParser
-
-private fun CharSequence.removeMarkdownEscapes(): String {
-	return replace("""\\([*_`#\[\](){}+\-!\\])""".toRegex(), "$1")
-}
 
 fun String.toAnnotatedStringFromMarkdown(
 	configuration: MarkdownConfiguration = MarkdownConfiguration.DEFAULT
 ): AnnotatedString {
 	val styles = MarkdownStyles(configuration)
 
-	val flavour = CommonMarkFlavourDescriptor()
+	val flavour = GFMFlavourDescriptor()
 	val parsedTree = MarkdownParser(flavour).buildMarkdownTreeFromString(this)
 	return buildAnnotatedString {
 		appendMarkdownChildren(this@toAnnotatedStringFromMarkdown, parsedTree, 0, styles)
@@ -68,6 +66,12 @@ private fun AnnotatedString.Builder.appendMarkdownNode(
 
 		MarkdownElementTypes.STRONG -> {
 			pushStyle(styles.BOLD)
+			appendStyledContent(node, original, startOffset, styles)
+			pop()
+		}
+
+		GFMElementTypes.STRIKETHROUGH -> {
+			pushStyle(styles.STRIKETHROUGH)
 			appendStyledContent(node, original, startOffset, styles)
 			pop()
 		}
@@ -136,22 +140,25 @@ private fun AnnotatedString.Builder.appendMarkdownNode(
 
 		MarkdownElementTypes.ORDERED_LIST,
 		MarkdownElementTypes.UNORDERED_LIST -> {
+			// MarkdownExtension's pre-pass strips bullet markers (`-`, `*`, `+`) from
+			// unordered list lines before parsing, so this branch only fires for
+			// ordered lists or list-like markup that bypassed the pre-pass. We just
+			// recurse into children — no glyph injection — so the body text survives
+			// without spurious bullet characters leaking into the AnnotatedString.
+			// Ordered list numbering is a follow-up.
 			appendMarkdownChildren(original, node, startOffset, styles)
-			append("\n")
 		}
 
 		MarkdownElementTypes.LIST_ITEM -> {
-			append("• ") // Using bullet for both ordered and unordered for simplicity
 			appendMarkdownChildren(original, node, startOffset, styles)
-			append("\n")
 		}
 
 		MarkdownElementTypes.BLOCK_QUOTE -> {
-			pushStyle(styles.BLOCKQUOTE)
-			append("> ")
+			// MarkdownExtension's pre-pass strips `> ` line prefixes before parsing, so
+			// this branch only fires for blockquotes outside that pipeline (e.g. callers
+			// of toAnnotatedStringFromMarkdown directly). Recurse without injecting a
+			// literal `> ` marker so the body text isn't visually corrupted.
 			appendMarkdownChildren(original, node, startOffset, styles)
-			pop()
-			append("\n")
 		}
 
 		MarkdownTokenTypes.TEXT -> {
@@ -168,9 +175,9 @@ private fun AnnotatedString.Builder.appendMarkdownNode(
 		}
 
 		else -> {
-			// For any unhandled node types, just append the text
+			// For any unhandled node types, append text with escapes removed
 			if (nodeText.isNotEmpty()) {
-				append(nodeText)
+				append(nodeText.removeMarkdownEscapes())
 			} else {
 				appendMarkdownChildren(original, node, startOffset, styles)
 			}
@@ -196,7 +203,8 @@ private fun AnnotatedString.Builder.appendStyledContent(
 			}
 			// Skip markdown syntax tokens
 			MarkdownTokenTypes.EMPH,
-			MarkdownTokenTypes.BACKTICK -> {
+			MarkdownTokenTypes.BACKTICK,
+			GFMTokenTypes.TILDE -> {
 			}
 			// Handle any nested elements by recursing
 			else -> {
@@ -234,14 +242,27 @@ private fun AnnotatedString.Builder.handleHeader(
 			}
 
 			MarkdownTokenTypes.WHITE_SPACE -> {
-				// Skip leading whitespace (if it's part of the `#` header)
-				if (startOffset == 0) return@forEach
-				append(child.getTextInNode(original))
+				// Direct WHITE_SPACE children of an ATX_n element are the syntactic
+				// separator between `##` markers and content — never content itself.
 			}
 
 			MarkdownTokenTypes.ATX_CONTENT -> {
-				// Recursively process the header's content for nested styles
-				appendMarkdownChildren(original, child, startOffset, styles)
+				// The first child of ATX_CONTENT is typically a WHITE_SPACE token
+				// holding the syntactic space between `##` and the text. Skip leading
+				// whitespace tokens here so the styled header text doesn't accumulate
+				// a leading space on each export round-trip — the serializer already
+				// emits `## ` with its own trailing space.
+				var contentOffset = startOffset
+				var seenContent = false
+				child.children.forEach { gc ->
+					if (!seenContent && gc.type == MarkdownTokenTypes.WHITE_SPACE) {
+						contentOffset += gc.getTextInNode(original).length
+						return@forEach
+					}
+					seenContent = true
+					appendMarkdownNode(original, gc, contentOffset, styles)
+					contentOffset += gc.getTextInNode(original).length
+				}
 			}
 
 			else -> {
@@ -253,7 +274,4 @@ private fun AnnotatedString.Builder.handleHeader(
 
 	// Pop the header style
 	pop()
-
-	// Add a newline for formatting
-	append("\n")
 }

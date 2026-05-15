@@ -15,7 +15,7 @@ However, they have all suffered from fundamental limitations in `BasicTextField`
 all text entry in Compose.
 
 This project is an attempt to re-implement text entry from scratch to finally have a
-solution to the various problems.faw
+solution to the various problems.
 
 ### Why?
 
@@ -26,16 +26,14 @@ to replace `BasicTextField` with something that solved all of my needs.
 
 And now, it's working, and at this point, working pretty well.
 
-It's probably not a permanent solution.
-`BasicTextField2`'s new state based approach and gap-buffer has reach maturity and includes a lot of what I would need
-to replace this, but still cannot handle rich text rendering. So until that is solved, this is the only solution
-that I am aware of that ticks every box:
-
 - ✅ 100% Compose Multiplatform
 - ✅ Efficient rendering and editing of long-form text
 - ✅ Rich text with custom spans
 - ✅ Expose scroll state
 - ✅ Spell checking
+- ☑️ CommonMark Spec (partial)
+  - Inline styles (bold, italics, ect)
+  - Block styles (code fence, lists, images)
 
 You can [Give it a try here](https://wavesonics.github.io/ComposeTextEditorLibrary/).
 
@@ -62,27 +60,35 @@ You can [Give it a try here](https://wavesonics.github.io/ComposeTextEditorLibra
 
 #### Platforms
 
-All of the platforms supported by Compose Text Editor are now supported.
+Desktop (JVM), Android, iOS, WASM
 
 ### Work left to do:
 
 - Copy/Paste of rich text always strips the formatting (_this is a Compose MP bug_)
 - Right-to-Left text is probably broken
 - Sentence level spell checking is not working as expected
+- Full CommonMark Spec compliance (_nested lists_)
 
 ## Want to try it?
 
 Text Editor:
 
-`implementation("com.darkrockstudios:composetexteditor:1.5.0")`
+`implementation("com.darkrockstudios:composetexteditor:2.0.0")`
 
 Spell Checking addon:
 
-`implementation("com.darkrockstudios:composetexteditor-spellcheck:1.5.0")`
+`implementation("com.darkrockstudios:composetexteditor-spellcheck:2.0.0")`
 
 Find & Replace addon:
 
-`implementation("com.darkrockstudios:composetexteditor-find:1.5.0")`
+`implementation("com.darkrockstudios:composetexteditor-find:2.0.0")`
+
+## Really?
+
+I don't know. Maybe. It might not a permanent solution.
+`BasicTextField2`'s new state based approach and gap-buffer has reach maturity and includes a lot of what I would need
+to replace this, but still cannot handle rich text rendering, still can't emit individual edit events.
+So until those are solved, this is the only solution that I am aware of that ticks every box.
 
 
 [badge-android]: http://img.shields.io/badge/-android-6EDB8D.svg?style=flat

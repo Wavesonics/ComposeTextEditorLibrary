@@ -138,7 +138,7 @@ class MarkdownConverterTest {
 //	}
 
 	@Test
-	fun `test unsupported style is dropped`() {
+	fun `test strikethrough conversion`() {
 		val input = buildAnnotatedString {
 			append("Hello ")
 			withStyle(SpanStyle(textDecoration = TextDecoration.LineThrough)) {
@@ -146,7 +146,19 @@ class MarkdownConverterTest {
 			}
 			append(" world")
 		}
-		assertEquals("Hello strikethrough world", input.toMarkdown())
+		assertEquals("Hello ~~strikethrough~~ world", input.toMarkdown())
+	}
+
+	@Test
+	fun `test unsupported style is dropped`() {
+		val input = buildAnnotatedString {
+			append("Hello ")
+			withStyle(SpanStyle(color = androidx.compose.ui.graphics.Color.Red)) {
+				append("red")
+			}
+			append(" world")
+		}
+		assertEquals("Hello red world", input.toMarkdown())
 	}
 
 	@Test

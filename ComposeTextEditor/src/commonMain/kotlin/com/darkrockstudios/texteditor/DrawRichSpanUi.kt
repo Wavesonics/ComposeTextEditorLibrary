@@ -4,7 +4,19 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.translate
 import com.darkrockstudios.texteditor.state.TextEditorState
 
-internal fun DrawScope.drawRichSpans(lineWrap: LineWrap, state: TextEditorState) {
+/**
+ * Which pass of rich-span drawing to perform. [Background] runs before the
+ * line's `drawText` so opaque fills don't obscure characters; [Foreground]
+ * runs after so glyphs/borders/underlines overlay the text. Most styles only
+ * implement one phase — the other is a no-op default.
+ */
+internal enum class RichSpanDrawPhase { Background, Foreground }
+
+internal fun DrawScope.drawRichSpans(
+	lineWrap: LineWrap,
+	state: TextEditorState,
+	phase: RichSpanDrawPhase = RichSpanDrawPhase.Foreground,
+) {
 	val textLayoutResult = lineWrap.textLayoutResult
 
 	lineWrap.richSpans.forEach { richSpan ->
@@ -51,11 +63,21 @@ internal fun DrawScope.drawRichSpans(lineWrap: LineWrap, state: TextEditorState)
 
 			with(richSpan.style) {
 				translate(top = lineWrap.offset.y - state.scrollState.value) {
-					drawCustomStyle(
-						layoutResult = textLayoutResult,
-						lineWrap = lineWrap,
-						textRange = localRange
-					)
+					when (phase) {
+						RichSpanDrawPhase.Background -> drawBackground(
+							layoutResult = textLayoutResult,
+							lineWrap = lineWrap,
+							textRange = localRange,
+							state = state,
+						)
+
+						RichSpanDrawPhase.Foreground -> drawCustomStyle(
+							layoutResult = textLayoutResult,
+							lineWrap = lineWrap,
+							textRange = localRange,
+							state = state,
+						)
+					}
 				}
 			}
 		}

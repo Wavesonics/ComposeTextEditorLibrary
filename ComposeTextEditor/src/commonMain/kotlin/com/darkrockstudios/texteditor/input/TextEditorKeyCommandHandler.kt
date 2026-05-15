@@ -123,16 +123,19 @@ internal class TextEditorKeyCommandHandler {
 	}
 
 	/**
-	 * Handle character input events (KEY_TYPED on desktop).
-	 * On desktop platforms, typed characters arrive as KeyEventType.Unknown events.
-	 * Returns true if the event was consumed.
+	 * Handle character input from a hardware keyboard.
+	 * Desktop delivers typed chars as KEY_TYPED (Unknown type); Android delivers
+	 * them as KeyDown when no IME consumes them (e.g. Bluetooth keyboard with
+	 * the soft keyboard suppressed). The set of accepted event types is
+	 * platform-specific — see [isCharacterInputCandidate]. Called from the
+	 * bottom-up `onKeyEvent` phase so any IME that did consume via `commitText`
+	 * / `sendKeyEvent` wins first. Returns true if the event was consumed.
 	 */
 	fun handleCharacterInput(
 		keyEvent: KeyEvent,
 		state: TextEditorState
 	): Boolean {
-		// On desktop, KEY_TYPED events come through as Unknown type
-		if (keyEvent.type != KeyEventType.Unknown) return false
+		if (!keyEvent.isCharacterInputCandidate()) return false
 
 		// Don't handle if modifier keys are pressed (except shift for uppercase)
 		if (keyEvent.isCtrlPressed || keyEvent.isAltPressed || keyEvent.isMetaPressed) {
@@ -140,9 +143,12 @@ internal class TextEditorKeyCommandHandler {
 		}
 
 		val codePoint = keyEvent.utf16CodePoint
-		// Filter out control characters and invalid code points
-		// Control characters are 0x00-0x1F and 0x7F-0x9F
-		if (codePoint <= 0 || codePoint in 0x00..0x1F || codePoint in 0x7F..0x9F) {
+		// Filter out control characters and Unicode non-characters.
+		if (codePoint <= 0 ||
+			codePoint in 0x00..0x1F ||
+			codePoint in 0x7F..0x9F ||
+			codePoint in 0xFFFE..0xFFFF
+		) {
 			return false
 		}
 

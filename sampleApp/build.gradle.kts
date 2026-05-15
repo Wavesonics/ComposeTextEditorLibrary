@@ -121,10 +121,6 @@ kotlin {
 	}
 }
 
-compose.android {
-
-}
-
 compose.desktop {
 	application {
 		mainClass = "MainKt"
@@ -135,10 +131,6 @@ compose.desktop {
 			packageVersion = "1.0.0"
 		}
 	}
-}
-
-compose.experimental {
-	web.application {}
 }
 
 android {

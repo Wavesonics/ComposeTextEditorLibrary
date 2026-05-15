@@ -15,7 +15,44 @@ data class TextEditorStyle(
 	val selectionColor: Color = Color.Unspecified,
 	val focusedBorderColor: Color = Color.Unspecified,
 	val unfocusedBorderColor: Color = Color.Unspecified,
-	val textStyle: TextStyle = TextStyle.Default
+	val textStyle: TextStyle = TextStyle.Default,
+	/**
+	 * Color of the bullet-list dot drawn in the gutter. `Color.Unspecified` falls
+	 * back to `Color.DarkGray` at draw time — a sensible light-mode default that
+	 * users running dark themes will want to override.
+	 */
+	val bulletColor: Color = Color.Unspecified,
+	/**
+	 * Color of the blockquote bar drawn in the gutter. `Color.Unspecified` falls
+	 * back to `Color.Gray.copy(alpha = 0.6f)` at draw time.
+	 */
+	val blockquoteBarColor: Color = Color.Unspecified,
+	/**
+	 * Tinted background fill drawn across the full width of every blockquote
+	 * line, behind the bar and the text. `Color.Unspecified` skips the fill
+	 * entirely — set to a low-alpha color to mark the quoted area as a soft
+	 * card. The fill is drawn on top of the text (rich spans render after
+	 * `drawText`), so use a low alpha to avoid muddying the body.
+	 */
+	val blockquoteBackgroundColor: Color = Color.Unspecified,
+	/**
+	 * Color of the ordered-list numeral drawn in the gutter. `Color.Unspecified`
+	 * inherits the editor's text color (via `drawText`'s color override).
+	 */
+	val orderedListMarkerColor: Color = Color.Unspecified,
+	/**
+	 * Tinted background fill drawn behind every line in a fenced code block.
+	 * `Color.Unspecified` falls back to `Color.Gray.copy(alpha = 0.18f)`.
+	 * Use a stronger alpha than [blockquoteBackgroundColor] so the two cards
+	 * don't read as the same treatment.
+	 */
+	val codeFenceBackgroundColor: Color = Color.Unspecified,
+	/**
+	 * Hairline border drawn around the run of fenced code lines — top edge on
+	 * the first line, bottom edge on the last, sides on every line.
+	 * `Color.Unspecified` falls back to `Color.Gray.copy(alpha = 0.55f)`.
+	 */
+	val codeFenceBorderColor: Color = Color.Unspecified,
 )
 
 @Composable
@@ -28,10 +65,31 @@ fun rememberTextEditorStyle(
 	selectionColor: Color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
 	focusedBorderColor: Color = MaterialTheme.colorScheme.outline,
 	unfocusedBorderColor: Color = MaterialTheme.colorScheme.outlineVariant,
-	textStyle: TextStyle = TextStyle.Default
+	textStyle: TextStyle = TextStyle.Default,
+	// Markers default to Material color roles that read as "subtle but visible UI
+	// chrome" in both light and dark schemes — `onSurfaceVariant` for the bullet
+	// dot, `outline` (the role intended for dividers/borders) for the blockquote
+	// bar, and full `onSurface` for the ordered numeral since it's content-
+	// bearing and should match the text it's labeling.
+	bulletColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
+	blockquoteBarColor: Color = MaterialTheme.colorScheme.outline,
+	// Subtle tinted card behind the blockquote text — the alpha keeps the body
+	// readable since the fill paints on top of `drawText`.
+	blockquoteBackgroundColor: Color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f),
+	orderedListMarkerColor: Color = MaterialTheme.colorScheme.onSurface,
+	// `surfaceContainerHigh` is Material 3's "elevated surface" role — designed
+	// for cards, chips, and code blocks. It's clearly distinct from `surface`
+	// (the editor body) in both light and dark schemes, and pairs naturally with
+	// `onSurface`-colored text (the editor's text color), giving the monospace
+	// body solid contrast inside the card. Used at full opacity since the role
+	// already encodes the intended subtlety.
+	codeFenceBackgroundColor: Color = MaterialTheme.colorScheme.surfaceContainerHigh,
+	codeFenceBorderColor: Color = MaterialTheme.colorScheme.outline,
 ): TextEditorStyle = remember(
 	textColor, placeholderText, placeholderColor,
-	cursorColor, selectionColor, focusedBorderColor, unfocusedBorderColor, textStyle
+	cursorColor, selectionColor, focusedBorderColor, unfocusedBorderColor, textStyle,
+	bulletColor, blockquoteBarColor, blockquoteBackgroundColor, orderedListMarkerColor,
+	codeFenceBackgroundColor, codeFenceBorderColor,
 ) {
 	TextEditorStyle(
 		textColor = textColor,
@@ -43,5 +101,11 @@ fun rememberTextEditorStyle(
 		focusedBorderColor = focusedBorderColor,
 		unfocusedBorderColor = unfocusedBorderColor,
 		textStyle = textStyle,
+		bulletColor = bulletColor,
+		blockquoteBarColor = blockquoteBarColor,
+		blockquoteBackgroundColor = blockquoteBackgroundColor,
+		orderedListMarkerColor = orderedListMarkerColor,
+		codeFenceBackgroundColor = codeFenceBackgroundColor,
+		codeFenceBorderColor = codeFenceBorderColor,
 	)
 }

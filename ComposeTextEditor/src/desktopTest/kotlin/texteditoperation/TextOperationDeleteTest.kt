@@ -152,7 +152,8 @@ class TextOperationDeleteTest {
 		override fun DrawScope.drawCustomStyle(
 			layoutResult: TextLayoutResult,
 			lineWrap: LineWrap,
-			textRange: TextRange
+			textRange: TextRange,
+			state: TextEditorState,
 		) {
 			// No-op for testing
 		}

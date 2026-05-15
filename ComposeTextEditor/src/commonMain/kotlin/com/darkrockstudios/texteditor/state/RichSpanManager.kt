@@ -13,6 +13,17 @@ class RichSpanManager(
 
 	fun getAllRichSpans(): Set<RichSpan> = spans
 
+	/**
+	 * Drops every rich span. Called by [TextEditorState.setText] because a full
+	 * content replacement leaves any prior spans pointing at stale line indices —
+	 * e.g. on a markdown roundtrip, leftover bullet/blockquote spans would block
+	 * `applyLineBlock` from re-attaching the paragraph indent and the gutter
+	 * marker would draw over the first character of the line.
+	 */
+	internal fun clear() {
+		spans.clear()
+	}
+
 	internal fun addRichSpan(range: TextEditorRange, style: RichSpanStyle) {
 		spans.add(RichSpan(range, style))
 	}
@@ -53,7 +64,33 @@ class RichSpanManager(
 		}
 
 		spans.clear()
-		spans.addAll(updatedSpans)
+		spans.addAll(mergeLineAnchoredDuplicates(updatedSpans))
+	}
+
+	/**
+	 * Collapses any same-line duplicates of line-anchored (sticky-at-start) styles
+	 * — bullet, blockquote, etc. — into a single span covering the union range.
+	 * A multi-line merge that joins two same-style line-anchored lines naturally
+	 * produces two adjacent spans on the joined line; this fold gives us the
+	 * "one gutter marker per line" invariant those styles assume.
+	 */
+	private fun mergeLineAnchoredDuplicates(spans: Set<RichSpan>): Set<RichSpan> {
+		val (anchored, others) = spans.partition { it.style.stickyAtStart }
+		val merged = anchored
+			.groupBy { it.style to it.range.start.line }
+			.map { (key, group) ->
+				if (group.size == 1) group.first() else {
+					val (style, line) = key
+					RichSpan(
+						range = TextEditorRange(
+							start = CharLineOffset(line, group.minOf { it.range.start.char }),
+							end = CharLineOffset(line, group.maxOf { it.range.end.char }),
+						),
+						style = style,
+					)
+				}
+			}
+		return (others + merged).toSet()
 	}
 
 	private fun TextEditorRange.handleInsert(
@@ -122,8 +159,18 @@ class RichSpanManager(
 				}
 			}
 		} else {
-			// Regular text insertion
-			val newStart = operation.transformOffset(start, state)
+			// Regular text insertion. For styles flagged stickyAtStart (line-anchored
+			// gutter markers), an insert at the span's exact start boundary keeps the
+			// start put so the new chars land inside the span. Without this, typing
+			// the first character into an empty bullet/blockquote line shifts the
+			// span past the line content and the gutter marker visually disappears.
+			val insertAtStart = operation.position.line == start.line &&
+					operation.position.char == start.char
+			val newStart = if (span.style.stickyAtStart && insertAtStart) {
+				start
+			} else {
+				operation.transformOffset(start, state)
+			}
 			val newEnd = operation.transformOffset(end, state)
 			updatedSpans.add(
 				span.copy(

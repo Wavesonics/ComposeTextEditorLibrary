@@ -8,6 +8,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextRange
 import com.darkrockstudios.texteditor.LineWrap
+import com.darkrockstudios.texteditor.state.TextEditorState
 
 class HighlightSpanStyle(
 	private val color: Color
@@ -15,7 +16,8 @@ class HighlightSpanStyle(
 	override fun DrawScope.drawCustomStyle(
 		layoutResult: TextLayoutResult,
 		lineWrap: LineWrap,
-		textRange: TextRange
+		textRange: TextRange,
+		state: TextEditorState,
 	) {
 		val lineHeight = layoutResult.multiParagraph.getLineHeight(lineWrap.virtualLineIndex)
 

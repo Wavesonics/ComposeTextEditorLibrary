@@ -4,6 +4,7 @@ import androidx.compose.ui.focus.FocusEventModifierNode
 import androidx.compose.ui.focus.FocusState
 import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.KeyInputModifierNode
+import androidx.compose.ui.input.key.SoftKeyboardInterceptionModifierNode
 import androidx.compose.ui.node.ModifierNodeElement
 import androidx.compose.ui.platform.Clipboard
 import androidx.compose.ui.platform.InspectorInfo
@@ -18,6 +19,10 @@ import kotlinx.coroutines.launch
  *
  * This node combines:
  * - KeyInputModifierNode: For handling keyboard shortcuts and commands
+ * - SoftKeyboardInterceptionModifierNode: For catching hardware-keyboard
+ *   shortcuts on Android *before* the IME consumes them. Without this, key
+ *   events (e.g. Ctrl+C, Ctrl+V) from a Bluetooth/USB keyboard never reach
+ *   `onPreKeyEvent` because the soft-keyboard intercept chain runs first.
  * - FocusEventModifierNode: For managing focus state
  * - PlatformTextInputModifierNode: For platform-specific text input (IME) handling
  */
@@ -27,6 +32,7 @@ internal class TextEditorInputModifierNode(
 	var enabled: Boolean
 ) : androidx.compose.ui.Modifier.Node(),
 	KeyInputModifierNode,
+	SoftKeyboardInterceptionModifierNode,
 	FocusEventModifierNode,
 	PlatformTextInputModifierNode {
 
@@ -85,6 +91,19 @@ internal class TextEditorInputModifierNode(
 		// Handle character input (KEY_TYPED events on desktop arrive here as Unknown type)
 		return keyCommandHandler.handleCharacterInput(event, state)
 	}
+
+	// On Android, hardware-keyboard events with an active IME are routed through
+	// the soft-keyboard intercept chain before reaching onPreKeyEvent. Mirror the
+	// shortcut handler here so Ctrl+C / Ctrl+V / arrow keys / etc. work with a
+	// physical keyboard. We only intercept what handleKeyEvent claims; everything
+	// else (typed characters) falls through to the IME, which delivers them via
+	// commitText through InputConnection. The pre-intercept (top-down) phase is
+	// where we want to win — bottom-up just returns false.
+	override fun onPreInterceptKeyBeforeSoftKeyboard(event: KeyEvent): Boolean {
+		return keyCommandHandler.handleKeyEvent(event, state, clipboard, coroutineScope, enabled)
+	}
+
+	override fun onInterceptKeyBeforeSoftKeyboard(event: KeyEvent): Boolean = false
 
 	fun update(
 		state: TextEditorState,

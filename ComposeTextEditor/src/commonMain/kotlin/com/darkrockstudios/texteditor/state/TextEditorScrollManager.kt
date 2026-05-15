@@ -25,32 +25,53 @@ class TextEditorScrollManager(
 	var totalContentHeight by mutableStateOf(0)
 		private set
 
+	var topContentPaddingPx: Int = 0
+		set(value) {
+			if (field != value) {
+				field = value
+				applyScrollRange()
+			}
+		}
+
+	var bottomContentPaddingPx: Int = 0
+		set(value) {
+			if (field != value) {
+				field = value
+				applyScrollRange()
+			}
+		}
+
 	val viewportHeight: Int
 		get() = getViewportSize().height.toInt()
 
+	private fun applyScrollRange() {
+		scrollState.minValue = -topContentPaddingPx
+		scrollState.maxValue = totalContentHeight - viewportHeight + bottomContentPaddingPx
+	}
+
 	fun updateContentHeight(height: Int) {
 		totalContentHeight = maxOf(height, viewportHeight)
-		scrollState.maxValue = height - viewportHeight
+		applyScrollRange()
 	}
 
 	fun scrollToTop() {
 		scrollJob?.cancel()
 		scrollJob = scope.launch {
-			scrollState.animateScrollTo(0)
+			scrollState.animateScrollTo(scrollState.minValue)
 		}
 	}
 
 	fun scrollToBottom() {
 		scrollJob?.cancel()
 		scrollJob = scope.launch {
-			scrollState.animateScrollTo(totalContentHeight - viewportHeight)
+			scrollState.animateScrollTo(totalContentHeight - viewportHeight + bottomContentPaddingPx)
 		}
 	}
 
 	fun scrollToPosition(position: Int, animated: Boolean = true) {
 		scrollJob?.cancel()
 		scrollJob = scope.launch {
-			val scrollToY = position.coerceIn(0, totalContentHeight)
+			val scrollToY = position.coerceIn(scrollState.minValue, totalContentHeight)
 			if (animated) {
 				scrollState.animateScrollTo(scrollToY)
 			} else {
@@ -65,15 +86,16 @@ class TextEditorScrollManager(
 		val cursorTop = calculateOffsetYPosition(offset).toInt()
 		val cursorHeight = calculateLineHeight(offset)
 		val viewportTop = scrollState.value
-		val maxScroll = maxOf(0, totalContentHeight - viewportHeight)
+		val minScroll = scrollState.minValue
+		val maxScroll = maxOf(minScroll, totalContentHeight - viewportHeight + bottomContentPaddingPx)
 
 		val buffer = 10
 		val targetScroll = if (cursorTop < viewportTop + buffer) {
 			// Scrolling up - align cursor near top
-			(cursorTop - buffer).coerceIn(0, maxScroll)
+			(cursorTop - buffer).coerceIn(minScroll, maxScroll)
 		} else if (cursorTop + cursorHeight > viewportTop + viewportHeight - buffer) {
 			// Scrolling down - ensure full cursor height is visible
-			(cursorTop + cursorHeight - viewportHeight + buffer).coerceIn(0, maxScroll)
+			(cursorTop + cursorHeight - viewportHeight + buffer).coerceIn(minScroll, maxScroll)
 		} else {
 			// Cursor already fully visible, maintain current scroll
 			viewportTop

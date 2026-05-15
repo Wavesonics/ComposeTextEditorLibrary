@@ -27,6 +27,17 @@ actual class PlatformTextEditorExtensions actual constructor(
 	var cursorAnchorMonitoringEnabled: Boolean = false
 
 	/**
+	 * When true, [InputMethodManager.updateExtractedText] should be sent on every text/selection
+	 * change. Set when an IME requests `getExtractedText` with `GET_EXTRACTED_TEXT_MONITOR`.
+	 */
+	@Volatile
+	var extractedTextMonitorEnabled: Boolean = false
+
+	/** Token supplied alongside the monitor request; echoed back in `updateExtractedText`. */
+	@Volatile
+	var extractedTextMonitorToken: Int = 0
+
+	/**
 	 * Tracks the batch edit depth. IMEs may nest batch edits.
 	 * When > 0, IME cursor sync updates should be suppressed.
 	 */
@@ -56,6 +67,14 @@ actual class PlatformTextEditorExtensions actual constructor(
 			batchEditDepth--
 		}
 		return batchEditDepth == 0
+	}
+
+	/**
+	 * Resets batch-edit state to zero. Called from `closeConnection` so a stale depth
+	 * from a now-dead InputConnection doesn't suppress future IME updates.
+	 */
+	fun resetBatchEdit() {
+		batchEditDepth = 0
 	}
 
 	/**

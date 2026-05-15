@@ -8,6 +8,7 @@ import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextRange
 import com.darkrockstudios.texteditor.LineWrap
 import com.darkrockstudios.texteditor.richstyle.RichSpanStyle
+import com.darkrockstudios.texteditor.state.TextEditorState
 
 /**
  * Default highlight style for all find matches (non-current).
@@ -19,7 +20,8 @@ class FindMatchStyle(
 	override fun DrawScope.drawCustomStyle(
 		layoutResult: TextLayoutResult,
 		lineWrap: LineWrap,
-		textRange: TextRange
+		textRange: TextRange,
+		state: TextEditorState,
 	) {
 		val lineHeight = layoutResult.multiParagraph.getLineHeight(lineWrap.virtualLineIndex)
 
@@ -55,7 +57,8 @@ class FindCurrentMatchStyle(
 	override fun DrawScope.drawCustomStyle(
 		layoutResult: TextLayoutResult,
 		lineWrap: LineWrap,
-		textRange: TextRange
+		textRange: TextRange,
+		state: TextEditorState,
 	) {
 		val lineHeight = layoutResult.multiParagraph.getLineHeight(lineWrap.virtualLineIndex)
 
