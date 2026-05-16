@@ -22,14 +22,17 @@ internal fun Modifier.textEditorPointerInputHandling(
 	state: TextEditorState,
 	onSpanClick: RichSpanClickListener? = null,
 	onContextMenuRequest: ((Offset) -> Unit)? = null,
+	readOnly: Boolean = false,
 ): Modifier {
 	return this
-		.handleDragInput(state)
-		.handleTextInteractions(state, onSpanClick, onContextMenuRequest)
+		.handleDragInput(state, readOnly)
+		.handleTextInteractions(state, onSpanClick, onContextMenuRequest, readOnly)
 		.detectMouseClicksImperatively(
 			onClick = { offset: Offset ->
 				val position = state.getOffsetAtPosition(offset)
-				state.cursor.updatePosition(position)
+				if (!readOnly) {
+					state.cursor.updatePosition(position)
+				}
 				state.selector.clearSelection()
 			},
 			onDoubleClick = { offset: Offset ->
@@ -45,7 +48,7 @@ internal fun Modifier.textEditorPointerInputHandling(
 		)
 }
 
-private fun Modifier.handleDragInput(state: TextEditorState): Modifier {
+private fun Modifier.handleDragInput(state: TextEditorState, readOnly: Boolean): Modifier {
 	return pointerInput(Unit) {
 		awaitEachGesture {
 			val down = awaitFirstDown(requireUnconsumed = false)
@@ -109,7 +112,9 @@ private fun Modifier.handleDragInput(state: TextEditorState): Modifier {
 					if (isMouseLike && mouseSelectionAnchor != null) {
 						val currentOffset = state.getOffsetAtPosition(currentPosition)
 						state.selector.updateSelection(mouseSelectionAnchor, currentOffset)
-						state.cursor.updatePosition(currentOffset)
+						if (!readOnly) {
+							state.cursor.updatePosition(currentOffset)
+						}
 						dragEvent.consume()
 					}
 				}
@@ -148,7 +153,8 @@ private fun handleSpanInteraction(
 	state: TextEditorState,
 	offset: Offset,
 	clickType: SpanClickType,
-	onSpanClick: RichSpanClickListener?
+	onSpanClick: RichSpanClickListener?,
+	readOnly: Boolean,
 ): Boolean {
 	if (findHandleAtPosition(offset, state) != null) {
 		return true
@@ -158,7 +164,9 @@ private fun handleSpanInteraction(
 	val clickedSpan = state.findSpanAtPosition(position)
 
 	if (clickType == SpanClickType.PRIMARY_CLICK || clickType == SpanClickType.TAP) {
-		state.cursor.updatePosition(position)
+		if (!readOnly) {
+			state.cursor.updatePosition(position)
+		}
 		state.selector.clearSelection()
 	}
 
@@ -172,7 +180,8 @@ private fun handleSpanInteraction(
 private fun Modifier.handleTextInteractions(
 	state: TextEditorState,
 	onSpanClick: RichSpanClickListener?,
-	onContextMenuRequest: ((Offset) -> Unit)?
+	onContextMenuRequest: ((Offset) -> Unit)?,
+	readOnly: Boolean,
 ): Modifier {
 	return pointerInput(Unit) {
 		val touchSlop = viewConfiguration.touchSlop
@@ -215,7 +224,8 @@ private fun Modifier.handleTextInteractions(
 									state,
 									position,
 									SpanClickType.PRIMARY_CLICK,
-									onSpanClick
+									onSpanClick,
+									readOnly,
 								)
 								didHandlePress = true
 							} else if (hasSecondaryButton) {
@@ -223,7 +233,8 @@ private fun Modifier.handleTextInteractions(
 									state,
 									position,
 									SpanClickType.SECONDARY_CLICK,
-									onSpanClick
+									onSpanClick,
+									readOnly,
 								)
 								onContextMenuRequest?.invoke(position)
 								didHandlePress = true
@@ -265,7 +276,8 @@ private fun Modifier.handleTextInteractions(
 								state,
 								position,
 								SpanClickType.TAP,
-								onSpanClick
+								onSpanClick,
+								readOnly,
 							)
 						}
 

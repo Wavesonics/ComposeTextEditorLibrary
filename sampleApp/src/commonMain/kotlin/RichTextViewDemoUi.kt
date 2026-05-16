@@ -73,10 +73,14 @@ fun RichTextViewDemoUi(
 				.padding(16.dp),
 			verticalArrangement = Arrangement.spacedBy(24.dp),
 		) {
-			Text("Plain RichTextView (no chrome, wraps to content):", style = MaterialTheme.typography.titleMedium)
+			Text(
+				"Selectable RichTextView (drag to select, Ctrl+C to copy, right-click for menu):",
+				style = MaterialTheme.typography.titleMedium
+			)
 			RichTextView(
 				state = singleState,
 				modifier = Modifier.fillMaxWidth(),
+				isSelectable = true,
 			)
 
 			HorizontalDivider()
@@ -97,7 +101,7 @@ fun RichTextViewDemoUi(
 						)
 						.padding(12.dp),
 				) {
-					RichTextView(state = state)
+					RichTextView(state = state, isSelectable = true)
 				}
 			}
 		}

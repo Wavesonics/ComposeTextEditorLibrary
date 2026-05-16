@@ -10,7 +10,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshotFlow
-import kotlinx.coroutines.flow.distinctUntilChanged
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -37,6 +36,7 @@ import com.darkrockstudios.texteditor.state.SpanClickType
 import com.darkrockstudios.texteditor.state.TextEditorState
 import com.darkrockstudios.texteditor.state.rememberTextEditorState
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlin.time.Duration.Companion.milliseconds
 
 private const val CURSOR_BLINK_SPEED_MS = 500L
@@ -215,7 +215,7 @@ fun BasicTextEditor(
 	}
 }
 
-private fun Modifier.requestFocusOnPress(focusRequester: FocusRequester) = pointerInput(Unit) {
+internal fun Modifier.requestFocusOnPress(focusRequester: FocusRequester) = pointerInput(Unit) {
 	awaitEachGesture {
 		awaitFirstDown(requireUnconsumed = false)
 		waitForUpOrCancellation()?.let {
