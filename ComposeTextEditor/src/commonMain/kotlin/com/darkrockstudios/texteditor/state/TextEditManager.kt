@@ -24,6 +24,11 @@ class TextEditManager(private val state: TextEditorState) {
 	val editOperations: SharedFlow<TextEditOperation> = _editOperations
 
 	fun applyOperation(operation: TextEditOperation, addToHistory: Boolean = true) {
+		// Selection offsets must not outlive a content mutation
+		if (operation !is TextEditOperation.StyleSpan && state.selector.selection != null) {
+			state.selector.clearSelection()
+		}
+
 		val metadata = when (operation) {
 			is TextEditOperation.Insert -> applyInsert(operation)
 			is TextEditOperation.Delete -> applyDelete(addToHistory, operation)

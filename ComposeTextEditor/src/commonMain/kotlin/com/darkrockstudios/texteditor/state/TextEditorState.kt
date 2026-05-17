@@ -17,6 +17,7 @@ import com.darkrockstudios.texteditor.TextEditorRange
 import com.darkrockstudios.texteditor.annotatedstring.splitAnnotatedString
 import com.darkrockstudios.texteditor.annotatedstring.subSequence
 import com.darkrockstudios.texteditor.annotatedstring.toAnnotatedString
+import com.darkrockstudios.texteditor.coerceInto
 import com.darkrockstudios.texteditor.cursor.CursorMetrics
 import com.darkrockstudios.texteditor.cursor.getWrappedLineIndex
 import com.darkrockstudios.texteditor.effectiveHeight
@@ -533,17 +534,19 @@ class TextEditorState(
 	}
 
 	fun getCharacterIndex(offset: CharLineOffset): Int {
-		var totalChars = 0
-
-		// Add up characters from previous lines
-		for (lineIndex in 0 until offset.line) {
-			totalChars += textLines[lineIndex].length + 1  // +1 for newline
+		if (textLines.isEmpty()) return 0
+		// Belt-and-braces: applyOperation already clears stale selections, but
+		// any future flow-emit-before-coerce path would crash here without this.
+		val safe = offset.coerceInto(textLines)
+		if (safe != offset) {
+			println("TextEditor warning: getCharacterIndex clamped $offset to $safe (textLines.size=${textLines.size})")
 		}
 
-		// Add characters in current line
-		totalChars += offset.char
-
-		return totalChars
+		var totalChars = 0
+		for (lineIndex in 0 until safe.line) {
+			totalChars += textLines[lineIndex].length + 1
+		}
+		return totalChars + safe.char
 	}
 
 	fun CharLineOffset.toCharacterIndex(): Int {

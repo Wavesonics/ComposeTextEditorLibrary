@@ -7,6 +7,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import com.darkrockstudios.texteditor.CharLineOffset
+import com.darkrockstudios.texteditor.coerceInto
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -39,11 +40,7 @@ class TextEditorCursorState(
 	val positionFlow: SharedFlow<CharLineOffset> = _cursorPositionFlow
 
 	fun updatePosition(position: CharLineOffset, updateStyles: Boolean = true) {
-		val maxLine = (editorState.textLines.size - 1).coerceAtLeast(0)
-		val line = position.line.coerceIn(0, maxLine)
-		val char = position.char.coerceIn(0, editorState.textLines.getOrNull(line)?.length ?: 0)
-
-		val newPosition = CharLineOffset(line, char)
+		val newPosition = position.coerceInto(editorState.textLines)
 		_position = newPosition
 		_cursorPositionFlow.tryEmit(newPosition)
 
