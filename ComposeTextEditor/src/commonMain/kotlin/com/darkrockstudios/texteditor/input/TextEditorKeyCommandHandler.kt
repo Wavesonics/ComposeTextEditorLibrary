@@ -137,8 +137,9 @@ internal class TextEditorKeyCommandHandler {
 	): Boolean {
 		if (!keyEvent.isCharacterInputCandidate()) return false
 
-		// Don't handle if modifier keys are pressed (except shift for uppercase)
-		if (keyEvent.isCtrlPressed || keyEvent.isAltPressed || keyEvent.isMetaPressed) {
+		// Skip unrecognized shortcuts so they don't insert a literal char.
+		// Alt is excluded: macOS Option is text composition (Option+8 = '{').
+		if (keyEvent.isCtrlPressed || keyEvent.isMetaPressed) {
 			return false
 		}
 
