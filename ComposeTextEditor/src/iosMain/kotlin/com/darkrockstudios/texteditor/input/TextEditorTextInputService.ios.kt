@@ -1,21 +1,13 @@
 package com.darkrockstudios.texteditor.input
 
 import androidx.compose.ui.ExperimentalComposeUiApi
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.platform.PlatformTextInputMethodRequest
 import androidx.compose.ui.platform.PlatformTextInputSession
-import androidx.compose.ui.text.TextRange
-import androidx.compose.ui.text.input.EditCommand
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.ImeOptions
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.TextFieldValue
-import androidx.compose.ui.text.input.TextEditingScope
-import androidx.compose.ui.text.input.CommitTextCommand
-import androidx.compose.ui.text.input.DeleteSurroundingTextCommand
-import androidx.compose.ui.text.input.SetSelectionCommand
-import androidx.compose.ui.text.input.BackspaceCommand
 import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.*
 import com.darkrockstudios.texteditor.TextEditorRange
 import com.darkrockstudios.texteditor.state.TextEditorState
 
@@ -190,6 +182,7 @@ private class TextEditorIOSInputMethodRequest(
 	override val focusedRectInRoot: () -> Rect? = { null }
 	override val textFieldRectInRoot: () -> Rect? = { null }
 	override val textClippingRectInRoot: () -> Rect? = { null }
+	override val unclippedTextOffsetInRoot: () -> Offset? = { null }
 
 	// Edit text scope - allows iOS to apply edits
 	override val editText: (TextEditingScope.() -> Unit) -> Unit = { block ->
