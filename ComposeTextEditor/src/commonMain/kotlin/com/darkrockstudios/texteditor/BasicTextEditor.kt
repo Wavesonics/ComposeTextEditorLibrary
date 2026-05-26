@@ -3,12 +3,16 @@ package com.darkrockstudios.texteditor
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
-import androidx.compose.foundation.gestures.*
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.scrollable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -17,6 +21,8 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalClipboard
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.toSize
 import com.darkrockstudios.texteditor.contextmenu.ContextMenuActions
@@ -26,12 +32,15 @@ import com.darkrockstudios.texteditor.contextmenu.TextEditorContextMenuState
 import com.darkrockstudios.texteditor.cursor.DrawCursor
 import com.darkrockstudios.texteditor.input.CaptureViewForIme
 import com.darkrockstudios.texteditor.input.TextEditorInputModifierElement
+import com.darkrockstudios.texteditor.richstyle.BlockSpanStyle
 import com.darkrockstudios.texteditor.richstyle.RichSpan
 import com.darkrockstudios.texteditor.scrollbar.TextEditorScrollbar
 import com.darkrockstudios.texteditor.state.SpanClickType
 import com.darkrockstudios.texteditor.state.TextEditorState
 import com.darkrockstudios.texteditor.state.rememberTextEditorState
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlin.time.Duration.Companion.milliseconds
 
 private const val CURSOR_BLINK_SPEED_MS = 500L
 
@@ -54,9 +63,29 @@ fun BasicTextEditor(
 	val focusRequester = remember { FocusRequester() }
 	val interactionSource = remember { MutableInteractionSource() }
 	val clipboard = LocalClipboard.current
+	val density = LocalDensity.current
+	val layoutDirection = LocalLayoutDirection.current
 
 	val inputModifierElement = remember(state, clipboard, enabled) {
 		TextEditorInputModifierElement(state, clipboard, enabled)
+	}
+
+	val horizontalPadding = remember(contentPadding, layoutDirection) {
+		PaddingValues(
+			start = contentPadding.calculateStartPadding(layoutDirection),
+			end = contentPadding.calculateEndPadding(layoutDirection),
+		)
+	}
+
+	LaunchedEffect(contentPadding, density) {
+		with(density) {
+			state.scrollManager.topContentPaddingPx = contentPadding.calculateTopPadding().roundToPx()
+			state.scrollManager.bottomContentPaddingPx = contentPadding.calculateBottomPadding().roundToPx()
+		}
+	}
+
+	LaunchedEffect(density) {
+		state.density = density
 	}
 
 	// Use provided context menu state or create internal one
@@ -77,7 +106,7 @@ fun BasicTextEditor(
 		if (enabled && state.isFocused) {
 			state.cursor.setVisible()
 			while (state.isFocused) {
-				delay(CURSOR_BLINK_SPEED_MS)
+				delay(CURSOR_BLINK_SPEED_MS.milliseconds)
 				state.cursor.toggleVisibility()
 			}
 		}
@@ -85,6 +114,40 @@ fun BasicTextEditor(
 
 	LaunchedEffect(style.textStyle) {
 		state.textStyle = style.textStyle
+	}
+
+	LaunchedEffect(
+		style.bulletColor,
+		style.blockquoteBarColor,
+		style.blockquoteBackgroundColor,
+		style.orderedListMarkerColor,
+		style.codeFenceBackgroundColor,
+		style.codeFenceBorderColor,
+	) {
+		state.bulletColor = style.bulletColor
+		state.blockquoteBarColor = style.blockquoteBarColor
+		state.blockquoteBackgroundColor = style.blockquoteBackgroundColor
+		state.orderedListMarkerColor = style.orderedListMarkerColor
+		state.codeFenceBackgroundColor = style.codeFenceBackgroundColor
+		state.codeFenceBorderColor = style.codeFenceBorderColor
+	}
+
+	// Re-run layout when an asynchronous block-state change (e.g. an image
+	// finishing its load) changes a [BlockSpanStyle]'s reported height.
+	// `updateBookKeeping` reads block heights but isn't itself snapshot-tracked,
+	// so without this effect a freshly loaded image leaves stale Y offsets —
+	// subsequent paragraphs render at the placeholder height position and
+	// overlap the image until the user scrolls or resizes.
+	LaunchedEffect(state) {
+		snapshotFlow {
+			val d = state.density ?: return@snapshotFlow emptyList<Float>()
+			val viewportWidth = state.viewportSize.width
+			state.richSpanManager.getAllRichSpans().mapNotNull { span ->
+				(span.style as? BlockSpanStyle)?.blockHeight(d, viewportWidth)
+			}
+		}
+			.distinctUntilChanged()
+			.collect { state.updateBookKeeping() }
 	}
 
 	TextEditorContextMenuProvider(
@@ -99,7 +162,7 @@ fun BasicTextEditor(
 		) { editorModifier ->
 			Box(
 				modifier = editorModifier
-					.padding(contentPadding)
+					.padding(horizontalPadding)
 					.focusRequester(focusRequester)
 					.requestFocusOnPress(focusRequester)
 					.then(inputModifierElement)
@@ -155,12 +218,10 @@ fun BasicTextEditor(
 	}
 }
 
-private fun Modifier.requestFocusOnPress(focusRequester: FocusRequester) = pointerInput(Unit) {
+internal fun Modifier.requestFocusOnPress(focusRequester: FocusRequester) = pointerInput(Unit) {
 	awaitEachGesture {
 		awaitFirstDown(requireUnconsumed = false)
-		waitForUpOrCancellation()?.let {
-			focusRequester.requestFocus()
-		}
+		focusRequester.requestFocus()
 	}
 }
 

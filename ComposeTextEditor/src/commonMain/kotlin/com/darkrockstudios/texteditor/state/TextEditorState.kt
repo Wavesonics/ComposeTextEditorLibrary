@@ -5,18 +5,23 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.*
+import androidx.compose.ui.text.style.TextIndent
 import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.Density
 import com.darkrockstudios.texteditor.CharLineOffset
+import com.darkrockstudios.texteditor.CodeFenceBoundary
 import com.darkrockstudios.texteditor.LineWrap
 import com.darkrockstudios.texteditor.TextEditorRange
 import com.darkrockstudios.texteditor.annotatedstring.splitAnnotatedString
 import com.darkrockstudios.texteditor.annotatedstring.subSequence
 import com.darkrockstudios.texteditor.annotatedstring.toAnnotatedString
+import com.darkrockstudios.texteditor.coerceInto
 import com.darkrockstudios.texteditor.cursor.CursorMetrics
 import com.darkrockstudios.texteditor.cursor.getWrappedLineIndex
-import com.darkrockstudios.texteditor.richstyle.RichSpan
-import com.darkrockstudios.texteditor.richstyle.RichSpanStyle
+import com.darkrockstudios.texteditor.effectiveHeight
+import com.darkrockstudios.texteditor.richstyle.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
@@ -40,6 +45,25 @@ class TextEditorState(
 				updateBookKeeping()
 			}
 		}
+
+	/**
+	 * Theming colors for line-block gutter markers, mirrored from
+	 * [TextEditorStyle] by `BasicTextEditor`. `Color.Unspecified` means "use the
+	 * span's hardcoded fallback" so a state created without a host editor (e.g.
+	 * tests) still renders sensibly.
+	 */
+	var bulletColor: Color by mutableStateOf(Color.Unspecified)
+		internal set
+	var blockquoteBarColor: Color by mutableStateOf(Color.Unspecified)
+		internal set
+	var blockquoteBackgroundColor: Color by mutableStateOf(Color.Unspecified)
+		internal set
+	var orderedListMarkerColor: Color by mutableStateOf(Color.Unspecified)
+		internal set
+	var codeFenceBackgroundColor: Color by mutableStateOf(Color.Unspecified)
+		internal set
+	var codeFenceBorderColor: Color by mutableStateOf(Color.Unspecified)
+		internal set
 
 	internal val _textLines = mutableListOf<AnnotatedString>()
 	val textLines: List<AnnotatedString> get() = _textLines
@@ -92,6 +116,18 @@ class TextEditorState(
 
 	internal var viewportSize by mutableStateOf(Size(1f, 1f))
 
+	/**
+	 * Density used by [BlockSpanStyle] spans to convert their intrinsic size to
+	 * pixels. Set by the host composable from [androidx.compose.ui.platform.LocalDensity].
+	 */
+	internal var density: Density? = null
+		set(value) {
+			if (field != value) {
+				field = value
+				updateBookKeeping()
+			}
+		}
+
 	val scrollManager = TextEditorScrollManager(
 		scope = scope,
 		scrollState = TextEditorScrollState(0),
@@ -118,12 +154,14 @@ class TextEditorState(
 
 	fun setText(text: String) {
 		_textLines.clear()
+		richSpanManager.clear()
 		_textLines.addAll(text.split("\n").map { it.toAnnotatedString() })
 		updateBookKeeping()
 	}
 
 	fun setText(text: AnnotatedString) {
 		_textLines.clear()
+		richSpanManager.clear()
 		_textLines.addAll(text.splitAnnotatedString())
 		updateBookKeeping()
 	}
@@ -160,16 +198,54 @@ class TextEditorState(
 	}
 
 	fun insertNewlineAtCursor() {
+		val originalLine = cursorPosition.line
+		val activeBlock = detectLineBlock(originalLine)
+		val lineText = textLines.getOrNull(originalLine)?.text ?: ""
+
+		// Enter on an empty bullet/quote item exits the block — drop the gutter
+		// marker and indent, eat the keystroke. Matches Notion / Google Docs and
+		// gives a discoverable way to leave a list or quote without backspacing.
+		if (lineText.isEmpty() && activeBlock != null) {
+			demoteLineBlock(originalLine, activeBlock)
+			return
+		}
+
 		val operation = TextEditOperation.Insert(
 			position = cursorPosition,
 			text = cursor.applyCursorStyle("\n"),
 			cursorBefore = cursorPosition,
-			cursorAfter = CharLineOffset(cursorPosition.line + 1, 0)
+			cursorAfter = CharLineOffset(originalLine + 1, 0)
 		)
 		editManager.applyOperation(operation)
+
+		// RichSpanManager's newline handling only keeps the span on one side when
+		// the cursor was at a span boundary, so apply to both lines so both halves
+		// of the split keep the gutter marker. applyLineBlock is idempotent.
+		activeBlock?.let {
+			applyLineBlock(originalLine, it)
+			applyLineBlock(originalLine + 1, it)
+		}
 	}
 
 	fun backspaceAtCursor() {
+		// Backspace at column 0 of a line-block (blockquote, bullet) first demotes
+		// (removes the gutter marker and indent); a follow-up backspace then merges
+		// with the previous line. Matches Notion / Google Docs — discoverable way
+		// to exit a block prefix without nuking the line content.
+		//
+		// Exception: if the previous line is the SAME line-block, fall through to
+		// merge directly. Otherwise demote-first turns "join two adjacent items"
+		// into a two-keystroke operation, which feels worse than Docs/Notion.
+		if (cursorPosition.char == 0) {
+			val activeBlock = detectLineBlock(cursorPosition.line)
+			if (activeBlock != null) {
+				val prevBlock = detectLineBlock(cursorPosition.line - 1)
+				if (prevBlock != activeBlock) {
+					demoteLineBlock(cursorPosition.line, activeBlock)
+					return
+				}
+			}
+		}
 		if (cursorPosition.char > 0) {
 			val deleteRange = TextEditorRange(
 				CharLineOffset(cursorPosition.line, cursorPosition.char - 1),
@@ -402,7 +478,7 @@ class TextEditorState(
 		val cursorX = layout.getHorizontalPosition(charIndex, usePrimaryDirection = true)
 		val cursorY = currentWrappedLine.offset.y - scrollState.value
 
-		val lineHeight = layout.multiParagraph.getLineHeight(currentWrappedLine.virtualLineIndex)
+		val lineHeight = currentWrappedLine.effectiveHeight
 
 		return CursorMetrics(
 			position = Offset(cursorX, cursorY),
@@ -423,13 +499,13 @@ class TextEditorState(
 			if (lineWrap.line != curRealLine.line) {
 				curRealLine = lineWrap
 			}
-			val textLayoutResult = textMeasurer.measure(
-				textLines[lineWrap.line],
-				constraints = Constraints(maxWidth = viewportSize.width.toInt())
-			)
+			val textLayoutResult = lineWrap.textLayoutResult
+
+			// Full paragraph height — using a single sub-line's height misses clicks past the first wrap.
+			val paragraphHeight = lineWrap.blockHeight ?: textLayoutResult.size.height.toFloat()
 
 			val relativeOffset = adjustedOffset - lineWrap.offset
-			if (adjustedOffset.y in curRealLine.offset.y..(curRealLine.offset.y + textLayoutResult.size.height)) {
+			if (adjustedOffset.y in curRealLine.offset.y..(curRealLine.offset.y + paragraphHeight)) {
 				val charPos = textLayoutResult.multiParagraph.getOffsetForPosition(relativeOffset)
 				return CharLineOffset(lineWrap.line, min(charPos, textLines[lineWrap.line].length))
 			}
@@ -458,17 +534,19 @@ class TextEditorState(
 	}
 
 	fun getCharacterIndex(offset: CharLineOffset): Int {
-		var totalChars = 0
-
-		// Add up characters from previous lines
-		for (lineIndex in 0 until offset.line) {
-			totalChars += textLines[lineIndex].length + 1  // +1 for newline
+		if (textLines.isEmpty()) return 0
+		// Belt-and-braces: applyOperation already clears stale selections, but
+		// any future flow-emit-before-coerce path would crash here without this.
+		val safe = offset.coerceInto(textLines)
+		if (safe != offset) {
+			println("TextEditor warning: getCharacterIndex clamped $offset to $safe (textLines.size=${textLines.size})")
 		}
 
-		// Add characters in current line
-		totalChars += offset.char
-
-		return totalChars
+		var totalChars = 0
+		for (lineIndex in 0 until safe.line) {
+			totalChars += textLines[lineIndex].length + 1
+		}
+		return totalChars + safe.char
 	}
 
 	fun CharLineOffset.toCharacterIndex(): Int {
@@ -518,36 +596,80 @@ class TextEditorState(
 	}
 
 	internal fun updateBookKeeping(affectedLines: IntRange? = null) {
+		// Defer until the viewport has a real size; the 1×1 sentinel forces character-wide wraps.
+		if (viewportSize.width <= 1f || viewportSize.height <= 1f) return
+
 		val offsets = mutableListOf<LineWrap>()
 		var yOffset = 0f
+
+		// Pre-collect ordered-list line indices so we can number each item by its
+		// position within a contiguous run without re-scanning the span set per line.
+		val orderedListLines = richSpanManager.getAllRichSpans()
+			.asSequence()
+			.filter { it.style === OrderedListSpanStyle }
+			.map { it.range.start.line }
+			.toHashSet()
+		var orderedListRunPosition = 0
+
+		// Pre-collect code-fence line indices so each line can compute its boundary
+		// (top/middle/bottom/only) by checking neighbors — driving which edges of
+		// the card border `CodeFenceSpanStyle` paints.
+		val codeFenceLines = richSpanManager.getAllRichSpans()
+			.asSequence()
+			.filter { it.style === CodeFenceSpanStyle }
+			.map { it.range.start.line }
+			.toHashSet()
+
+		// Compose Android doesn't reliably honor per-paragraph ParagraphStyle
+		// .textIndent overriding an editor-wide TextStyle.textIndent, so we
+		// sidestep the merge: strip the indent from the outer style and bake it
+		// into plain lines as their own ParagraphStyle below. Block lines
+		// already carry a ParagraphStyle from `applyLineBlock`.
+		val outerIndent = textStyle.textIndent
+		val needsIndentBaking = outerIndent != null && outerIndent != TextIndent.None
+		val measureStyle = if (needsIndentBaking) textStyle.copy(textIndent = TextIndent.None) else textStyle
+		val bakedIndentStyle = if (needsIndentBaking) ParagraphStyle(textIndent = outerIndent) else null
 
 		textLines.forEachIndexed { lineIndex, line ->
 			val shouldRemeasure = affectedLines == null ||
 					lineIndex in affectedLines ||
 					lineIndex > (affectedLines.lastOrNull() ?: -1)
 
+			// Use a tight width constraint (minWidth == maxWidth) so the paragraph lays out
+			// at the full viewport width rather than shrinking to its natural content width.
+			// The shrinking behavior interacts badly with TextIndent: if the paragraph
+			// shrinks to its natural width W and then TextIndent consumes X pixels of
+			// first-line width, the first line has only W-X pixels available instead of
+			// viewportWidth-X — causing wraps that shouldn't happen.
+			val lineConstraints = Constraints(
+				minWidth = maxOf(1, viewportSize.width.toInt()),
+				maxWidth = maxOf(1, viewportSize.width.toInt()),
+				minHeight = 0,
+				maxHeight = Constraints.Infinity
+			)
+
+			// Skip if the line already has a ParagraphStyle (block line) —
+			// Compose forbids overlapping ParagraphStyle ranges.
+			val measureLine = if (bakedIndentStyle != null && line.paragraphStyles.isEmpty()) {
+				buildAnnotatedString { withStyle(bakedIndentStyle) { append(line) } }
+			} else {
+				line
+			}
+
 			val textLayoutResult = if (shouldRemeasure) {
 				try {
 					textMeasurer.measure(
-						text = line,
-						style = textStyle,
-						constraints = Constraints(
-							maxWidth = maxOf(1, viewportSize.width.toInt()),
-							minHeight = 0,
-							maxHeight = Constraints.Infinity
-						)
+						text = measureLine,
+						style = measureStyle,
+						constraints = lineConstraints
 					)
 				} catch (e: IllegalArgumentException) {
 					println(e)
 					// If measurement fails, create an empty layout result
 					textMeasurer.measure(
 						text = AnnotatedString(""),
-						style = textStyle,
-						constraints = Constraints(
-							maxWidth = maxOf(1, viewportSize.width.toInt()),
-							minHeight = 0,
-							maxHeight = Constraints.Infinity
-						)
+						style = measureStyle,
+						constraints = lineConstraints
 					)
 				}
 			} else {
@@ -556,27 +678,37 @@ class TextEditorState(
 					existing
 				} else {
 					textMeasurer.measure(
-						text = line,
-						style = textStyle,
-						constraints = Constraints(
-							maxWidth = maxOf(1, viewportSize.width.toInt()),
-							minHeight = 0,
-							maxHeight = Constraints.Infinity
-						)
+						text = measureLine,
+						style = measureStyle,
+						constraints = lineConstraints
 					)
 				}
 			}
 
 			val virtualLineCount = textLayoutResult.multiParagraph.lineCount
+			val paragraphTop = yOffset
+
+			val orderedListNumber: Int? = if (lineIndex in orderedListLines) {
+				orderedListRunPosition += 1
+				orderedListRunPosition
+			} else {
+				orderedListRunPosition = 0
+				null
+			}
+
+			val codeFenceBoundary: CodeFenceBoundary? = if (lineIndex in codeFenceLines) {
+				val prevIn = (lineIndex - 1) in codeFenceLines
+				val nextIn = (lineIndex + 1) in codeFenceLines
+				when {
+					!prevIn && !nextIn -> CodeFenceBoundary.Only
+					!prevIn -> CodeFenceBoundary.First
+					!nextIn -> CodeFenceBoundary.Last
+					else -> CodeFenceBoundary.Middle
+				}
+			} else null
 
 			for (virtualLineIndex in 0 until virtualLineCount) {
-				val lineWrapsAt = if (virtualLineIndex == 0) {
-					0
-				} else {
-					val prevEnd =
-						textLayoutResult.getLineEnd(virtualLineIndex - 1, visibleEnd = true)
-					(prevEnd + 1).coerceIn(0, line.length)
-				}
+				val lineWrapsAt = textLayoutResult.getLineStart(virtualLineIndex)
 
 				val lineLength =
 					textLayoutResult.getLineEnd(virtualLineIndex) - textLayoutResult.getLineStart(
@@ -589,7 +721,8 @@ class TextEditorState(
 					virtualLength = lineLength,
 					virtualLineIndex = virtualLineIndex,
 					offset = Offset(0f, yOffset),
-					textLayoutResult = textLayoutResult
+					textLayoutResult = textLayoutResult,
+					paragraphTop = paragraphTop,
 				)
 
 				val richSpans = if (shouldRemeasure) {
@@ -600,8 +733,20 @@ class TextEditorState(
 					}?.richSpans ?: emptyList()
 				}
 
-				offsets.add(lineWrap.copy(richSpans = richSpans))
-				yOffset += textLayoutResult.multiParagraph.getLineHeight(virtualLineIndex)
+				val blockHeight = density?.let { d ->
+					richSpans.firstNotNullOfOrNull { span ->
+						(span.style as? BlockSpanStyle)?.blockHeight(d, viewportSize.width)
+					}
+				}
+
+				val resolved = lineWrap.copy(
+					richSpans = richSpans,
+					blockHeight = blockHeight,
+					orderedListNumber = orderedListNumber,
+					codeFenceBoundary = codeFenceBoundary,
+				)
+				offsets.add(resolved)
+				yOffset += resolved.effectiveHeight
 			}
 		}
 

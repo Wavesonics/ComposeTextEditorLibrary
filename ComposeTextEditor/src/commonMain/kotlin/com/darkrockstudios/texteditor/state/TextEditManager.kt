@@ -24,6 +24,11 @@ class TextEditManager(private val state: TextEditorState) {
 	val editOperations: SharedFlow<TextEditOperation> = _editOperations
 
 	fun applyOperation(operation: TextEditOperation, addToHistory: Boolean = true) {
+		// Selection offsets must not outlive a content mutation
+		if (operation !is TextEditOperation.StyleSpan && state.selector.selection != null) {
+			state.selector.clearSelection()
+		}
+
 		val metadata = when (operation) {
 			is TextEditOperation.Insert -> applyInsert(operation)
 			is TextEditOperation.Delete -> applyDelete(addToHistory, operation)
@@ -357,6 +362,9 @@ class TextEditManager(private val state: TextEditorState) {
 				append(startText)
 				append(endText)
 
+				val startLength = startText.length
+				val mergedLength = startLength + (lastLine.text.length - endChar)
+
 				// Handle spans from the first line
 				firstLine.spanStyles.forEach { span ->
 					when {
@@ -372,7 +380,6 @@ class TextEditManager(private val state: TextEditorState) {
 				}
 
 				// Handle spans from the last line
-				val startLength = startText.length
 				lastLine.spanStyles.forEach { span ->
 					when {
 						// Span starts after deletion - shift it back
@@ -389,6 +396,48 @@ class TextEditManager(private val state: TextEditorState) {
 								span.item,
 								startLength, // Start at the join point
 								span.end - endChar + startLength
+							)
+						}
+					}
+				}
+
+				// Paragraph styles must survive a multi-line merge — without this, the
+				// blockquote/bullet indent attached to firstLine gets dropped when an
+				// empty line below is backspaced into it, and Compose renders the
+				// trailing chars as a separate paragraph (visual paragraph break).
+				val lastLineHasParagraphAtJoin = lastLine.paragraphStyles
+					.any { it.start <= endChar && it.end > endChar }
+				firstLine.paragraphStyles.forEach { para ->
+					when {
+						para.end <= startChar -> {
+							val newEnd = if (para.end == startChar && !lastLineHasParagraphAtJoin) {
+								mergedLength
+							} else {
+								para.end
+							}
+							addStyle(para.item, para.start, newEnd)
+						}
+
+						para.start < startChar -> {
+							addStyle(para.item, para.start, startChar)
+						}
+					}
+				}
+				lastLine.paragraphStyles.forEach { para ->
+					when {
+						para.start >= endChar -> {
+							addStyle(
+								para.item,
+								para.start - endChar + startLength,
+								para.end - endChar + startLength,
+							)
+						}
+
+						para.end > endChar -> {
+							addStyle(
+								para.item,
+								startLength,
+								para.end - endChar + startLength,
 							)
 						}
 					}

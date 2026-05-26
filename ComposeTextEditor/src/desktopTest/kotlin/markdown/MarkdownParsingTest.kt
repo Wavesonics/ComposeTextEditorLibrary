@@ -25,7 +25,6 @@ class MarkdownParsingTest {
 		//println(annotatedString.text)
 
 		val expectedString = """Hello World
-
    This is bold and italic text.
 
 Here's a link in the text.

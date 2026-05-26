@@ -62,4 +62,60 @@ internal fun SpanManager.mergeAnnotatedStrings(
 	processedSpans.forEach { span ->
 		addStyle(span.item, span.start, span.end)
 	}
+
+	// Paragraph styles: preserve through the edit, adjusting ranges. Without this,
+	// every delete/insert silently drops them — so e.g. the blockquote indent
+	// (BLOCKQUOTE_PARAGRAPH_STYLE) disappears after typing inside a quoted line.
+	val insertedLen = newText?.length ?: 0
+	val deletedLen = (end - start).coerceAtLeast(0)
+	val finalLen = original.length - deletedLen + insertedLen
+	original.paragraphStyles.forEach { para ->
+		val newStart = adjustStartForEdit(para.start, start, end, insertedLen)
+		val newEnd = adjustEndForEdit(para.end, start, end, insertedLen)
+		if (newStart < newEnd && newEnd <= finalLen) {
+			addStyle(para.item, newStart, newEnd)
+		}
+	}
+	newText?.paragraphStyles?.forEach { para ->
+		val newStart = (para.start + start).coerceAtMost(finalLen)
+		val newEnd = (para.end + start).coerceAtMost(finalLen)
+		if (newStart < newEnd) {
+			addStyle(para.item, newStart, newEnd)
+		}
+	}
+}
+
+/**
+ * Maps a paragraph **start** boundary to its post-edit position. Greedy at the
+ * left edge: a start at the insertion point STAYS at that point so newly inserted
+ * characters end up inside the paragraph (the indent applies to them too).
+ */
+private fun adjustStartForEdit(
+	pos: Int,
+	deleteStart: Int,
+	deleteEnd: Int,
+	insertedLen: Int,
+): Int = when {
+	pos <= deleteStart -> pos
+	pos >= deleteEnd -> pos - (deleteEnd - deleteStart) + insertedLen
+	else -> deleteStart + insertedLen
+}
+
+/**
+ * Maps a paragraph **end** boundary to its post-edit position. Greedy at the right
+ * edge: an end at the insertion point EXTENDS past the inserted characters so they
+ * remain inside the paragraph. Without this, appending a character to a line whose
+ * paragraph style covers `[0, len)` leaves the new character outside the paragraph,
+ * which Compose renders as a separate paragraph (visual newline) — that was the
+ * "typing at end of bullet/blockquote line wraps to the next line" bug.
+ */
+private fun adjustEndForEdit(
+	pos: Int,
+	deleteStart: Int,
+	deleteEnd: Int,
+	insertedLen: Int,
+): Int = when {
+	pos < deleteStart -> pos
+	pos >= deleteEnd -> pos - (deleteEnd - deleteStart) + insertedLen
+	else -> deleteStart
 }

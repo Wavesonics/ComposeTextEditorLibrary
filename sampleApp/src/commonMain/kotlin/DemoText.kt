@@ -149,9 +149,72 @@ const val SIMPLE_MARKDOWN = """# Understanding *RichSpan Management* in Compose 
 
 The `RichSpanManager` plays a **critical role** in our text editor by efficiently managing **custom text styles** known as `RichSpanStyle`. These styles are applied dynamically to the text, enhancing flexibility. A **notable feature** of this manager is its ability to handle spans gracefully during operations like **insertion**, **deletion**, or **replacement**, ensuring text integrity.
 
+![Highway at night](sample.jpg)
+
+> Blockquotes render with a left bar and an indent. The text inside still supports **bold**, *italic*, and `code` markdown — anything you'd write in a normal paragraph works here too.
+
+Bullet lists exercise the same gutter-marker pattern with a hanging indent so wrapped lines stay aligned under the text:
+
+- First item with **bold** content
+- Second item — toggle me with the bullet button or hit backspace at the start to demote
+- A longer third item that should wrap onto a second visual line; the wrap should hang under the text rather than under the bullet glyph
+
+Ordered lists number themselves automatically — add or remove items and the numbers re-flow on the next layout pass:
+
+1. First numbered step
+2. Second step with **bold** and *italic*
+3. A third item that wraps onto a second visual line so we can confirm the hanging indent lines up under the text rather than the numeral
+
+Fenced code blocks render with monospace text on a tinted card with a hairline border on all four sides, so they stand apart from the body without being mistaken for a blockquote:
+
+```
+fun greet(name: String): String {
+    return "Hello, ${'$'}name!"
+}
+```
+
+Markdown specials inside a fence — `*foo*`, `# heading`, `> quote` — render as literal text rather than being reinterpreted by the parser.
+
+## Escapes & Literal Syntax
+
+Every markdown special character can appear as literal text by escaping it with a backslash. This sentence contains all of them — \* \_ \` \# \+ \- \! \[ \] \( \) \{ \} \< \> \| \\ — and they all survive a save-and-reload round trip unchanged.
+
+Inside code spans the same characters appear verbatim because span contents are taken literally: `* _ # + - ! [ ] ( ) { } < > |`. Combine that with **bold containing a literal \* asterisk** and *italic containing a literal \_ underscore* to confirm the editor distinguishes syntax from content.
+
+Numeric edges round-trip too: version 2.0, Room 1-A, and "Step 1. do this" all stay as written rather than collapsing into an ordered list.
+
+---
+
 When a text edit occurs, spans are adjusted to maintain consistency. If the operation is an *insertion*, spans may **expand** or **shift** depending on the location relative to the insertion point. For *deletions*, spans **shrink** or **merge** based on the removed range. Replacement operations are treated as a **combination** of deletion and insertion, ensuring spans adapt seamlessly.
 
 Span deduplication plays a significant role by merging overlapping spans to reduce redundancy. Dynamic updates ensure that any changes in text instantly reflect on spans, keeping the document visually consistent. Efficient and robust, this approach simplifies complex text operations while maintaining **visual coherence**."""
+
+const val EXAMPLE_MARKDOWN = """# ComposeTextEditor
+
+A **rich text** editor for *Compose Multiplatform* with `markdown` support — [try it online](https://wavesonics.github.io/ComposeTextEditorLibrary/).
+
+![Highway at night](sample.jpg)
+
+## Features at a glance
+
+> Inline **bold**, *italic*, `code`, and ~~strike~~ all compose inside blockquotes, lists, and headings.
+
+- Headings, blockquotes, and **horizontal rules**
+- Bullet and ordered lists with hanging indents
+- Fenced code blocks rendered on a tinted card
+
+1. Type to edit
+2. Toggle styles from the toolbar
+3. Save round-trips through *CommonMark*
+
+```kotlin
+fun greet(name: String) =
+    "Hello, ${'$'}name!"
+```
+
+---
+
+Escapes survive a round trip: \*literal\* \_underscores\_ and version 2.0 stay as written."""
 
 fun createRichTextDemo2(): AnnotatedString = buildAnnotatedString {
 	append("1234567890123456789112345678921234567893")

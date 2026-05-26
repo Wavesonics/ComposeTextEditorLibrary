@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+	<!-- Context menu actions -->
+	<string name="context_menu_cut">Cut</string>
+	<string name="context_menu_copy">Copy</string>
+	<string name="context_menu_paste">Paste</string>
+	<string name="context_menu_select_all">Select All</string>
+</resources>

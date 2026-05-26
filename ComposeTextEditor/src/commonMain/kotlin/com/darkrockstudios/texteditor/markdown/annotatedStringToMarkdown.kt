@@ -44,11 +44,20 @@ fun AnnotatedString.toMarkdown(
 
 	val result = StringBuilder()
 	var currentIndex = 0
+	var codeSpanDepth = 0
 
 	boundaries.forEach { boundary ->
-		// Add any text between the last position and this boundary
+		// Add any text between the last position and this boundary. CommonMark code
+		// spans take their content literally — backslash escapes do not apply — so we
+		// must emit raw characters inside a code span, otherwise round-tripping doubles
+		// the escapes on each export.
 		while (currentIndex < boundary.index) {
-			result.append(escapeMarkdownChar(text[currentIndex]))
+			val ch = text[currentIndex]
+			if (codeSpanDepth > 0) {
+				result.append(ch)
+			} else {
+				result.append(escapeMarkdownChar(ch))
+			}
 			currentIndex++
 		}
 
@@ -63,7 +72,13 @@ fun AnnotatedString.toMarkdown(
 			} else {
 				result.append(boundary.marker.openMarker)
 			}
+			if (boundary.marker.openMarker == "`") {
+				codeSpanDepth++
+			}
 		} else {
+			if (boundary.marker.closeMarker == "`") {
+				codeSpanDepth--
+			}
 			result.append(boundary.marker.closeMarker)
 			if (boundary.marker.closeMarker == "\n") {
 				// Avoid duplicate newlines
@@ -80,7 +95,7 @@ fun AnnotatedString.toMarkdown(
 		currentIndex++
 	}
 
-	return result.toString()
+	return escapeOrderedListMarkers(result.toString())
 }
 
 private fun getStyleMarker(
@@ -103,6 +118,7 @@ private fun getStyleMarker(
 		style.matches(config.boldStyle) -> StyleMarkerPair("**", "**")
 		style.matches(config.italicStyle) -> StyleMarkerPair("*", "*")
 		style.matches(config.codeStyle) -> StyleMarkerPair("`", "`")
+		style.matches(config.strikethroughStyle) -> StyleMarkerPair("~~", "~~")
 		style.matches(config.linkStyle) -> StyleMarkerPair("[", "]()")
 		else -> null
 	}
@@ -113,6 +129,7 @@ private fun SpanStyle.matches(other: SpanStyle): Boolean {
 		this.fontWeight == FontWeight.Bold && other.fontWeight == FontWeight.Bold -> true
 		this.fontStyle == FontStyle.Italic && other.fontStyle == FontStyle.Italic -> true
 		this.fontFamily == FontFamily.Monospace && other.fontFamily == FontFamily.Monospace -> true
+		this.textDecoration == TextDecoration.LineThrough && other.textDecoration == TextDecoration.LineThrough -> true
 		this.textDecoration == TextDecoration.Underline && other.textDecoration == TextDecoration.Underline -> true
 		else -> false
 	}
@@ -123,13 +140,3 @@ private data class StyleMarkerPair(
 	val closeMarker: String
 )
 
-/**
- * Escapes markdown special characters by adding a backslash before them.
- * Characters that need escaping: *, _, `, #, +, -, ., !, [, ], (, ), {, }, <, >, |, \
- */
-private fun escapeMarkdownChar(char: Char): String {
-	return when (char) {
-		'*', '_', '`', '#', '+', '-', '!', '[', ']', '(', ')', '{', '}', '<', '>', '|', '\\' -> "\\$char"
-		else -> char.toString()
-	}
-}

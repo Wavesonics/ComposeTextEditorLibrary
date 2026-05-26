@@ -142,7 +142,7 @@ internal fun TextEditorState.moveCursorPageUp() {
 	val viewportHeight = scrollManager.viewportHeight
 
 	// Calculate target scroll position
-	val targetScroll = maxOf(0, viewportTop - viewportHeight)
+	val targetScroll = maxOf(scrollState.minValue, viewportTop - viewportHeight)
 
 	// Find the wrapped line at the target position
 	val targetLine = lineOffsets.firstOrNull { wrap ->
@@ -176,7 +176,7 @@ internal fun TextEditorState.moveCursorPageDown() {
 	// Get current viewport boundaries
 	val viewportTop = scrollState.value
 	val viewportHeight = scrollManager.viewportHeight
-	val maxScroll = maxOf(0, scrollManager.totalContentHeight - viewportHeight)
+	val maxScroll = maxOf(scrollState.minValue, scrollManager.totalContentHeight - viewportHeight + scrollManager.bottomContentPaddingPx)
 
 	// Calculate target scroll position
 	val targetScroll = minOf(maxScroll, viewportTop + viewportHeight)

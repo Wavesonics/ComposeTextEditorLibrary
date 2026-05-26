@@ -11,6 +11,7 @@ import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import com.darkrockstudios.texteditor.LineWrap
+import com.darkrockstudios.texteditor.state.TextEditorState
 import kotlin.math.PI
 import kotlin.math.sin
 
@@ -24,7 +25,8 @@ object SpellCheckStyle : RichSpanStyle {
 	override fun DrawScope.drawCustomStyle(
 		layoutResult: TextLayoutResult,
 		lineWrap: LineWrap,
-		textRange: TextRange
+		textRange: TextRange,
+		state: TextEditorState,
 	) {
 		val waveLength = with(Density(density)) { waveLengthDp.toPx() }
 		val amplitude = with(Density(density)) { amplitudeDp.toPx() }
