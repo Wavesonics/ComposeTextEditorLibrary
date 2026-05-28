@@ -150,6 +150,13 @@ class TextEditorState(
 
 	val scrollState get() = scrollManager.scrollState
 
+	/**
+	 * The [CharLineOffset] currently at the top of the viewport. Compose-observable:
+	 * composables reading this recompose when the user scrolls. Useful for driving
+	 * synchronized scrolling between two editors.
+	 */
+	val firstVisibleOffset: CharLineOffset get() = scrollManager.firstVisibleOffset
+
 	val editOperations = editManager.editOperations
 
 	fun setText(text: String) {

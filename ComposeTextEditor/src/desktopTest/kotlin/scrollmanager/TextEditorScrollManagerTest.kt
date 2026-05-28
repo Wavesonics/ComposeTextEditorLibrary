@@ -9,11 +9,7 @@ import com.darkrockstudios.texteditor.CharLineOffset
 import com.darkrockstudios.texteditor.LineWrap
 import com.darkrockstudios.texteditor.state.TextEditorScrollManager
 import com.darkrockstudios.texteditor.state.TextEditorScrollState
-import io.mockk.coEvery
-import io.mockk.coVerify
-import io.mockk.every
-import io.mockk.mockk
-import io.mockk.slot
+import io.mockk.*
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -286,6 +282,109 @@ class TextEditorScrollManagerTest {
 		assertEquals(0f, manager.calculateOffsetYPosition(CharLineOffset(0, 5)))
 		assertEquals(20f, manager.calculateOffsetYPosition(CharLineOffset(1, 5)))
 		assertEquals(40f, manager.calculateOffsetYPosition(CharLineOffset(2, 5)))
+	}
+
+	@Test
+	fun `test offsetAtYPosition resolves the wrap containing the given y`() = testScope.runTest {
+		val scrollState = createMockScrollState()
+		val lineWraps = createTestLineWraps(5)
+
+		val manager = TextEditorScrollManager(
+			scope = testScope,
+			scrollState = scrollState,
+			getLines = { List(5) { AnnotatedString("Line $it") } },
+			getViewportSize = { Size(100f, 60f) },
+			getCursorPosition = { CharLineOffset(0, 0) },
+			getLineOffsets = { lineWraps }
+		)
+
+		// Exact tops
+		assertEquals(CharLineOffset(0, 0), manager.offsetAtYPosition(0f))
+		assertEquals(CharLineOffset(2, 0), manager.offsetAtYPosition(40f))
+		// Inside a wrapped line resolves to the wrap that started before it
+		assertEquals(CharLineOffset(1, 0), manager.offsetAtYPosition(35f))
+		// Past the end clamps to the last wrap
+		assertEquals(CharLineOffset(4, 0), manager.offsetAtYPosition(1000f))
+	}
+
+	@Test
+	fun `test firstVisibleOffset reflects current scroll position`() = testScope.runTest {
+		val scrollState = createMockScrollState()
+		val lineWraps = createTestLineWraps(5)
+
+		val manager = TextEditorScrollManager(
+			scope = testScope,
+			scrollState = scrollState,
+			getLines = { List(5) { AnnotatedString("Line $it") } },
+			getViewportSize = { Size(100f, 60f) },
+			getCursorPosition = { CharLineOffset(0, 0) },
+			getLineOffsets = { lineWraps }
+		)
+
+		every { scrollState.value } returns 0
+		assertEquals(CharLineOffset(0, 0), manager.firstVisibleOffset)
+
+		every { scrollState.value } returns 40
+		assertEquals(CharLineOffset(2, 0), manager.firstVisibleOffset)
+	}
+
+	@Test
+	fun `test scrollToPosition with top aligns offset to viewport top`() = testScope.runTest {
+		val scrollState = createMockScrollState()
+		val lineWraps = createTestLineWraps(5)
+
+		val manager = TextEditorScrollManager(
+			scope = testScope,
+			scrollState = scrollState,
+			getLines = { List(5) { AnnotatedString("Line $it") } },
+			getViewportSize = { Size(100f, 60f) }, // Shows 3 lines
+			getCursorPosition = { CharLineOffset(0, 0) },
+			getLineOffsets = { lineWraps }
+		)
+		manager.updateContentHeight(100)
+
+		every { scrollState.value } returns 0
+		every { scrollState.minValue } returns 0
+
+		val scrollSlot = slot<Int>()
+		coEvery { scrollState.animateScrollTo(capture(scrollSlot)) } returns Unit
+
+		// Line 1 sits at y=20; top-aligning should scroll there exactly (not just into view).
+		manager.scrollToPosition(CharLineOffset(1, 0), top = true)
+		testScope.advanceUntilIdle()
+
+		assertTrue(scrollSlot.isCaptured)
+		assertEquals(20, scrollSlot.captured)
+	}
+
+	@Test
+	fun `test scrollToPosition top with animated false scrolls without animation`() = testScope.runTest {
+		val scrollState = createMockScrollState()
+		val lineWraps = createTestLineWraps(5)
+
+		val manager = TextEditorScrollManager(
+			scope = testScope,
+			scrollState = scrollState,
+			getLines = { List(5) { AnnotatedString("Line $it") } },
+			getViewportSize = { Size(100f, 60f) }, // Shows 3 lines
+			getCursorPosition = { CharLineOffset(0, 0) },
+			getLineOffsets = { lineWraps }
+		)
+		manager.updateContentHeight(100)
+
+		every { scrollState.value } returns 0
+		every { scrollState.minValue } returns 0
+
+		val scrollSlot = slot<Int>()
+		every { scrollState.scrollTo(capture(scrollSlot)) } returns Unit
+
+		manager.scrollToPosition(CharLineOffset(1, 0), top = true, animated = false)
+		testScope.advanceUntilIdle()
+
+		// Sync path must scroll instantly, not enqueue a spring animation.
+		assertTrue(scrollSlot.isCaptured)
+		assertEquals(20, scrollSlot.captured)
+		coVerify(exactly = 0) { scrollState.animateScrollTo(any()) }
 	}
 
 	@Test
