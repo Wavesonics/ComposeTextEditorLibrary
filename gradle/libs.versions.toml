@@ -16,7 +16,7 @@ activityCompose = "1.13.0"
 composeBom = "2026.05.01"
 
 symspellkt = "3.4.0"
-spellcheckerkt = "1.2.2"
+spellcheckerkt = "1.2.4"
 
 maven-publish = "0.36.0"
 
