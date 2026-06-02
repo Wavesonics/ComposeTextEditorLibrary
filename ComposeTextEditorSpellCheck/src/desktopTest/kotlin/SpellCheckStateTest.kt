@@ -135,6 +135,47 @@ class SpellCheckStateTest {
 		assertFalse(result)
 		assertTrue(textState.getRichSpansInRange(segment.range).isEmpty())
 	}
+
+	@Test
+	fun `test setSpellCheckingEnabled false clears existing spans`() = runTest {
+		// Setup: a misspelled word with a spell check span
+		val word = "helllo"
+		textState.setText(word)
+		val range = TextEditorRange(
+			start = CharLineOffset(0, 0),
+			end = CharLineOffset(0, 6)
+		)
+		textState.addRichSpan(range, SpellCheckStyle)
+
+		// Act
+		spellCheckState.setSpellCheckingEnabled(false)
+
+		// Assert
+		assertFalse(spellCheckState.spellCheckingEnabled)
+		assertTrue(textState.getRichSpansInRange(range).isEmpty())
+	}
+
+	@Test
+	fun `test setSpellCheckingEnabled true re-runs full check`() = runTest {
+		// Setup: start disabled with a misspelled word present
+		spellCheckState.setSpellCheckingEnabled(false)
+		val word = "helllo"
+		textState.setText(word)
+		val range = TextEditorRange(
+			start = CharLineOffset(0, 0),
+			end = CharLineOffset(0, 6)
+		)
+		spellChecker.correctWords = emptySet()
+
+		// Act: enabling should re-check existing text without a manual runFullSpellCheck
+		spellCheckState.setSpellCheckingEnabled(true)
+
+		// Assert
+		assertTrue(spellCheckState.spellCheckingEnabled)
+		val spans = textState.getRichSpansInRange(range)
+		assertEquals(1, spans.size)
+		assertTrue(spans.first().style is SpellCheckStyle)
+	}
 }
 
 private class MockEditorSpellChecker(

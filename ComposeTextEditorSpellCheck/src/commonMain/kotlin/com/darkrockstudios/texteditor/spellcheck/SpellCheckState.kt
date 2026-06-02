@@ -32,13 +32,11 @@ class SpellCheckState(
 		private set
 
 	suspend fun setSpellCheckingEnabled(value: Boolean) {
+		val wasEnabled = spellCheckingEnabled
 		spellCheckingEnabled = value
-
-		val runSpellcheck = (spellCheckingEnabled != value && value == true)
-		spellCheckingEnabled = value
-		if (runSpellcheck) {
+		if (value && !wasEnabled) {
 			runFullSpellCheck()
-		} else {
+		} else if (!value) {
 			clearSpellCheck()
 		}
 	}

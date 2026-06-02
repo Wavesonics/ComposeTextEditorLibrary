@@ -25,5 +25,10 @@ fun rememberSpellCheckState(
 		}
 	}
 
+	// Propagate enableSpellChecking changes to the state so callers can toggle it on recomposition
+	LaunchedEffect(enableSpellChecking) {
+		state.setSpellCheckingEnabled(enableSpellChecking)
+	}
+
 	return state
 }
