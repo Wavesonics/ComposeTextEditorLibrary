@@ -22,25 +22,54 @@ fun AnnotatedString.toMarkdown(
 		val index: Int,
 		val isStart: Boolean,
 		val marker: StyleMarkerPair,
-		val originalSpan: AnnotatedString.Range<SpanStyle>
+		val length: Int
 	)
 
-	val boundaries = mutableListOf<StyleBoundary>()
-
-	// Process each span and create boundaries
+	// Group ranges by marker (not SpanStyle) so distinct-but-equivalent styles
+	// — e.g. bold spans of different colors — still coalesce below.
+	val rangesByMarker = LinkedHashMap<StyleMarkerPair, MutableList<IntRange>>()
 	spanStyles.forEach { span ->
 		val marker = getStyleMarker(span.item, configuration) ?: return@forEach
-		boundaries.add(StyleBoundary(span.start, true, marker, span))
-		boundaries.add(StyleBoundary(span.end, false, marker, span))
+		if (span.end > span.start) {
+			rangesByMarker.getOrPut(marker) { mutableListOf() }
+				.add(span.start until span.end)
+		}
+	}
+
+	// Coalesce touching/overlapping same-marker ranges into one run, so fragmented
+	// spans emit a single marker pair: **E****n****d** -> **End**.
+	val boundaries = mutableListOf<StyleBoundary>()
+	rangesByMarker.forEach { (marker, ranges) ->
+		ranges.sortBy { it.first }
+		var runStart = ranges.first().first
+		var runEnd = ranges.first().last + 1
+		fun emit() {
+			val length = runEnd - runStart
+			boundaries.add(StyleBoundary(runStart, true, marker, length))
+			boundaries.add(StyleBoundary(runEnd, false, marker, length))
+		}
+		for (i in 1 until ranges.size) {
+			val nextStart = ranges[i].first
+			val nextEnd = ranges[i].last + 1
+			if (nextStart <= runEnd) {
+				// Touching or overlapping — extend the current run.
+				if (nextEnd > runEnd) runEnd = nextEnd
+			} else {
+				emit()
+				runStart = nextStart
+				runEnd = nextEnd
+			}
+		}
+		emit()
 	}
 
 	// Sort boundaries:
 	// 1. By index
 	// 2. For same index, close markers come before open markers
-	// 3. For same index and type, sort by span length (longer spans close first)
+	// 3. For same index and type, sort by run length (longer runs close first)
 	boundaries.sortWith(compareBy<StyleBoundary> { it.index }
 		.thenBy { it.isStart }
-		.thenByDescending { it.originalSpan.end - it.originalSpan.start })
+		.thenByDescending { it.length })
 
 	val result = StringBuilder()
 	var currentIndex = 0

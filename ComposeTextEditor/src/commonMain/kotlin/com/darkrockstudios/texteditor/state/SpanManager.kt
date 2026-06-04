@@ -153,24 +153,24 @@ class SpanManager {
 		if (spans.isEmpty()) return emptyList()
 
 		val result = mutableListOf<SpanInfo>()
-		val sorted = spans.sortedBy { it.start }
 
-		var current = sorted.first()
-		var mergeCount = 0
-
-		for (i in 1 until sorted.size) {
-			val next = sorted[i]
-			if (current.overlaps(next) || current.isAdjacent(next)) {
-				current = current.merge(next)
-				mergeCount++
-			} else {
-				result.add(current)
-				current = next
+		// Merge within each style group. A single global start-sorted pass only
+		// collapses consecutive entries, so same-style spans split by an interleaved
+		// other style never merge — leaving duplicates that multiply markers.
+		spans.groupBy { it.style }.forEach { (_, styleSpans) ->
+			val sorted = styleSpans.sortedBy { it.start }
+			var current = sorted.first()
+			for (i in 1 until sorted.size) {
+				val next = sorted[i]
+				if (current.overlaps(next) || current.isAdjacent(next)) {
+					current = current.merge(next)
+				} else {
+					result.add(current)
+					current = next
+				}
 			}
+			result.add(current)
 		}
-		result.add(current)
-
-		//println("Style Spans Merged: $mergeCount")
 
 		return result
 	}
@@ -314,8 +314,11 @@ private data class SpanInfo(
 	fun overlaps(other: SpanInfo): Boolean =
 		(start <= other.end && end >= other.start) && style == other.style
 
+	// Touching, no gap. Ranges are end-exclusive, so adjacency is `end ==
+	// other.start`; `+1` would bridge a gap and swallow the char between two
+	// same-style spans.
 	fun isAdjacent(other: SpanInfo): Boolean =
-		(end + 1 == other.start || other.end + 1 == start) && style == other.style
+		(end == other.start || other.end == start) && style == other.style
 
 	fun merge(other: SpanInfo): SpanInfo =
 		SpanInfo(style, minOf(start, other.start), maxOf(end, other.end))
