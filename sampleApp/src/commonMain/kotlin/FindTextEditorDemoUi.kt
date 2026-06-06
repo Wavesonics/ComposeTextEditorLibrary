@@ -1,3 +1,5 @@
+package com.darkrockstudios.texteditor.sample
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically

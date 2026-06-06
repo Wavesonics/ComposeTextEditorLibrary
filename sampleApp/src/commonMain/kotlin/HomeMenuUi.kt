@@ -1,3 +1,5 @@
+package com.darkrockstudios.texteditor.sample
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DarkMode

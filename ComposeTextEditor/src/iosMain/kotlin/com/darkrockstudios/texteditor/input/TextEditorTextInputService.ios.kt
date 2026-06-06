@@ -1,6 +1,7 @@
 package com.darkrockstudios.texteditor.input
 
 import androidx.compose.ui.ExperimentalComposeUiApi
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.platform.PlatformTextInputMethodRequest
 import androidx.compose.ui.platform.PlatformTextInputSession
@@ -181,6 +182,7 @@ private class TextEditorIOSInputMethodRequest(
 	override val focusedRectInRoot: () -> Rect? = { null }
 	override val textFieldRectInRoot: () -> Rect? = { null }
 	override val textClippingRectInRoot: () -> Rect? = { null }
+	override val unclippedTextOffsetInRoot: () -> Offset? = { null }
 
 	// Edit text scope - allows iOS to apply edits
 	override val editText: (TextEditingScope.() -> Unit) -> Unit = { block ->

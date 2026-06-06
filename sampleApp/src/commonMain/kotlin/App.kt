@@ -1,3 +1,5 @@
+package com.darkrockstudios.texteditor.sample
+
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.darkColorScheme

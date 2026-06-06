@@ -1,3 +1,5 @@
+package com.darkrockstudios.texteditor.sample
+
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember

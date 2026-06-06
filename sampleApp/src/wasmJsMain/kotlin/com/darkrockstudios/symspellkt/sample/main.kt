@@ -1,6 +1,5 @@
-package com.darkrockstudios.symspellkt.sample
+package com.darkrockstudios.texteditor.sample
 
-import App
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.window.ComposeViewport
 import kotlinx.browser.document

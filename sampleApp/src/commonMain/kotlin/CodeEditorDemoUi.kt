@@ -1,3 +1,5 @@
+package com.darkrockstudios.texteditor.sample
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme

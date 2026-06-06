@@ -1,3 +1,5 @@
+package com.darkrockstudios.texteditor.sample
+
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
 import com.darkrockstudios.libs.platformspellchecker.PlatformSpellCheckerFactory

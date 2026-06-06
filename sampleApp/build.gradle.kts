@@ -8,15 +8,23 @@ plugins {
 	alias(libs.plugins.kotlinMultiplatform)
 	alias(libs.plugins.composeMultiplatform)
 	alias(libs.plugins.composeCompiler)
-	alias(libs.plugins.android.application)
+	alias(libs.plugins.android.kmp.library)
 }
 
 kotlin {
 	applyDefaultHierarchyTemplate()
 	jvm("desktop")
-	androidTarget {
+	androidLibrary {
+		namespace = "com.darkrockstudios.texteditor.sample.shared"
+		compileSdk = libs.versions.android.compileSdk.get().toInt()
+		minSdk = libs.versions.android.minSdk.get().toInt()
+
 		compilerOptions {
 			jvmTarget.set(JvmTarget.fromTarget(libs.versions.jvm.get()))
+		}
+
+		androidResources {
+			enable = true
 		}
 	}
 	wasmJs {
@@ -91,12 +99,8 @@ kotlin {
 
 		val androidMain by getting {
 			dependencies {
-				implementation(libs.activity.ktx)
 				implementation(compose.runtime)
-				implementation(compose.foundation)
-				implementation(compose.material3)
 				implementation(compose.ui)
-				implementation(compose.components.resources)
 				implementation(libs.platform.spellchecker)
 			}
 		}
@@ -118,41 +122,12 @@ kotlin {
 
 compose.desktop {
 	application {
-		mainClass = "MainKt"
+		mainClass = "com.darkrockstudios.texteditor.sample.MainKt"
 
 		nativeDistributions {
 			targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
 			packageName = "com.darkrockstudios.texteditor"
 			packageVersion = "1.0.0"
-		}
-	}
-}
-
-android {
-	namespace = "com.darkrockstudios.texteditor.sample"
-	compileSdk = libs.versions.android.compileSdk.get().toInt()
-	defaultConfig {
-		applicationId = "com.darkrockstudios.texteditor.sample"
-		minSdk = libs.versions.android.minSdk.get().toInt()
-		targetSdk = libs.versions.android.compileSdk.get().toInt()
-		versionCode = 1
-		versionName = "1.0"
-
-		testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-	}
-	buildFeatures {
-		compose = true
-	}
-	compileOptions {
-		sourceCompatibility = JavaVersion.toVersion(libs.versions.jvm.get().toInt())
-		targetCompatibility = JavaVersion.toVersion(libs.versions.jvm.get().toInt())
-	}
-
-	buildTypes {
-		debug {
-		}
-
-		release {
 		}
 	}
 }
@@ -184,18 +159,4 @@ tasks.register<Copy>("updateDemo") {
 
 		println("Demo updated in docs/ directory")
 	}
-}
-dependencies {
-	implementation(libs.lifecycle.runtime.ktx)
-	implementation(libs.activity.compose)
-	implementation(platform(libs.compose.bom))
-	implementation(libs.ui)
-	implementation(libs.ui.graphics)
-	implementation(libs.ui.tooling.preview)
-	implementation(libs.material3)
-	implementation(libs.activity.ktx)
-	androidTestImplementation(platform(libs.compose.bom))
-	androidTestImplementation(libs.ui.test.junit4)
-	debugImplementation(libs.ui.tooling)
-	debugImplementation(libs.ui.test.manifest)
 }
