@@ -75,203 +75,52 @@ private class CommitTextCommand(
 	val text: String,
 	val newCursorPosition: Int
 ) : EditCommand {
-	override fun applyTo(state: TextEditorState) {
-		val insertStart = replaceComposingOrInsert(state, text)
-		val insertEnd = insertStart + text.length
-		// state.replace / insertStringAtCursor don't touch composingRange — clear it explicitly.
-		state.clearComposingRange()
-		applyNewCursorPosition(state, insertStart, insertEnd, newCursorPosition)
-	}
+	override fun applyTo(state: TextEditorState) = state.imeCommitText(text, newCursorPosition)
 }
 
 private class SetComposingTextCommand(
 	val text: String,
 	val newCursorPosition: Int
 ) : EditCommand {
-	override fun applyTo(state: TextEditorState) {
-		val insertStart = replaceComposingOrInsert(state, text)
-		val insertEnd = insertStart + text.length
-		if (text.isNotEmpty()) {
-			state.updateComposingRange(insertStart, insertEnd)
-		} else {
-			state.clearComposingRange()
-		}
-		applyNewCursorPosition(state, insertStart, insertEnd, newCursorPosition)
-	}
+	override fun applyTo(state: TextEditorState) = state.imeSetComposingText(text, newCursorPosition)
 }
 
 private class SetComposingRegionCommand(
 	val start: Int,
 	val end: Int
 ) : EditCommand {
-	override fun applyTo(state: TextEditorState) {
-		val len = state.getTextLength()
-		val s = start.coerceIn(0, len)
-		val e = end.coerceIn(0, len)
-		if (s < e) state.updateComposingRange(s, e) else state.clearComposingRange()
-	}
+	override fun applyTo(state: TextEditorState) = state.imeSetComposingRegion(start, end)
 }
 
 private object FinishComposingTextCommand : EditCommand {
-	override fun applyTo(state: TextEditorState) {
-		state.clearComposingRange()
-	}
+	override fun applyTo(state: TextEditorState) = state.imeFinishComposing()
 }
 
 private class DeleteSurroundingTextCommand(
 	val beforeLength: Int,
 	val afterLength: Int
 ) : EditCommand {
-	override fun applyTo(state: TextEditorState) {
-		val cursorIndex = state.getCharacterIndex(state.cursorPosition)
-		val deleteStart = maxOf(0, cursorIndex - beforeLength)
-		val deleteEnd = minOf(state.getTextLength(), cursorIndex + afterLength)
-		if (deleteStart < deleteEnd) {
-			state.delete(
-				TextEditorRange(
-					state.getOffsetAtCharacter(deleteStart),
-					state.getOffsetAtCharacter(deleteEnd)
-				)
-			)
-		}
-	}
+	override fun applyTo(state: TextEditorState) =
+		state.imeDeleteSurroundingText(beforeLength, afterLength)
 }
 
 private class DeleteSurroundingTextInCodePointsCommand(
 	val beforeLength: Int,
 	val afterLength: Int
 ) : EditCommand {
-	override fun applyTo(state: TextEditorState) {
-		val cursorIndex = state.getCharacterIndex(state.cursorPosition)
-		val fullText = state.getAllText()
-		val charsBefore = codePointsToChars(fullText, cursorIndex, beforeLength, backwards = true)
-		val charsAfter = codePointsToChars(fullText, cursorIndex, afterLength, backwards = false)
-		val deleteStart = maxOf(0, cursorIndex - charsBefore)
-		val deleteEnd = minOf(state.getTextLength(), cursorIndex + charsAfter)
-		if (deleteStart < deleteEnd) {
-			state.delete(
-				TextEditorRange(
-					state.getOffsetAtCharacter(deleteStart),
-					state.getOffsetAtCharacter(deleteEnd)
-				)
-			)
-		}
-	}
+	override fun applyTo(state: TextEditorState) =
+		state.imeDeleteSurroundingTextInCodePoints(beforeLength, afterLength)
 }
 
 private class SetSelectionCommand(
 	val start: Int,
 	val end: Int
 ) : EditCommand {
-	override fun applyTo(state: TextEditorState) {
-		val len = state.getTextLength()
-		val s = start.coerceIn(0, len)
-		val e = end.coerceIn(0, len)
-		if (s == e) {
-			state.selector.clearSelection()
-			state.cursor.updatePosition(state.getOffsetAtCharacter(s))
-		} else {
-			val lo = minOf(s, e)
-			val hi = maxOf(s, e)
-			state.selector.updateSelection(
-				state.getOffsetAtCharacter(lo),
-				state.getOffsetAtCharacter(hi)
-			)
-			// Cursor goes to `end` per platform convention.
-			state.cursor.updatePosition(state.getOffsetAtCharacter(e))
-		}
-	}
+	override fun applyTo(state: TextEditorState) = state.imeSetSelection(start, end)
 }
 
 private object PerformImeNewlineCommand : EditCommand {
-	override fun applyTo(state: TextEditorState) {
-		if (state.selector.hasSelection()) state.selector.deleteSelection()
-		state.insertNewlineAtCursor()
-	}
-}
-
-// ============================================================
-//  Shared command helpers
-// ============================================================
-
-/**
- * Replaces the current composing region with [text], or — when there is no
- * composition — deletes any selection and inserts at the cursor. Returns the
- * character index at which the inserted text starts.
- */
-private fun replaceComposingOrInsert(state: TextEditorState, text: String): Int {
-	val composing = state.composingRange
-	return if (composing != null) {
-		val start = state.getCharacterIndex(composing.start)
-		// inheritStyle keeps autocorrect from stripping bold/italic etc.
-		state.replace(TextEditorRange(composing.start, composing.end), text, inheritStyle = true)
-		start
-	} else {
-		if (state.selector.hasSelection()) state.selector.deleteSelection()
-		val start = state.getCharacterIndex(state.cursorPosition)
-		state.insertStringAtCursor(text)
-		start
-	}
-}
-
-/**
- * Implements the Android `newCursorPosition` contract:
- * - `> 0`: position is relative to the end of the inserted text (1 = right after).
- * - `<= 0`: position is relative to the start (0 = at start, -1 = one before).
- */
-private fun applyNewCursorPosition(
-	state: TextEditorState,
-	insertStart: Int,
-	insertEnd: Int,
-	newCursorPosition: Int
-) {
-	val len = state.getTextLength()
-	val target = if (newCursorPosition > 0) {
-		(insertEnd + (newCursorPosition - 1)).coerceIn(0, len)
-	} else {
-		(insertStart + newCursorPosition).coerceIn(0, len)
-	}
-	state.cursor.updatePosition(state.getOffsetAtCharacter(target))
-	state.selector.clearSelection()
-}
-
-private fun codePointsToChars(
-	text: CharSequence,
-	fromIndex: Int,
-	codePointCount: Int,
-	backwards: Boolean
-): Int {
-	if (codePointCount <= 0) return 0
-	var charCount = 0
-	var codePointsRemaining = codePointCount
-	if (backwards) {
-		var index = fromIndex
-		while (codePointsRemaining > 0 && index > 0) {
-			index--
-			charCount++
-			if (Character.isLowSurrogate(text[index]) && index > 0 &&
-				Character.isHighSurrogate(text[index - 1])
-			) {
-				index--
-				charCount++
-			}
-			codePointsRemaining--
-		}
-	} else {
-		var index = fromIndex
-		while (codePointsRemaining > 0 && index < text.length) {
-			charCount++
-			if (Character.isHighSurrogate(text[index]) && index + 1 < text.length &&
-				Character.isLowSurrogate(text[index + 1])
-			) {
-				charCount++
-				index++
-			}
-			index++
-			codePointsRemaining--
-		}
-	}
-	return charCount
+	override fun applyTo(state: TextEditorState) = state.imePerformNewline()
 }
 
 // ============================================================

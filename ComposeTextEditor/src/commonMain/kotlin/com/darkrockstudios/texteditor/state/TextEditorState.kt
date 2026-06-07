@@ -6,6 +6,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.text.*
 import androidx.compose.ui.text.style.TextIndent
 import androidx.compose.ui.unit.Constraints
@@ -88,6 +89,15 @@ class TextEditorState(
 	 * Updated during rendering and used by IME for cursor anchor info.
 	 */
 	var lastCursorMetrics: CursorMetrics? = null
+		internal set
+
+	/**
+	 * Layout coordinates of the editor's drawing canvas, captured via
+	 * `onGloballyPositioned`. Used by the desktop IME to translate the cursor's
+	 * canvas-local [lastCursorMetrics] into root coordinates for placing the
+	 * input-method candidate window.
+	 */
+	var canvasLayoutCoordinates: LayoutCoordinates? = null
 		internal set
 
 	private var _lineOffsets by mutableStateOf(emptyList<LineWrap>())

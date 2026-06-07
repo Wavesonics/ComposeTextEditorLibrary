@@ -26,57 +26,21 @@ actual class TextEditorTextInputService actual constructor(
 }
 
 /**
- * Bridge implementation of Compose framework's TextEditorState interface
- * that delegates to our custom TextEditorState.
+ * Adapts the library's [TextEditorState] to Compose's skiko `TextEditorState`
+ * (CharSequence + selection + composition). Mapping logic is shared via the
+ * `*AsTextRange` / `imeSubSequence` helpers in commonMain.
  */
 @OptIn(ExperimentalComposeUiApi::class)
-private class TextEditorStateBridge(
+private class ImeComposeStateAdapter(
 	private val editorState: com.darkrockstudios.texteditor.state.TextEditorState
 ) : androidx.compose.ui.text.input.TextEditorState {
-
-	// CharSequence implementation - delegate to our editor state's text
-	override val length: Int
-		get() = editorState.getTextLength()
-
-	override fun get(index: Int): Char {
-		val text = editorState.getAllText()
-		return text[index]
-	}
-
-	override fun subSequence(startIndex: Int, endIndex: Int): CharSequence {
-		return editorState.getAllText().subSequence(startIndex, endIndex)
-	}
-
-	override fun toString(): String {
-		return editorState.getAllText().toString()
-	}
-
-	// Selection range - map from our custom state
-	override val selection: TextRange
-		get() {
-			val selection = editorState.selector.selection
-			return if (selection != null) {
-				val start = editorState.getCharacterIndex(selection.start)
-				val end = editorState.getCharacterIndex(selection.end)
-				TextRange(start, end)
-			} else {
-				val cursorPos = editorState.getCharacterIndex(editorState.cursorPosition)
-				TextRange(cursorPos, cursorPos)
-			}
-		}
-
-	// Composition range - map from our custom state's composing range
-	override val composition: TextRange?
-		get() {
-			val composing = editorState.composingRange
-			return if (composing != null) {
-				val start = editorState.getCharacterIndex(composing.start)
-				val end = editorState.getCharacterIndex(composing.end)
-				TextRange(start, end)
-			} else {
-				null
-			}
-		}
+	override val length: Int get() = editorState.getTextLength()
+	override fun get(index: Int): Char = editorState.imeCharAt(index)
+	override fun subSequence(startIndex: Int, endIndex: Int): CharSequence =
+		editorState.imeSubSequence(startIndex, endIndex)
+	override fun toString(): String = editorState.getAllText().toString()
+	override val selection get() = editorState.selectionAsTextRange()
+	override val composition get() = editorState.composingAsTextRange()
 }
 
 /**
@@ -88,9 +52,9 @@ private class TextEditorIOSInputMethodRequest(
 	private val editorState: com.darkrockstudios.texteditor.state.TextEditorState
 ) : PlatformTextInputMethodRequest {
 
-	// Bridge to Compose framework's TextEditorState
+	// Shared bridge to Compose framework's TextEditorState (see ImeStateAdapter.kt)
 	override val state: androidx.compose.ui.text.input.TextEditorState =
-		TextEditorStateBridge(editorState)
+		ImeComposeStateAdapter(editorState)
 
 	override val imeOptions: ImeOptions = ImeOptions(
 		keyboardType = KeyboardType.Text,
@@ -100,17 +64,7 @@ private class TextEditorIOSInputMethodRequest(
 
 	// Provide current text field value to iOS
 	override val value: () -> TextFieldValue = {
-		val text = editorState.getAllText()
-		val cursorPos = editorState.getCharacterIndex(editorState.cursorPosition)
-		val selection = editorState.selector.selection
-
-		if (selection != null) {
-			val start = editorState.getCharacterIndex(selection.start)
-			val end = editorState.getCharacterIndex(selection.end)
-			TextFieldValue(text, TextRange(start, end))
-		} else {
-			TextFieldValue(text, TextRange(cursorPos, cursorPos))
-		}
+		TextFieldValue(editorState.getAllText(), editorState.selectionAsTextRange())
 	}
 
 	// Handle edit commands from iOS IME

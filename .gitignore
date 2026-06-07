@@ -1,6 +1,8 @@
 *.iml
 .kotlin
 .gradle
+# Local Claude Code MCP server config (compose-hot-reload, etc.)
+.mcp.json
 **/build/
 xcuserdata
 !src/**/build/

@@ -9,6 +9,7 @@ plugins {
 	alias(libs.plugins.composeMultiplatform)
 	alias(libs.plugins.composeCompiler)
 	alias(libs.plugins.android.kmp.library)
+	alias(libs.plugins.composeHotReload)
 }
 
 kotlin {
