@@ -9,7 +9,6 @@ import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.PlatformTextInputMethodRequest
 import androidx.compose.ui.platform.PlatformTextInputSession
 import androidx.compose.ui.text.TextLayoutResult
-import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.EditCommand
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.ImeOptions
@@ -51,12 +50,12 @@ private class DesktopTextEditorInputMethodRequest(
 ) : PlatformTextInputMethodRequest {
 
 	/** Live view of the editor as the CharSequence + selection + composition Compose expects. */
-	override val state: ComposeTextEditorState = EditorStateAdapter(editorState)
+	override val state: ComposeTextEditorState = ImeComposeStateAdapter(editorState)
 
 	override val value: () -> TextFieldValue = {
 		TextFieldValue(
 			text = editorState.getAllText().text,
-			selection = editorState.currentSelectionRange()
+			selection = editorState.selectionAsTextRange()
 		)
 	}
 
@@ -119,31 +118,21 @@ private class DesktopTextEditorInputMethodRequest(
 }
 
 /**
- * Adapts the library's [TextEditorState] to Compose's [ComposeTextEditorState]
- * (a `CharSequence` plus selection/composition), read live each time the AWT
- * input-method framework queries it.
+ * Adapts the library's [TextEditorState] to Compose's skiko `TextEditorState`
+ * (CharSequence + selection + composition), read live each time the AWT
+ * input-method framework queries it. Mapping logic is shared via the
+ * `*AsTextRange` / `imeSubSequence` helpers in commonMain.
  */
-private class EditorStateAdapter(
+private class ImeComposeStateAdapter(
 	private val editorState: TextEditorState
 ) : ComposeTextEditorState {
-
 	override val length: Int get() = editorState.getTextLength()
-
-	override fun get(index: Int): Char = editorState.getAllText()[index]
-
+	override fun get(index: Int): Char = editorState.imeCharAt(index)
 	override fun subSequence(startIndex: Int, endIndex: Int): CharSequence =
-		editorState.getAllText().subSequence(startIndex, endIndex)
-
-	override val selection: TextRange get() = editorState.currentSelectionRange()
-
-	override val composition: TextRange?
-		get() {
-			val comp = editorState.composingRange ?: return null
-			return TextRange(
-				editorState.getCharacterIndex(comp.start),
-				editorState.getCharacterIndex(comp.end)
-			)
-		}
+		editorState.imeSubSequence(startIndex, endIndex)
+	override fun toString(): String = editorState.getAllText().toString()
+	override val selection get() = editorState.selectionAsTextRange()
+	override val composition get() = editorState.composingAsTextRange()
 }
 
 /**
@@ -164,15 +153,4 @@ private class DesktopTextEditingScope(
 		state.imeSetComposingText(text.toString(), newCursorPosition)
 
 	override fun finishComposingText() = state.imeFinishComposing()
-}
-
-/** The current selection as a character-index [TextRange], collapsed to the cursor when none. */
-private fun TextEditorState.currentSelectionRange(): TextRange {
-	val sel = selector.selection
-	return if (sel != null) {
-		TextRange(getCharacterIndex(sel.start), getCharacterIndex(sel.end))
-	} else {
-		val cursorIndex = getCharacterIndex(cursorPosition)
-		TextRange(cursorIndex)
-	}
 }

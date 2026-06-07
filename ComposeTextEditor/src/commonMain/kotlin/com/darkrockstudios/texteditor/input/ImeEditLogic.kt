@@ -12,8 +12,11 @@ import com.darkrockstudios.texteditor.state.TextEditorState
  * identical across platforms. Each function mutates [TextEditorState] the way the
  * corresponding IME command (`commitText`, `setComposingText`, ...) expects.
  *
- * Callers are responsible for batching (so a single composition collapses into
- * one undo step) — these functions only perform the mutation.
+ * Each function performs a single mutation through the edit manager. Platforms
+ * that need to suppress intermediate IME cursor-sync notifications during a
+ * multi-command edit wrap the calls in their own batch (e.g. Android's
+ * `PlatformTextEditorExtensions.beginBatchEdit`/`endBatchEdit`); the batch does
+ * not coalesce undo history.
  */
 
 /**
