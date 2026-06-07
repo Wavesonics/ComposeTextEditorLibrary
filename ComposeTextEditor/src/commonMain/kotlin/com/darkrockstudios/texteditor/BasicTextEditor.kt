@@ -19,6 +19,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalDensity
@@ -187,6 +188,9 @@ fun BasicTextEditor(
 							onSpanClick = onRichSpanClick,
 							onContextMenuRequest = { offset -> effectiveContextMenuState.showMenu(offset) }
 						)
+						// Capture the canvas position so the desktop IME can place the
+						// composition/candidate window relative to the cursor.
+						.onGloballyPositioned { state.canvasLayoutCoordinates = it }
 						.size(
 							width = state.viewportSize.width.dp,
 							height = state.viewportSize.height.dp
