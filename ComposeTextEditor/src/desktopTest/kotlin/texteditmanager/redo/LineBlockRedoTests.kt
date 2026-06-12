@@ -1,10 +1,16 @@
 package texteditmanager.redo
 
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
 import com.darkrockstudios.texteditor.CharLineOffset
+import com.darkrockstudios.texteditor.TextEditorRange
 import com.darkrockstudios.texteditor.markdown.MarkdownExtension
 import com.darkrockstudios.texteditor.richstyle.BlockquoteSpanStyle
 import com.darkrockstudios.texteditor.richstyle.CodeFenceSpanStyle
+import com.darkrockstudios.texteditor.richstyle.HighlightSpanStyle
 import com.darkrockstudios.texteditor.richstyle.ORDERED_LIST_PARAGRAPH_STYLE
 import com.darkrockstudios.texteditor.richstyle.OrderedListSpanStyle
 import com.darkrockstudios.texteditor.state.TextEditOperation
@@ -110,6 +116,59 @@ class LineBlockRedoTests {
 		(0..2).forEach { line ->
 			assertTrue(hasParagraphStyle(line, ORDERED_LIST_PARAGRAPH_STYLE))
 		}
+	}
+
+	@Test
+	fun `toggle list undo redo keeps a character bold span intact`() {
+		val bold = SpanStyle(fontWeight = FontWeight.Bold)
+		state.setText(buildAnnotatedString {
+			append("Hello ")
+			pushStyle(bold)
+			append("World")
+			pop()
+		})
+		fun boldRange() = state.textLines[0].spanStyles
+			.singleOrNull { it.item == bold }
+			?.let { it.start to it.end }
+
+		markdown.toggleOrderedList(0..0)
+		assertEquals(6 to 11, boldRange())
+		assertEquals("Hello World", state.textLines[0].text)
+
+		state.undo()
+		assertEquals(6 to 11, boldRange())
+		assertEquals("Hello World", state.textLines[0].text)
+
+		state.redo()
+		assertEquals(listOf(0), spanLines(OrderedListSpanStyle))
+		assertEquals(6 to 11, boldRange())
+		assertEquals("Hello World", state.textLines[0].text)
+	}
+
+	@Test
+	fun `toggle list undo redo keeps a standalone highlight span intact`() {
+		state.setText("Hello World")
+		val highlight = HighlightSpanStyle(Color.Yellow)
+		val range = TextEditorRange(
+			start = CharLineOffset(0, 0),
+			end = CharLineOffset(0, 5)
+		)
+		state.addRichSpan(range, highlight)
+		fun highlightSpans() = state.richSpanManager.getAllRichSpans()
+			.filter { it.style === highlight }
+
+		markdown.toggleOrderedList(0..0)
+		assertEquals(1, highlightSpans().size)
+		assertEquals(range, highlightSpans().single().range)
+
+		state.undo()
+		assertEquals(1, highlightSpans().size)
+		assertEquals(range, highlightSpans().single().range)
+
+		state.redo()
+		assertEquals(listOf(0), spanLines(OrderedListSpanStyle))
+		assertEquals(1, highlightSpans().size)
+		assertEquals(range, highlightSpans().single().range)
 	}
 
 	@Test

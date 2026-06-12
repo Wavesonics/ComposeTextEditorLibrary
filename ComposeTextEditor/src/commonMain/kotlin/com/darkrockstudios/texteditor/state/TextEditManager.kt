@@ -34,7 +34,8 @@ class TextEditManager(private val state: TextEditorState) {
 		// Selection offsets must not outlive a content mutation. Span operations
 		// leave the text untouched, so they keep the selection.
 		val isSpanOperation = operation is TextEditOperation.StyleSpan ||
-				operation is TextEditOperation.RichSpan
+				operation is TextEditOperation.RichSpan ||
+				operation is TextEditOperation.LineBlock
 		if (!isSpanOperation && state.selector.selection != null) {
 			state.selector.clearSelection()
 		}

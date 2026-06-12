@@ -1,12 +1,20 @@
 package texteditmanager.undo
 
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
 import com.darkrockstudios.texteditor.CharLineOffset
+import com.darkrockstudios.texteditor.TextEditorRange
 import com.darkrockstudios.texteditor.markdown.MarkdownExtension
 import com.darkrockstudios.texteditor.richstyle.BLOCKQUOTE_PARAGRAPH_STYLE
+import com.darkrockstudios.texteditor.richstyle.BULLET_LIST_PARAGRAPH_STYLE
 import com.darkrockstudios.texteditor.richstyle.BlockquoteSpanStyle
+import com.darkrockstudios.texteditor.richstyle.BulletListSpanStyle
 import com.darkrockstudios.texteditor.richstyle.CODE_FENCE_PARAGRAPH_STYLE
 import com.darkrockstudios.texteditor.richstyle.CodeFenceSpanStyle
+import com.darkrockstudios.texteditor.richstyle.HighlightSpanStyle
 import com.darkrockstudios.texteditor.richstyle.ORDERED_LIST_PARAGRAPH_STYLE
 import com.darkrockstudios.texteditor.richstyle.OrderedListSpanStyle
 import com.darkrockstudios.texteditor.state.TextEditOperation
@@ -113,6 +121,20 @@ class LineBlockUndoTests {
 	}
 
 	@Test
+	fun `toggle list keeps the active multi-line selection`() {
+		state.setText("one\ntwo\nthree")
+		val selection = TextEditorRange(
+			start = CharLineOffset(0, 0),
+			end = CharLineOffset(2, 5)
+		)
+		state.selector.updateSelection(selection.start, selection.end)
+
+		markdown.toggleOrderedList(0..2)
+
+		assertEquals(selection, state.selector.selection)
+	}
+
+	@Test
 	fun `undo multi-line list toggle restores every line`() {
 		state.setText("one\ntwo\nthree")
 		markdown.toggleOrderedList(0..2)
@@ -124,5 +146,75 @@ class LineBlockUndoTests {
 			assertFalse(hasParagraphStyle(line, ORDERED_LIST_PARAGRAPH_STYLE))
 		}
 		assertEquals("one\ntwo\nthree", state.getAllText().text)
+	}
+
+	@Test
+	fun `toggle list then undo preserves a character bold span`() {
+		val bold = SpanStyle(fontWeight = FontWeight.Bold)
+		state.setText(buildAnnotatedString {
+			append("Hello ")
+			pushStyle(bold)
+			append("World")
+			pop()
+		})
+		fun boldRange() = state.textLines[0].spanStyles
+			.singleOrNull { it.item == bold }
+			?.let { it.start to it.end }
+		assertEquals(6 to 11, boldRange())
+
+		markdown.toggleOrderedList(0..0)
+		assertEquals("Hello World", state.textLines[0].text)
+		assertEquals(6 to 11, boldRange())
+
+		state.undo()
+		assertEquals("Hello World", state.textLines[0].text)
+		assertEquals(6 to 11, boldRange())
+	}
+
+	@Test
+	fun `toggle list then undo preserves a standalone highlight span`() {
+		state.setText("Hello World")
+		val highlight = HighlightSpanStyle(Color.Yellow)
+		val range = TextEditorRange(
+			start = CharLineOffset(0, 0),
+			end = CharLineOffset(0, 5)
+		)
+		state.addRichSpan(range, highlight)
+		fun highlightSpans() = state.richSpanManager.getAllRichSpans()
+			.filter { it.style === highlight }
+		assertEquals(1, highlightSpans().size)
+		assertEquals(range, highlightSpans().single().range)
+
+		markdown.toggleOrderedList(0..0)
+		assertEquals(1, highlightSpans().size)
+		assertEquals(range, highlightSpans().single().range)
+
+		// One undo reverts only the list toggle; the highlight is its own entry.
+		state.undo()
+		assertEquals(1, highlightSpans().size)
+		assertEquals(range, highlightSpans().single().range)
+	}
+
+	@Test
+	fun `undo ordered list demoting a bullet restores the bullet`() {
+		state.setText("item")
+		markdown.toggleBulletList(0..0)
+		assertEquals(listOf(0), spanLines(BulletListSpanStyle))
+		assertTrue(hasParagraphStyle(0, BULLET_LIST_PARAGRAPH_STYLE))
+		val bulletContent = state.textLines[0]
+
+		// Ordered list demotes the bullet as a mutually-excluded block.
+		markdown.toggleOrderedList(0..0)
+		assertEquals(listOf(0), spanLines(OrderedListSpanStyle))
+		assertTrue(spanLines(BulletListSpanStyle).isEmpty())
+
+		// Bullet vs ordered is distinguished by the rich span — the two share an
+		// identical ParagraphStyle, so the indent alone can't tell them apart.
+		state.undo()
+		assertEquals(listOf(0), spanLines(BulletListSpanStyle))
+		assertTrue(spanLines(OrderedListSpanStyle).isEmpty())
+		assertTrue(hasParagraphStyle(0, BULLET_LIST_PARAGRAPH_STYLE))
+		assertEquals(bulletContent.text, state.textLines[0].text)
+		assertEquals(bulletContent.paragraphStyles, state.textLines[0].paragraphStyles)
 	}
 }
