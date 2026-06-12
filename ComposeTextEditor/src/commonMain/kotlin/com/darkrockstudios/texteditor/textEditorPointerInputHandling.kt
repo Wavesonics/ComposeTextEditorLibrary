@@ -80,14 +80,13 @@ private fun Modifier.handleDragInput(state: TextEditorState, readOnly: Boolean):
 				// Secondary (right) click should preserve existing selection for context menu
 				val clickedPosition = state.getOffsetAtPosition(initialPosition)
 				if (isShiftPressed) {
-					// Shift+click extends from the cursor (or the existing selection's far end)
-					// to the click; this handler owns the extension so the other two pointer
-					// handlers must leave the selection alone while shift is held. The cursor is
-					// the moving end, so track it even when readOnly (as shift+arrow does), or a
-					// later shift+click would re-anchor from a stale cursor.
+					// This handler owns the shift+click extension; the other two pointer
+					// handlers must leave the selection alone while shift is held.
 					val anchor = state.cursorPosition
 					mouseSelectionAnchor = state.selector.extendSelection(anchor, clickedPosition)
-					state.cursor.updatePosition(clickedPosition)
+					if (!readOnly) {
+						state.cursor.updatePosition(clickedPosition)
+					}
 				} else {
 					mouseSelectionAnchor = clickedPosition
 					state.selector.startSelection(position = clickedPosition, isTouch = false)
