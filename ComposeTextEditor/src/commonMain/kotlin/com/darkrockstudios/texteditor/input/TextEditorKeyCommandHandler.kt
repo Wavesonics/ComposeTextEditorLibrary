@@ -325,30 +325,7 @@ internal class TextEditorKeyCommandHandler {
 		state: TextEditorState,
 		initialPosition: CharLineOffset
 	) {
-		val currentSelection = state.selector.selection
-		when {
-			// No existing selection - start a new one
-			currentSelection == null -> {
-				state.selector.updateSelection(initialPosition, state.cursorPosition)
-			}
-			// Extend/modify existing selection
-			else -> {
-				// If we were at the start of the selection, keep the end fixed
-				when (initialPosition) {
-					currentSelection.start -> {
-						state.selector.updateSelection(state.cursorPosition, currentSelection.end)
-					}
-					// If we were at the end of the selection, keep the start fixed
-					currentSelection.end -> {
-						state.selector.updateSelection(currentSelection.start, state.cursorPosition)
-					}
-					// If cursor was outside selection, create new selection
-					else -> {
-						state.selector.updateSelection(initialPosition, state.cursorPosition)
-					}
-				}
-			}
-		}
+		state.selector.extendSelection(initialPosition, state.cursorPosition)
 	}
 
 	/**

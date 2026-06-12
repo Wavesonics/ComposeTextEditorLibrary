@@ -28,12 +28,16 @@ internal fun Modifier.textEditorPointerInputHandling(
 		.handleDragInput(state, readOnly)
 		.handleTextInteractions(state, onSpanClick, onContextMenuRequest, readOnly)
 		.detectMouseClicksImperatively(
-			onClick = { offset: Offset ->
-				val position = state.getOffsetAtPosition(offset)
-				if (!readOnly) {
-					state.cursor.updatePosition(position)
+			onClick = { offset: Offset, isShiftPressed: Boolean ->
+				// On shift+click handleDragInput extends the selection; clearing it here
+				// (handlers run in parallel) would race away the extension.
+				if (!isShiftPressed) {
+					val position = state.getOffsetAtPosition(offset)
+					if (!readOnly) {
+						state.cursor.updatePosition(position)
+					}
+					state.selector.clearSelection()
 				}
-				state.selector.clearSelection()
 			},
 			onDoubleClick = { offset: Offset ->
 				val position = state.getOffsetAtPosition(offset)
@@ -60,6 +64,7 @@ private fun Modifier.handleDragInput(state: TextEditorState, readOnly: Boolean):
 					!currentEvent.buttons.isSecondaryPressed
 			val isMouseLike = down.type == PointerType.Mouse || hasPrimaryButton
 			val isFingerTouch = down.type == PointerType.Touch && !hasPrimaryButton
+			val isShiftPressed = currentEvent.keyboardModifiers.isShiftPressed
 
 			val initialPosition = down.position
 
@@ -73,8 +78,20 @@ private fun Modifier.handleDragInput(state: TextEditorState, readOnly: Boolean):
 			} else if (isMouseLike && hasPrimaryButton) {
 				// Only start selection drag on primary (left) mouse button
 				// Secondary (right) click should preserve existing selection for context menu
-				mouseSelectionAnchor = state.getOffsetAtPosition(initialPosition)
-				state.selector.startSelection(position = mouseSelectionAnchor, isTouch = false)
+				val clickedPosition = state.getOffsetAtPosition(initialPosition)
+				if (isShiftPressed) {
+					// Shift+click extends from the cursor (or the existing selection's far end)
+					// to the click; this handler owns the extension so the other two pointer
+					// handlers must leave the selection alone while shift is held. The cursor is
+					// the moving end, so track it even when readOnly (as shift+arrow does), or a
+					// later shift+click would re-anchor from a stale cursor.
+					val anchor = state.cursorPosition
+					mouseSelectionAnchor = state.selector.extendSelection(anchor, clickedPosition)
+					state.cursor.updatePosition(clickedPosition)
+				} else {
+					mouseSelectionAnchor = clickedPosition
+					state.selector.startSelection(position = clickedPosition, isTouch = false)
+				}
 			}
 
 			val pointerId = down.id
@@ -155,6 +172,7 @@ private fun handleSpanInteraction(
 	clickType: SpanClickType,
 	onSpanClick: RichSpanClickListener?,
 	readOnly: Boolean,
+	isShiftPressed: Boolean = false,
 ): Boolean {
 	if (findHandleAtPosition(offset, state) != null) {
 		return true
@@ -163,14 +181,16 @@ private fun handleSpanInteraction(
 	val position = state.getOffsetAtPosition(offset)
 	val clickedSpan = state.findSpanAtPosition(position)
 
-	if (clickType == SpanClickType.PRIMARY_CLICK || clickType == SpanClickType.TAP) {
+	// A shift+click extends the selection; handleDragInput owns that, so leave the
+	// cursor and selection untouched here rather than collapsing them.
+	if (!isShiftPressed && (clickType == SpanClickType.PRIMARY_CLICK || clickType == SpanClickType.TAP)) {
 		if (!readOnly) {
 			state.cursor.updatePosition(position)
 		}
 		state.selector.clearSelection()
 	}
 
-	return if (clickedSpan != null && onSpanClick != null) {
+	return if (!isShiftPressed && clickedSpan != null && onSpanClick != null) {
 		onSpanClick.invoke(clickedSpan, clickType, offset)
 	} else {
 		true
@@ -226,6 +246,7 @@ private fun Modifier.handleTextInteractions(
 									SpanClickType.PRIMARY_CLICK,
 									onSpanClick,
 									readOnly,
+									isShiftPressed = event.keyboardModifiers.isShiftPressed,
 								)
 								didHandlePress = true
 							} else if (hasSecondaryButton) {
@@ -312,7 +333,7 @@ private fun Modifier.handleTextInteractions(
 
 @OptIn(ExperimentalTime::class)
 private fun Modifier.detectMouseClicksImperatively(
-	onClick: (Offset) -> Unit,
+	onClick: (Offset, Boolean) -> Unit,
 	onDoubleClick: (Offset) -> Unit,
 	onTripleClick: (Offset) -> Unit,
 ): Modifier {
@@ -343,7 +364,7 @@ private fun Modifier.detectMouseClicksImperatively(
 				val downTime = kotlin.time.Clock.System.now().toEpochMilliseconds()
 				val downPosition = down.position
 
-				onClick(downPosition)
+				onClick(downPosition, currentEvent.keyboardModifiers.isShiftPressed)
 
 				do {
 					val event = awaitPointerEvent()
