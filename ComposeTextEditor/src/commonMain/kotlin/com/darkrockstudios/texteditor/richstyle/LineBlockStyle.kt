@@ -157,7 +157,10 @@ internal fun TextEditorState.applyLineBlock(line: Int, block: LineBlockStyle) {
 		}
 	}
 	updateLine(line, rebuilt)
-	addRichSpan(
+	// Direct manager call: the line-block change is driven by `updateLine` (which
+	// isn't history-tracked), so recording only the span would make undo leave a
+	// half-applied block. Block-level undo is out of scope here.
+	richSpanManager.addRichSpan(
 		start = CharLineOffset(line, 0),
 		end = CharLineOffset(line, existing.length),
 		style = block.spanStyle,
@@ -174,7 +177,7 @@ internal fun TextEditorState.demoteLineBlock(line: Int, block: LineBlockStyle) {
 	val spans = richSpanManager.getAllRichSpans()
 		.filter { it.style === block.spanStyle && it.range.start.line == line }
 	if (spans.isEmpty()) return
-	spans.forEach { removeRichSpan(it) }
+	spans.forEach { richSpanManager.removeRichSpan(it) }
 	val rebuilt = buildAnnotatedString {
 		append(existing.text)
 		existing.spanStyles.forEach { range ->

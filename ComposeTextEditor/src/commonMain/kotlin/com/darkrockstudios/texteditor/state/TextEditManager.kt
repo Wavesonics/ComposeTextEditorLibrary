@@ -6,6 +6,7 @@ import androidx.compose.ui.text.buildAnnotatedString
 import com.darkrockstudios.texteditor.CharLineOffset
 import com.darkrockstudios.texteditor.TextEditorRange
 import com.darkrockstudios.texteditor.annotatedstring.splitAnnotatedString
+import com.darkrockstudios.texteditor.richstyle.RichSpanStyle
 import com.darkrockstudios.texteditor.utils.appendAnnotatedStrings
 import com.darkrockstudios.texteditor.utils.buildAnnotatedStringWithSpans
 import com.darkrockstudios.texteditor.utils.mergeAnnotatedStrings
@@ -24,8 +25,11 @@ class TextEditManager(private val state: TextEditorState) {
 	val editOperations: SharedFlow<TextEditOperation> = _editOperations
 
 	fun applyOperation(operation: TextEditOperation, addToHistory: Boolean = true) {
-		// Selection offsets must not outlive a content mutation
-		if (operation !is TextEditOperation.StyleSpan && state.selector.selection != null) {
+		// Selection offsets must not outlive a content mutation. Span operations
+		// leave the text untouched, so they keep the selection.
+		val isSpanOperation = operation is TextEditOperation.StyleSpan ||
+				operation is TextEditOperation.RichSpan
+		if (!isSpanOperation && state.selector.selection != null) {
 			state.selector.clearSelection()
 		}
 
@@ -34,6 +38,7 @@ class TextEditManager(private val state: TextEditorState) {
 			is TextEditOperation.Delete -> applyDelete(addToHistory, operation)
 			is TextEditOperation.Replace -> applyReplace(addToHistory, operation)
 			is TextEditOperation.StyleSpan -> applyStyleOperation(operation)
+			is TextEditOperation.RichSpan -> applyRichSpanOperation(operation)
 		}
 
 		state.cursor.updatePosition(operation.cursorAfter)
@@ -509,6 +514,19 @@ class TextEditManager(private val state: TextEditorState) {
 		return null
 	}
 
+	private fun applyRichSpanOperation(operation: TextEditOperation.RichSpan): OperationMetadata? {
+		if (operation.isAdd) {
+			state.richSpanManager.addRichSpan(operation.range, operation.style)
+		} else {
+			state.richSpanManager.removeRichSpan(
+				operation.range.start,
+				operation.range.end,
+				operation.style
+			)
+		}
+		return null
+	}
+
 	fun undo() {
 		history.undo()?.let { entry ->
 			when (entry.operation) {
@@ -516,6 +534,7 @@ class TextEditManager(private val state: TextEditorState) {
 				is TextEditOperation.Delete -> undoDelete(entry, entry.operation)
 				is TextEditOperation.Replace -> undoReplace(entry.operation, entry)
 				is TextEditOperation.StyleSpan -> undoStyleSpan(entry.operation)
+				is TextEditOperation.RichSpan -> undoRichSpan(entry.operation)
 			}
 		}
 	}
@@ -630,6 +649,18 @@ class TextEditManager(private val state: TextEditorState) {
 		applyOperation(inverseOperation, addToHistory = false)
 	}
 
+	private fun undoRichSpan(operation: TextEditOperation.RichSpan) {
+		val inverseOperation = TextEditOperation.RichSpan(
+			range = operation.range,
+			style = operation.style,
+			isAdd = !operation.isAdd,
+			cursorBefore = operation.cursorAfter,
+			cursorAfter = operation.cursorBefore
+		)
+
+		applyOperation(inverseOperation, addToHistory = false)
+	}
+
 	fun redo() {
 		history.redo()?.let { entry ->
 			applyOperation(entry.operation, addToHistory = false)
@@ -657,7 +688,9 @@ class TextEditManager(private val state: TextEditorState) {
 					preserved.relativeEnd.char
 			)
 
-			state.addRichSpan(startPos, endPos, preserved.style)
+			// Bypass the history-recording path: this restoration is itself part of
+			// an undo/redo and must not push a new edit onto the queue.
+			state.richSpanManager.addRichSpan(startPos, endPos, preserved.style)
 		}
 	}
 
@@ -676,6 +709,28 @@ class TextEditManager(private val state: TextEditorState) {
 		val operation = TextEditOperation.StyleSpan(
 			range = textRange,
 			style = spanStyle,
+			isAdd = false,
+			cursorBefore = state.cursorPosition,
+			cursorAfter = state.cursorPosition // Keep cursor in same position
+		)
+		applyOperation(operation)
+	}
+
+	fun addRichSpan(textRange: TextEditorRange, style: RichSpanStyle) {
+		val operation = TextEditOperation.RichSpan(
+			range = textRange,
+			style = style,
+			isAdd = true,
+			cursorBefore = state.cursorPosition,
+			cursorAfter = state.cursorPosition // Keep cursor in same position
+		)
+		applyOperation(operation)
+	}
+
+	fun removeRichSpan(textRange: TextEditorRange, style: RichSpanStyle) {
+		val operation = TextEditOperation.RichSpan(
+			range = textRange,
+			style = style,
 			isAdd = false,
 			cursorBefore = state.cursorPosition,
 			cursorAfter = state.cursorPosition // Keep cursor in same position
