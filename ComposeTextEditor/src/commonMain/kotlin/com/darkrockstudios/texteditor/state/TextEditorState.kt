@@ -158,6 +158,10 @@ class TextEditorState(
 	// same text. Null until the first copy/cut.
 	private var copiedRichSpans: CopiedRichSpans? = null
 
+	// Exempts the next single edit from clearing [copiedRichSpans], so a cut's
+	// delete or a paste's insert/replace doesn't wipe the buffer it depends on.
+	private var richSpanBufferSurvivesNextEdit = false
+
 	/**
 	 * Platform-specific extensions for TextEditorState.
 	 * On Android: Contains IME-related functionality (cursor anchor monitoring, etc.)
@@ -873,10 +877,18 @@ class TextEditorState(
 	 * copy/cut handlers alongside writing the text to the system clipboard.
 	 */
 	fun copyRichSpans(range: TextEditorRange) {
-		val preserved = richSpanManager.getSpansInRange(range).map { span ->
+		// getSpansInRange returns spans that merely OVERLAP the copy range. A span
+		// starting before range.start (partial selection of a list item, or a
+		// multi-line span only partly covered) would yield a negative relative
+		// offset and a corrupt span on paste, so clamp each span to the copy range
+		// and drop any that collapse to empty/inverted.
+		val preserved = richSpanManager.getSpansInRange(range).mapNotNull { span ->
+			val clampedStart = maxOf(span.range.start, range.start)
+			val clampedEnd = minOf(span.range.end, range.end)
+			if (clampedStart >= clampedEnd) return@mapNotNull null
 			PreservedRichSpan(
-				relativeStart = getRelativePosition(span.range.start, range.start),
-				relativeEnd = getRelativePosition(span.range.end, range.start),
+				relativeStart = getRelativePosition(clampedStart, range.start),
+				relativeEnd = getRelativePosition(clampedEnd, range.start),
 				style = span.style
 			)
 		}
@@ -888,9 +900,38 @@ class TextEditorState(
 	}
 
 	/**
+	 * Exempts the next single edit from invalidating the rich-span buffer. Call
+	 * immediately before an edit that must not clear the buffer: the delete in a
+	 * cut, or the insert/replace in a paste.
+	 */
+	internal fun preserveCopiedRichSpansThroughNextEdit() {
+		richSpanBufferSurvivesNextEdit = copiedRichSpans != null
+	}
+
+	/**
+	 * Drops the remembered rich spans. Any document mutation that is not the
+	 * paste's own edit invalidates the buffer, so a buffer captured before an
+	 * intervening edit — or text that merely happens to match content copied from
+	 * another source after the document changed — cannot apply stale spans.
+	 */
+	internal fun invalidateCopiedRichSpans() {
+		if (richSpanBufferSurvivesNextEdit) {
+			richSpanBufferSurvivesNextEdit = false
+			return
+		}
+		copiedRichSpans = null
+	}
+
+	/**
 	 * Re-applies the rich spans captured by [copyRichSpans] at [insertPosition].
-	 * No-op unless [pastedText] matches the text that was copied — this keeps
-	 * stale spans off content pasted from another source.
+	 * No-op unless [pastedText] matches the text that was copied. The text match
+	 * is a secondary guard; the primary protection against stale spans is
+	 * [invalidateCopiedRichSpans], which clears the buffer on any intervening edit.
+	 *
+	 * Residual limitation: if the user copies identical text from another app with
+	 * no editor edit in between, the text match still succeeds and the in-editor
+	 * spans apply. Fully closing this needs platform-clipboard ownership tracking,
+	 * which is out of scope here.
 	 */
 	fun pasteRichSpans(insertPosition: CharLineOffset, pastedText: AnnotatedString) {
 		val copied = copiedRichSpans ?: return
