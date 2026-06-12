@@ -322,6 +322,7 @@ class SpellCheckState(
 
 				is TextEditOperation.Replace -> operation.range
 				is TextEditOperation.StyleSpan -> null
+				is TextEditOperation.RichSpan -> null
 			}
 
 			range?.let {
