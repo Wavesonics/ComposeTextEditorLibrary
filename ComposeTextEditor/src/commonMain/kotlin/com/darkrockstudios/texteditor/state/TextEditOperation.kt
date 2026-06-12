@@ -163,4 +163,36 @@ sealed class TextEditOperation {
 			state: TextEditorState
 		): CharLineOffset = offset // Rich span changes don't affect positions
 	}
+
+	/**
+	 * An atomic line-block toggle (list / blockquote / code fence). Each entry in
+	 * [lines] snapshots an affected line's content and line-anchored block spans
+	 * both BEFORE and AFTER the toggle, so undo/redo restore paragraph style, text
+	 * style, and every block span (including any mutually-excluded block demoted as
+	 * a side effect) in one step.
+	 */
+	data class LineBlock(
+		val lines: List<LineBlockChange>,
+		override val cursorBefore: CharLineOffset,
+		override val cursorAfter: CharLineOffset
+	) : TextEditOperation() {
+		override fun transformOffset(
+			offset: CharLineOffset,
+			state: TextEditorState
+		): CharLineOffset = offset // Toggles change paragraph style only, not text length
+	}
 }
+
+/**
+ * One line's before/after snapshot for an atomic [TextEditOperation.LineBlock].
+ * [blockSpansBefore]/[blockSpansAfter] list the line-anchored block span styles
+ * attached to the line in each state — restoring them rebuilds the gutter markers
+ * exactly. The paragraph/text indent itself lives in the captured content.
+ */
+data class LineBlockChange(
+	val lineIndex: Int,
+	val contentBefore: AnnotatedString,
+	val contentAfter: AnnotatedString,
+	val blockSpansBefore: List<RichSpanStyle>,
+	val blockSpansAfter: List<RichSpanStyle>,
+)

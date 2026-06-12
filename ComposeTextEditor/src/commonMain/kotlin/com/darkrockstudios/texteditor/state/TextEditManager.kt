@@ -6,7 +6,13 @@ import androidx.compose.ui.text.buildAnnotatedString
 import com.darkrockstudios.texteditor.CharLineOffset
 import com.darkrockstudios.texteditor.TextEditorRange
 import com.darkrockstudios.texteditor.annotatedstring.splitAnnotatedString
+import com.darkrockstudios.texteditor.richstyle.LineBlockStyle
 import com.darkrockstudios.texteditor.richstyle.RichSpanStyle
+import com.darkrockstudios.texteditor.richstyle.applyLineBlock
+import com.darkrockstudios.texteditor.richstyle.demoteLineBlock
+import com.darkrockstudios.texteditor.richstyle.hasLineBlock
+import com.darkrockstudios.texteditor.richstyle.lineBlockSpanStyles
+import com.darkrockstudios.texteditor.richstyle.setLineBlockSpans
 import com.darkrockstudios.texteditor.utils.appendAnnotatedStrings
 import com.darkrockstudios.texteditor.utils.buildAnnotatedStringWithSpans
 import com.darkrockstudios.texteditor.utils.mergeAnnotatedStrings
@@ -28,7 +34,8 @@ class TextEditManager(private val state: TextEditorState) {
 		// Selection offsets must not outlive a content mutation. Span operations
 		// leave the text untouched, so they keep the selection.
 		val isSpanOperation = operation is TextEditOperation.StyleSpan ||
-				operation is TextEditOperation.RichSpan
+				operation is TextEditOperation.RichSpan ||
+				operation is TextEditOperation.LineBlock
 		if (!isSpanOperation && state.selector.selection != null) {
 			state.selector.clearSelection()
 		}
@@ -39,6 +46,7 @@ class TextEditManager(private val state: TextEditorState) {
 			is TextEditOperation.Replace -> applyReplace(addToHistory, operation)
 			is TextEditOperation.StyleSpan -> applyStyleOperation(operation)
 			is TextEditOperation.RichSpan -> applyRichSpanOperation(operation)
+			is TextEditOperation.LineBlock -> applyLineBlockOperation(operation)
 		}
 
 		state.cursor.updatePosition(operation.cursorAfter)
@@ -528,6 +536,57 @@ class TextEditManager(private val state: TextEditorState) {
 		return null
 	}
 
+	private fun applyLineBlockOperation(operation: TextEditOperation.LineBlock): OperationMetadata? {
+		applyLineBlockState(operation.lines, undo = false)
+		return null
+	}
+
+	// Restores each affected line's content and its exact block-span set for one
+	// direction of the toggle. The spans go through the direct manager path so the
+	// single LineBlock history entry isn't double-counted.
+	private fun applyLineBlockState(lines: List<LineBlockChange>, undo: Boolean) {
+		lines.forEach { change ->
+			val content = if (undo) change.contentBefore else change.contentAfter
+			val spans = if (undo) change.blockSpansBefore else change.blockSpansAfter
+			state.updateLine(change.lineIndex, content)
+			state.setLineBlockSpans(change.lineIndex, spans)
+		}
+	}
+
+	/**
+	 * Captures each line's before/after content + block spans, applies the toggle
+	 * via the direct (non-recording) path, then records ONE atomic LineBlock entry.
+	 */
+	internal fun toggleLineBlock(lines: IntRange, block: LineBlockStyle) {
+		val anyOff = lines.any { !state.hasLineBlock(it, block) }
+		val cursorBefore = state.cursorPosition
+
+		val changes = lines.map { lineIdx ->
+			val contentBefore = state.getLine(lineIdx)
+			val spansBefore = state.lineBlockSpanStyles(lineIdx)
+			if (anyOff) {
+				if (!state.hasLineBlock(lineIdx, block)) state.applyLineBlock(lineIdx, block)
+			} else {
+				state.demoteLineBlock(lineIdx, block)
+			}
+			LineBlockChange(
+				lineIndex = lineIdx,
+				contentBefore = contentBefore,
+				contentAfter = state.getLine(lineIdx),
+				blockSpansBefore = spansBefore,
+				blockSpansAfter = state.lineBlockSpanStyles(lineIdx),
+			)
+		}
+
+		applyOperation(
+			TextEditOperation.LineBlock(
+				lines = changes,
+				cursorBefore = cursorBefore,
+				cursorAfter = cursorBefore,
+			)
+		)
+	}
+
 	fun undo() {
 		history.undo()?.let { entry ->
 			when (entry.operation) {
@@ -536,8 +595,16 @@ class TextEditManager(private val state: TextEditorState) {
 				is TextEditOperation.Replace -> undoReplace(entry.operation, entry)
 				is TextEditOperation.StyleSpan -> undoStyleSpan(entry.operation)
 				is TextEditOperation.RichSpan -> undoRichSpan(entry.operation)
+				is TextEditOperation.LineBlock -> undoLineBlock(entry.operation)
 			}
 		}
+	}
+
+	private fun undoLineBlock(operation: TextEditOperation.LineBlock) {
+		applyLineBlockState(operation.lines, undo = true)
+		state.cursor.updatePosition(operation.cursorBefore)
+		state.invalidateCopiedRichSpans()
+		state.updateBookKeeping()
 	}
 
 	private fun undoReplace(
