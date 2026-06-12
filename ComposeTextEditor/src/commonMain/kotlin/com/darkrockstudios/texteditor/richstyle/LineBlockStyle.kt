@@ -1,5 +1,6 @@
 package com.darkrockstudios.texteditor.richstyle
 
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.ParagraphStyle
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -125,6 +126,36 @@ internal fun TextEditorState.hasLineBlock(line: Int, block: LineBlockStyle): Boo
 		span.style === block.spanStyle && span.range.start.line == line
 	}
 
+/** Wraps [existing] in [block]'s indent paragraph style (and optional text style). */
+internal fun rebuildWithBlock(existing: AnnotatedString, block: LineBlockStyle): AnnotatedString =
+	buildAnnotatedString {
+		withStyle(block.paragraphStyle) {
+			if (block.textStyle != null) {
+				withStyle(block.textStyle) {
+					append(existing)
+				}
+			} else {
+				append(existing)
+			}
+		}
+	}
+
+/** Strips [block]'s indent paragraph style (and optional text style) from [existing]. */
+internal fun rebuildWithoutBlock(existing: AnnotatedString, block: LineBlockStyle): AnnotatedString =
+	buildAnnotatedString {
+		append(existing.text)
+		existing.spanStyles.forEach { range ->
+			if (block.textStyle == null || range.item != block.textStyle) {
+				addStyle(range.item, range.start, range.end)
+			}
+		}
+		existing.paragraphStyles.forEach { range ->
+			if (range.item != block.paragraphStyle) {
+				addStyle(range.item, range.start, range.end)
+			}
+		}
+	}
+
 /**
  * Idempotent — no-op if [line] already carries [block]. Otherwise demotes any
  * mutually-exclusive block on the same line, wraps the line's text in the
@@ -145,26 +176,28 @@ internal fun TextEditorState.applyLineBlock(line: Int, block: LineBlockStyle) {
 		.filter { hasLineBlock(line, it) }
 		.forEach { demoteLineBlock(line, it) }
 	val existing = textLines.getOrNull(line) ?: return
-	val rebuilt = buildAnnotatedString {
-		withStyle(block.paragraphStyle) {
-			if (block.textStyle != null) {
-				withStyle(block.textStyle) {
-					append(existing)
-				}
-			} else {
-				append(existing)
-			}
-		}
-	}
-	updateLine(line, rebuilt)
-	// Direct manager call: the line-block change is driven by `updateLine` (which
-	// isn't history-tracked), so recording only the span would make undo leave a
-	// half-applied block. Block-level undo is out of scope here.
+	updateLine(line, rebuildWithBlock(existing, block))
+	addLineBlockSpan(line, existing.length, block)
+}
+
+/**
+ * Attaches the line-anchored span for [block] to [line] via the direct, non-
+ * recording manager path. Callers that want the toggle in undo history record a
+ * [TextEditOperation.LineBlock] separately — recording here too would double-count.
+ */
+internal fun TextEditorState.addLineBlockSpan(line: Int, length: Int, block: LineBlockStyle) {
 	richSpanManager.addRichSpan(
 		start = CharLineOffset(line, 0),
-		end = CharLineOffset(line, existing.length),
+		end = CharLineOffset(line, length),
 		style = block.spanStyle,
 	)
+}
+
+/** Drops every span anchored to [line] for [block] via the direct manager path. */
+internal fun TextEditorState.removeLineBlockSpans(line: Int, block: LineBlockStyle) {
+	richSpanManager.getAllRichSpans()
+		.filter { it.style === block.spanStyle && it.range.start.line == line }
+		.forEach { richSpanManager.removeRichSpan(it) }
 }
 
 /**
@@ -174,26 +207,32 @@ internal fun TextEditorState.applyLineBlock(line: Int, block: LineBlockStyle) {
  */
 internal fun TextEditorState.demoteLineBlock(line: Int, block: LineBlockStyle) {
 	val existing = textLines.getOrNull(line) ?: return
-	val spans = richSpanManager.getAllRichSpans()
-		.filter { it.style === block.spanStyle && it.range.start.line == line }
-	if (spans.isEmpty()) return
-	spans.forEach { richSpanManager.removeRichSpan(it) }
-	val rebuilt = buildAnnotatedString {
-		append(existing.text)
-		existing.spanStyles.forEach { range ->
-			if (block.textStyle == null || range.item != block.textStyle) {
-				addStyle(range.item, range.start, range.end)
-			}
-		}
-		existing.paragraphStyles.forEach { range ->
-			if (range.item != block.paragraphStyle) {
-				addStyle(range.item, range.start, range.end)
-			}
-		}
-	}
-	updateLine(line, rebuilt)
+	if (!hasLineBlock(line, block)) return
+	removeLineBlockSpans(line, block)
+	updateLine(line, rebuildWithoutBlock(existing, block))
 }
 
 /** Returns the [LineBlockStyle] currently attached to [line], or null if none. */
 internal fun TextEditorState.detectLineBlock(line: Int): LineBlockStyle? =
 	ALL_BLOCK_STYLES.firstOrNull { hasLineBlock(line, it) }
+
+/** The line-anchored block span styles currently attached to [line]. */
+internal fun TextEditorState.lineBlockSpanStyles(line: Int): List<RichSpanStyle> =
+	ALL_BLOCK_STYLES.filter { hasLineBlock(line, it) }.map { it.spanStyle }
+
+/**
+ * Replaces every line-anchored block span on [line] so that exactly [spanStyles]
+ * are attached, spanning the full line content. Used to restore the precise span
+ * set captured for an atomic line-block undo/redo.
+ */
+internal fun TextEditorState.setLineBlockSpans(line: Int, spanStyles: List<RichSpanStyle>) {
+	ALL_BLOCK_STYLES.forEach { removeLineBlockSpans(line, it) }
+	val length = textLines.getOrNull(line)?.length ?: return
+	spanStyles.forEach { style ->
+		richSpanManager.addRichSpan(
+			start = CharLineOffset(line, 0),
+			end = CharLineOffset(line, length),
+			style = style,
+		)
+	}
+}

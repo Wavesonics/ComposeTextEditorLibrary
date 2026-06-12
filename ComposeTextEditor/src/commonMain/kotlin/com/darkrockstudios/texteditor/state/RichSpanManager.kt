@@ -60,6 +60,7 @@ class RichSpanManager(
 					is TextEditOperation.Replace -> handleReplace(operation, updatedSpans, span)
 					is TextEditOperation.StyleSpan -> handleSpanOnly(updatedSpans, span)
 					is TextEditOperation.RichSpan -> handleSpanOnly(updatedSpans, span)
+					is TextEditOperation.LineBlock -> handleSpanOnly(updatedSpans, span)
 				}
 			}
 		}

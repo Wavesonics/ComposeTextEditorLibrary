@@ -306,14 +306,7 @@ class MarkdownExtension(
 	fun toggleCodeFence(lines: IntRange) = toggleLineBlock(lines, CodeFence)
 
 	private fun toggleLineBlock(lines: IntRange, block: LineBlockStyle) {
-		val anyOff = lines.any { !editorState.hasLineBlock(it, block) }
-		for (lineIdx in lines) {
-			if (anyOff) {
-				if (!editorState.hasLineBlock(lineIdx, block)) editorState.applyLineBlock(lineIdx, block)
-			} else {
-				editorState.demoteLineBlock(lineIdx, block)
-			}
-		}
+		editorState.editManager.toggleLineBlock(lines, block)
 	}
 
 	override fun equals(other: Any?): Boolean {
