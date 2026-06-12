@@ -58,7 +58,8 @@ class RichSpanManager(
 						span
 					)
 					is TextEditOperation.Replace -> handleReplace(operation, updatedSpans, span)
-					is TextEditOperation.StyleSpan -> handleStyleSpan(updatedSpans, span)
+					is TextEditOperation.StyleSpan -> handleSpanOnly(updatedSpans, span)
+					is TextEditOperation.RichSpan -> handleSpanOnly(updatedSpans, span)
 				}
 			}
 		}
@@ -378,11 +379,11 @@ class RichSpanManager(
 		}
 	}
 
-	private fun handleStyleSpan(
+	private fun handleSpanOnly(
 		updatedSpans: MutableSet<RichSpan>,
 		span: RichSpan
 	) {
-		// Noop for StyleSpan
+		// Span-only operations leave existing spans in place.
 		updatedSpans.add(span)
 	}
 

@@ -4,6 +4,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import com.darkrockstudios.texteditor.CharLineOffset
 import com.darkrockstudios.texteditor.TextEditorRange
+import com.darkrockstudios.texteditor.richstyle.RichSpanStyle
 
 sealed class TextEditOperation {
 	abstract val cursorBefore: CharLineOffset
@@ -148,5 +149,18 @@ sealed class TextEditOperation {
 			offset: CharLineOffset,
 			state: TextEditorState
 		): CharLineOffset = offset // Style changes don't affect positions
+	}
+
+	data class RichSpan(
+		val range: TextEditorRange,
+		val style: RichSpanStyle,
+		val isAdd: Boolean, // true for add, false for remove
+		override val cursorBefore: CharLineOffset,
+		override val cursorAfter: CharLineOffset
+	) : TextEditOperation() {
+		override fun transformOffset(
+			offset: CharLineOffset,
+			state: TextEditorState
+		): CharLineOffset = offset // Rich span changes don't affect positions
 	}
 }
