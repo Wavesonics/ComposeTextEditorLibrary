@@ -151,6 +151,13 @@ class TextEditorState(
 	internal val editManager = TextEditManager(this)
 	val richSpanManager = RichSpanManager(this)
 
+	// In-editor rich-span clipboard. The system clipboard only carries the
+	// AnnotatedString (text + character-level spans), so line-anchored rich spans
+	// like ordered/bullet lists would be lost on a copy→paste round-trip. We
+	// remember them here keyed by the copied text and re-apply on paste of the
+	// same text. Null until the first copy/cut.
+	private var copiedRichSpans: CopiedRichSpans? = null
+
 	/**
 	 * Platform-specific extensions for TextEditorState.
 	 * On Android: Contains IME-related functionality (cursor anchor monitoring, etc.)
@@ -858,6 +865,53 @@ class TextEditorState(
 				)
 			}
 		)
+	}
+
+	/**
+	 * Remembers the rich spans (ordered/bullet list, blockquote, etc.) within
+	 * [range] so a subsequent [pasteRichSpans] can restore them. Call from the
+	 * copy/cut handlers alongside writing the text to the system clipboard.
+	 */
+	fun copyRichSpans(range: TextEditorRange) {
+		val preserved = richSpanManager.getSpansInRange(range).map { span ->
+			PreservedRichSpan(
+				relativeStart = getRelativePosition(span.range.start, range.start),
+				relativeEnd = getRelativePosition(span.range.end, range.start),
+				style = span.style
+			)
+		}
+		copiedRichSpans = if (preserved.isEmpty()) {
+			null
+		} else {
+			CopiedRichSpans(text = getStringInRange(range), spans = preserved)
+		}
+	}
+
+	/**
+	 * Re-applies the rich spans captured by [copyRichSpans] at [insertPosition].
+	 * No-op unless [pastedText] matches the text that was copied — this keeps
+	 * stale spans off content pasted from another source.
+	 */
+	fun pasteRichSpans(insertPosition: CharLineOffset, pastedText: AnnotatedString) {
+		val copied = copiedRichSpans ?: return
+		if (copied.text != pastedText.text) return
+		copied.spans.forEach { preserved ->
+			val startPos = CharLineOffset(
+				line = insertPosition.line + preserved.relativeStart.lineDiff,
+				char = if (preserved.relativeStart.lineDiff == 0)
+					insertPosition.char + preserved.relativeStart.char
+				else
+					preserved.relativeStart.char
+			)
+			val endPos = CharLineOffset(
+				line = insertPosition.line + preserved.relativeEnd.lineDiff,
+				char = if (preserved.relativeEnd.lineDiff == 0)
+					insertPosition.char + preserved.relativeEnd.char
+				else
+					preserved.relativeEnd.char
+			)
+			addRichSpan(startPos, endPos, preserved.style)
+		}
 	}
 
 	private fun getRelativePosition(

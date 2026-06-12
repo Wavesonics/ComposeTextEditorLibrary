@@ -166,8 +166,9 @@ internal class TextEditorKeyCommandHandler {
 	}
 
 	private fun handleCopy(state: TextEditorState, clipboard: Clipboard, scope: CoroutineScope) {
-		state.selector.selection?.let {
+		state.selector.selection?.let { selection ->
 			val selectedText = state.selector.getSelectedText()
+			state.copyRichSpans(selection)
 			scope.launch {
 				ClipboardHelper.setText(clipboard, selectedText)
 			}
@@ -175,8 +176,9 @@ internal class TextEditorKeyCommandHandler {
 	}
 
 	private fun handleCut(state: TextEditorState, clipboard: Clipboard, scope: CoroutineScope) {
-		state.selector.selection?.let {
+		state.selector.selection?.let { selection ->
 			val selectedText = state.selector.getSelectedText()
+			state.copyRichSpans(selection)
 			state.selector.deleteSelection()
 			scope.launch {
 				ClipboardHelper.setText(clipboard, selectedText)
@@ -188,11 +190,13 @@ internal class TextEditorKeyCommandHandler {
 		scope.launch {
 			ClipboardHelper.getText(clipboard)?.let { text ->
 				val curSelection = state.selector.selection
+				val insertPosition = curSelection?.start ?: state.cursorPosition
 				if (curSelection != null) {
 					state.replace(curSelection, text)
 				} else {
 					state.insertStringAtCursor(text)
 				}
+				state.pasteRichSpans(insertPosition, text)
 				state.selector.clearSelection()
 			}
 		}
