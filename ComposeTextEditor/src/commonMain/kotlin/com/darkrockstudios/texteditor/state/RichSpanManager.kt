@@ -58,7 +58,8 @@ class RichSpanManager(
 						span
 					)
 					is TextEditOperation.Replace -> handleReplace(operation, updatedSpans, span)
-					is TextEditOperation.StyleSpan -> handleStyleSpan(updatedSpans, span)
+					is TextEditOperation.StyleSpan -> handleSpanOnly(updatedSpans, span)
+					is TextEditOperation.RichSpan -> handleSpanOnly(updatedSpans, span)
 				}
 			}
 		}
@@ -313,6 +314,18 @@ class RichSpanManager(
 							(end.line == deletionPoint.line && end.char <= deletionPoint.char) -> {
 						updatedSpans.add(span)
 					}
+					// Span is entirely below the joined line — the deleted newline pulls
+					// every following line up by one, so decrement its line index.
+					start.line > nextLineStart.line -> {
+						updatedSpans.add(
+							span.copy(
+								range = TextEditorRange(
+									start = CharLineOffset(start.line - 1, start.char),
+									end = CharLineOffset(end.line - 1, end.char)
+								)
+							)
+						)
+					}
 					// Span is entirely on the second line
 					start.line == nextLineStart.line -> {
 						val newStart = CharLineOffset(
@@ -366,11 +379,11 @@ class RichSpanManager(
 		}
 	}
 
-	private fun handleStyleSpan(
+	private fun handleSpanOnly(
 		updatedSpans: MutableSet<RichSpan>,
 		span: RichSpan
 	) {
-		// Noop for StyleSpan
+		// Span-only operations leave existing spans in place.
 		updatedSpans.add(span)
 	}
 

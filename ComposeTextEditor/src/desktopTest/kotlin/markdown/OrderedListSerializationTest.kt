@@ -246,6 +246,21 @@ class OrderedListSerializationTest {
 	}
 
 	@Test
+	fun `deleting a middle ordered-list item keeps following items in the list`() = runTest {
+		val extension = createMarkdownExtension()
+		extension.importMarkdown("1. one\n2. two\n3. three\n4. four")
+
+		val state = extension.editorState
+		// Merge item 2 into item 1 via a single-newline delete (backspace at col 0
+		// of a same-block line). Items 3 and 4 must keep their spans and renumber.
+		state.cursor.updatePosition(CharLineOffset(1, 0))
+		state.backspaceAtCursor()
+
+		assertEquals(listOf(0, 1, 2), extension.orderedLines())
+		assertEquals("1. onetwo\n2. three\n3. four", extension.exportAsMarkdown())
+	}
+
+	@Test
 	fun `enter on empty ordered-list item exits the list`() = runTest {
 		val extension = createMarkdownExtension()
 		extension.importMarkdown("1. one\n2. \n3. three")

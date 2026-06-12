@@ -240,15 +240,17 @@ class MarkdownExtension(
 		val processedMarkdown = processedLines.joinToString("\n")
 		val annotatedString = processedMarkdown.toAnnotatedStringFromMarkdown(markdownConfiguration)
 		editorState.setText(annotatedString)
+		// Direct manager calls: importing a document populates spans as part of
+		// loading content, not as a user edit, so it must not enter undo history.
 		hrLineIndices.forEach { lineIdx ->
-			editorState.addRichSpan(
+			editorState.richSpanManager.addRichSpan(
 				start = CharLineOffset(lineIdx, 0),
 				end = CharLineOffset(lineIdx, HR_PLACEHOLDER.length),
 				style = HorizontalRuleSpanStyle,
 			)
 		}
 		imageLines.forEach { (lineIdx, style) ->
-			editorState.addRichSpan(
+			editorState.richSpanManager.addRichSpan(
 				start = CharLineOffset(lineIdx, 0),
 				end = CharLineOffset(lineIdx, IMAGE_PLACEHOLDER.length),
 				style = style,
