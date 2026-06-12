@@ -64,6 +64,28 @@ class TextEditorSelectionManager(
 		updateSelectionRange(range)
 	}
 
+	/**
+	 * Extends the selection to [newPosition], holding the anchor fixed, and returns the fixed
+	 * anchor. The anchor is the end of the existing selection opposite to [anchor]; with no
+	 * selection, [anchor] itself becomes the anchor. Collapsing onto the anchor clears the
+	 * selection. Shared by shift+arrow keys and shift+click so both extend identically.
+	 */
+	fun extendSelection(anchor: CharLineOffset, newPosition: CharLineOffset): CharLineOffset {
+		val currentSelection = _selection
+		val fixedAnchor = when {
+			currentSelection == null -> anchor
+			anchor == currentSelection.start -> currentSelection.end
+			anchor == currentSelection.end -> currentSelection.start
+			else -> anchor
+		}
+		if (fixedAnchor == newPosition) {
+			clearSelection()
+		} else {
+			updateSelection(fixedAnchor, newPosition)
+		}
+		return fixedAnchor
+	}
+
 	private fun makeRange(start: CharLineOffset, end: CharLineOffset): TextEditorRange {
 		return if (isBeforeInDocument(start, end)) {
 			TextEditorRange(start, end)
