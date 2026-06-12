@@ -45,6 +45,11 @@ data class PreservedRichSpan(
 	val style: RichSpanStyle
 )
 
+data class CopiedRichSpans(
+	val text: String,
+	val spans: List<PreservedRichSpan>
+)
+
 data class OperationMetadata(
 	val deletedText: AnnotatedString? = null,
 	val deletedSpans: List<RichSpan> = emptyList(),

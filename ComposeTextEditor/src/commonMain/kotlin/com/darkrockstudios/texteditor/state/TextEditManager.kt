@@ -42,6 +42,7 @@ class TextEditManager(private val state: TextEditorState) {
 		}
 
 		state.cursor.updatePosition(operation.cursorAfter)
+		state.invalidateCopiedRichSpans()
 		state.richSpanManager.updateSpans(operation, metadata)
 		if (addToHistory) {
 			history.recordEdit(operation, metadata ?: OperationMetadata())
