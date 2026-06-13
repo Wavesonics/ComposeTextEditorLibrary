@@ -5,7 +5,7 @@ agp = "9.0.0"
 jvm = "17"
 androidx-lifecycle = "2.10.0"
 compose-multiplatform = "1.11.1"
-compose-hot-reload = "1.2.0-alpha01"
+compose-hot-reload = "1.2.0-alpha02"
 kotlin = "2.3.21"
 kotlinx-coroutines = "1.11.0"
 markdown = "0.7.5"
@@ -17,7 +17,7 @@ activityCompose = "1.13.0"
 composeBom = "2026.05.01"
 
 symspellkt = "3.4.0"
-spellcheckerkt = "1.2.4"
+spellcheckerkt = "1.3.0"
 
 maven-publish = "0.36.0"
 
