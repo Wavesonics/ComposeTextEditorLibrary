@@ -1,6 +1,7 @@
 package com.darkrockstudios.texteditor.state
 
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.ParagraphStyle
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import com.darkrockstudios.texteditor.CharLineOffset
@@ -419,6 +420,13 @@ class TextEditManager(private val state: TextEditorState) {
 				// blockquote/bullet indent attached to firstLine gets dropped when an
 				// empty line below is backspaced into it, and Compose renders the
 				// trailing chars as a separate paragraph (visual paragraph break).
+                //
+                // Collect both lines' contributions first, then coalesce. Merging two
+                // same-style line-blocks (bullet into bullet) yields two contiguous
+                // indent runs ([0,n] and [n,m]); Compose treats each ParagraphStyle run
+                // as its own paragraph, so an un-coalesced pair renders the joined line
+                // as two stacked paragraphs and the merge looks like it never happened.
+                val paragraphRuns = mutableListOf<Triple<ParagraphStyle, Int, Int>>()
 				val lastLineHasParagraphAtJoin = lastLine.paragraphStyles
 					.any { it.start <= endChar && it.end > endChar }
 				firstLine.paragraphStyles.forEach { para ->
@@ -429,33 +437,56 @@ class TextEditManager(private val state: TextEditorState) {
 							} else {
 								para.end
 							}
-							addStyle(para.item, para.start, newEnd)
+                            paragraphRuns.add(Triple(para.item, para.start, newEnd))
 						}
 
 						para.start < startChar -> {
-							addStyle(para.item, para.start, startChar)
+                            paragraphRuns.add(Triple(para.item, para.start, startChar))
 						}
 					}
 				}
 				lastLine.paragraphStyles.forEach { para ->
 					when {
 						para.start >= endChar -> {
-							addStyle(
-								para.item,
-								para.start - endChar + startLength,
-								para.end - endChar + startLength,
+                            paragraphRuns.add(
+                                Triple(
+                                    para.item,
+                                    para.start - endChar + startLength,
+                                    para.end - endChar + startLength,
+                                )
 							)
 						}
 
 						para.end > endChar -> {
-							addStyle(
-								para.item,
-								startLength,
-								para.end - endChar + startLength,
-							)
-						}
-					}
-				}
+                            paragraphRuns.add(
+                                Triple(
+                                    para.item,
+                                    startLength,
+                                    para.end - endChar + startLength,
+                                )
+                            )
+                        }
+                    }
+                }
+                // Coalesce adjacent/overlapping runs of the SAME paragraph style so each
+                // style contributes a single continuous run to the joined line.
+                paragraphRuns
+                    .groupBy { it.first }
+                    .forEach { (style, runs) ->
+                        val sorted = runs.sortedBy { it.second }
+                        var runStart = sorted.first().second
+                        var runEnd = sorted.first().third
+                        sorted.drop(1).forEach { (_, start, end) ->
+                            if (start <= runEnd) {
+                                runEnd = maxOf(runEnd, end)
+                            } else {
+                                addStyle(style, runStart, runEnd)
+                                runStart = start
+                                runEnd = end
+                            }
+                        }
+                        addStyle(style, runStart, runEnd)
+                    }
 			}
 
 			if (state.isEmpty()) {

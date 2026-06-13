@@ -332,6 +332,33 @@ class BulletListSerializationTest {
 	}
 
 	@Test
+	fun `merging two bullet items coalesces the indent into a single paragraph run`() = runTest {
+		// Regression: backspace at the start of a bullet item joins it onto the
+		// bullet above. Both lines carry a BULLET_LIST_PARAGRAPH_STYLE indent, and
+		// the merge used to leave two contiguous runs ([0,n] + [n,m]) on the joined
+		// line. Compose renders each ParagraphStyle run as its own paragraph, so the
+		// joined line displayed as two stacked paragraphs and the merge looked like
+		// it never happened. The runs must coalesce into one span over the whole line.
+		val extension = createMarkdownExtension()
+		extension.importMarkdown("- First item\n- Second item")
+		val state = extension.editorState
+		assertEquals(listOf(0, 1), extension.bulletLines())
+
+		state.cursor.updatePosition(CharLineOffset(1, 0))
+		state.backspaceAtCursor()
+
+		assertEquals(1, state.textLines.size)
+		val merged = state.textLines[0]
+		assertEquals("First itemSecond item", merged.text)
+		assertEquals(listOf(0), extension.bulletLines())
+
+		val indents = merged.paragraphStyles.filter { it.item == BULLET_LIST_PARAGRAPH_STYLE }
+		assertEquals(1, indents.size, "merged bullet line must have exactly one indent run")
+		assertEquals(0, indents[0].start)
+		assertEquals(merged.length, indents[0].end, "indent must span the whole joined line")
+	}
+
+	@Test
 	fun `backspace at start of empty line below bullet preserves bullet on the merged line`() = runTest {
 		val extension = createMarkdownExtension()
 		extension.importMarkdown("- third item\n\nbody")
