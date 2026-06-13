@@ -18,18 +18,13 @@ fun TextEditorState.findAll(
 	if (query.isEmpty()) return emptyList()
 
 	val results = mutableListOf<TextEditorRange>()
-	val searchQuery = if (caseSensitive) query else query.lowercase()
 
 	textLines.forEachIndexed { lineIndex, annotatedString ->
-		val lineText = if (caseSensitive) {
-			annotatedString.text
-		} else {
-			annotatedString.text.lowercase()
-		}
+		val lineText = annotatedString.text
 
 		var startIndex = 0
 		while (true) {
-			val foundIndex = lineText.indexOf(searchQuery, startIndex)
+			val foundIndex = lineText.indexOf(query, startIndex, ignoreCase = !caseSensitive)
 			if (foundIndex == -1) break
 
 			val start = CharLineOffset(line = lineIndex, char = foundIndex)

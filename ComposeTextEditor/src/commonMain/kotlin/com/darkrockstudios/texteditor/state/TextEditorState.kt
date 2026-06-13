@@ -7,8 +7,14 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.LayoutCoordinates
-import androidx.compose.ui.text.*
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.ParagraphStyle
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextMeasurer
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextIndent
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Density
 import com.darkrockstudios.texteditor.CharLineOffset
@@ -22,7 +28,14 @@ import com.darkrockstudios.texteditor.coerceInto
 import com.darkrockstudios.texteditor.cursor.CursorMetrics
 import com.darkrockstudios.texteditor.cursor.getWrappedLineIndex
 import com.darkrockstudios.texteditor.effectiveHeight
-import com.darkrockstudios.texteditor.richstyle.*
+import com.darkrockstudios.texteditor.richstyle.BlockSpanStyle
+import com.darkrockstudios.texteditor.richstyle.CodeFenceSpanStyle
+import com.darkrockstudios.texteditor.richstyle.OrderedListSpanStyle
+import com.darkrockstudios.texteditor.richstyle.RichSpan
+import com.darkrockstudios.texteditor.richstyle.RichSpanStyle
+import com.darkrockstudios.texteditor.richstyle.applyLineBlock
+import com.darkrockstudios.texteditor.richstyle.demoteLineBlock
+import com.darkrockstudios.texteditor.richstyle.detectLineBlock
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
@@ -820,6 +833,19 @@ class TextEditorState(
 
 	fun removeRichSpan(span: RichSpan) {
 		editManager.removeRichSpan(span.range, span.style)
+		updateBookKeeping()
+	}
+
+	/**
+	 * Applies a batch of transient highlight spans (find results, etc.) directly to
+	 * the span manager with a single relayout, bypassing the edit/undo pipeline.
+	 * These are view overlays, not user edits: they must not enter undo history and
+	 * must not emit on [editOperations], and per-span [addRichSpan]/[removeRichSpan]
+	 * would relayout the whole document once per span.
+	 */
+	fun updateRichSpans(remove: Collection<RichSpan>, add: Collection<RichSpan>) {
+		remove.forEach { richSpanManager.removeRichSpan(it) }
+		add.forEach { richSpanManager.addRichSpan(it.range, it.style) }
 		updateBookKeeping()
 	}
 

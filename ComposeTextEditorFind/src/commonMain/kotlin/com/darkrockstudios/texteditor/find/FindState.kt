@@ -1,6 +1,10 @@
 package com.darkrockstudios.texteditor.find
 
-import androidx.compose.runtime.*
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import com.darkrockstudios.texteditor.TextEditorRange
 import com.darkrockstudios.texteditor.richstyle.RichSpan
 import com.darkrockstudios.texteditor.state.TextEditorState
@@ -42,9 +46,6 @@ class FindState(
 	private val matchStyle = FindMatchStyle()
 	private val currentMatchStyle = FindCurrentMatchStyle()
 
-	// Track our spans so we can remove them later
-	private val activeSpans = mutableListOf<RichSpan>()
-
 	// Job for debounced search on text changes
 	private var searchUpdateJob: Job? = null
 
@@ -73,9 +74,6 @@ class FindState(
 			return
 		}
 
-		// Clear existing highlights
-		clearHighlights()
-
 		// Find all matches
 		val results = textState.findAll(newQuery, caseSensitive)
 		_matches.clear()
@@ -83,6 +81,7 @@ class FindState(
 
 		if (results.isEmpty()) {
 			currentMatchIndex = -1
+			clearHighlights()
 			return
 		}
 
@@ -247,14 +246,14 @@ class FindState(
 			_matches[currentMatchIndex].start
 		} else null
 
-		// Clear and re-search
-		clearHighlights()
+		// Re-search
 		val results = textState.findAll(query, caseSensitive)
 		_matches.clear()
 		_matches.addAll(results)
 
 		if (results.isEmpty()) {
 			currentMatchIndex = -1
+			clearHighlights()
 			return
 		}
 
@@ -269,27 +268,35 @@ class FindState(
 	}
 
 	/**
-	 * Update RichSpan highlights for all matches.
+	 * Update RichSpan highlights for all matches in a single batched relayout.
 	 */
 	private fun updateHighlights() {
-		clearHighlights()
-
-		_matches.forEachIndexed { index, range ->
+		val newSpans = _matches.mapIndexed { index, range ->
 			val style = if (index == currentMatchIndex) currentMatchStyle else matchStyle
-			textState.addRichSpan(range, style)
-			activeSpans.add(RichSpan(range, style))
+			RichSpan(range, style)
 		}
+		textState.updateRichSpans(remove = currentHighlightSpans(), add = newSpans)
 	}
 
 	/**
 	 * Remove all find-related highlights.
 	 */
 	private fun clearHighlights() {
-		activeSpans.forEach { span ->
-			textState.removeRichSpan(span)
+		val existing = currentHighlightSpans()
+		if (existing.isNotEmpty()) {
+			textState.updateRichSpans(remove = existing, add = emptyList())
 		}
-		activeSpans.clear()
 	}
+
+	/**
+	 * The highlight spans currently applied by this find session, identified by
+	 * the two style instances this session owns. Read live from the manager so
+	 * removal stays correct even after an edit transforms span positions.
+	 */
+	private fun currentHighlightSpans(): List<RichSpan> =
+		textState.richSpanManager.getAllRichSpans().filter {
+			it.style === matchStyle || it.style === currentMatchStyle
+		}
 
 	/**
 	 * Navigate to the current match - scroll and select.
