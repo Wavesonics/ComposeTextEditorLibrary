@@ -176,8 +176,11 @@ internal fun TextEditorState.applyLineBlock(line: Int, block: LineBlockStyle) {
 		.filter { hasLineBlock(line, it) }
 		.forEach { demoteLineBlock(line, it) }
 	val existing = textLines.getOrNull(line) ?: return
-	updateLine(line, rebuildWithBlock(existing, block))
+	// Attach the span before rebuilding the line: updateLine triggers the relayout
+	// that resolves each line's gutter marker (bullet/numeral), so the span must be
+	// present first or the marker won't render until the next edit forces another pass.
 	addLineBlockSpan(line, existing.length, block)
+	updateLine(line, rebuildWithBlock(existing, block))
 }
 
 /**

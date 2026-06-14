@@ -1,6 +1,11 @@
 package markdown
 
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.TextMeasurer
+import androidx.compose.ui.text.font.createFontFamilyResolver
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.LayoutDirection
 import com.darkrockstudios.texteditor.CharLineOffset
 import com.darkrockstudios.texteditor.markdown.MarkdownConfiguration
 import com.darkrockstudios.texteditor.markdown.MarkdownExtension
@@ -27,6 +32,12 @@ class OrderedListSerializationTest {
 		)
 		return MarkdownExtension(state, configuration)
 	}
+
+	private fun realTextMeasurer(): TextMeasurer = TextMeasurer(
+		defaultFontFamilyResolver = createFontFamilyResolver(),
+		defaultDensity = Density(1f, 1f),
+		defaultLayoutDirection = LayoutDirection.Ltr,
+	)
 
 	private fun MarkdownExtension.orderedLines(): List<Int> =
 		editorState.richSpanManager.getAllRichSpans()
@@ -229,6 +240,24 @@ class OrderedListSerializationTest {
 		// Both lines must carry the OL span; export renumbers automatically.
 		assertEquals(listOf(0, 1), extension.orderedLines())
 		assertEquals("1. one\n2. two", extension.exportAsMarkdown())
+	}
+
+	@Test
+	fun `enter at end of ordered-list line shows the next numeral before any typing`() = runTest {
+		val state = TextEditorState(scope = this, measurer = realTextMeasurer())
+		state.onViewportSizeChange(Size(500f, 500f))
+		val extension = MarkdownExtension(state)
+		extension.importMarkdown("1. one")
+
+		state.cursor.updatePosition(CharLineOffset(0, 3))
+		state.insertNewlineAtCursor()
+
+		// The fresh line must already render its numeral — without typing a character
+		// to force a second relayout pass.
+		val newLineNumber = state.lineOffsets
+			.first { it.line == 1 && it.virtualLineIndex == 0 }
+			.orderedListNumber
+		assertEquals(2, newLineNumber)
 	}
 
 	@Test
