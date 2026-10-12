@@ -341,25 +341,7 @@ fun BasicTextEditor(
 		if (!enabled) state.selector.hideCaretHandle()
 	}
 
-	LaunchedEffect(
-		style.bulletColor,
-		style.blockquoteBarColor,
-		style.blockquoteBackgroundColor,
-		style.orderedListMarkerColor,
-		style.codeFenceBackgroundColor,
-		style.codeFenceBorderColor,
-		style.tableBorderColor,
-		style.tableHeaderBackgroundColor,
-	) {
-		state.bulletColor = style.bulletColor
-		state.blockquoteBarColor = style.blockquoteBarColor
-		state.blockquoteBackgroundColor = style.blockquoteBackgroundColor
-		state.orderedListMarkerColor = style.orderedListMarkerColor
-		state.codeFenceBackgroundColor = style.codeFenceBackgroundColor
-		state.codeFenceBorderColor = style.codeFenceBorderColor
-		state.tableBorderColor = style.tableBorderColor
-		state.tableHeaderBackgroundColor = style.tableHeaderBackgroundColor
-	}
+	SyncDecorationColors(state, style)
 
 	LaunchedEffect(style.paragraphSpacing) {
 		state.paragraphSpacing = style.paragraphSpacing
@@ -518,6 +500,29 @@ fun BasicTextEditor(
 				}
 			}
 		}
+	}
+}
+
+@Composable
+internal fun SyncDecorationColors(state: TextEditorState, style: TextEditorStyle) {
+	LaunchedEffect(
+		style.bulletColor,
+		style.blockquoteBarColor,
+		style.blockquoteBackgroundColor,
+		style.orderedListMarkerColor,
+		style.codeFenceBackgroundColor,
+		style.codeFenceBorderColor,
+		style.tableBorderColor,
+		style.tableHeaderBackgroundColor,
+	) {
+		state.bulletColor = style.bulletColor
+		state.blockquoteBarColor = style.blockquoteBarColor
+		state.blockquoteBackgroundColor = style.blockquoteBackgroundColor
+		state.orderedListMarkerColor = style.orderedListMarkerColor
+		state.codeFenceBackgroundColor = style.codeFenceBackgroundColor
+		state.codeFenceBorderColor = style.codeFenceBorderColor
+		state.tableBorderColor = style.tableBorderColor
+		state.tableHeaderBackgroundColor = style.tableHeaderBackgroundColor
 	}
 }
 

@@ -91,6 +91,8 @@ fun RichTextView(
 		state.paragraphSpacing = style.paragraphSpacing
 	}
 
+	SyncDecorationColors(state, style)
+
 	val density = LocalDensity.current
 
 	LaunchedEffect(density) {
