@@ -2,6 +2,7 @@ package com.darkrockstudios.texteditor.richstyle
 
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.takeOrElse
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.ParagraphStyle
 import androidx.compose.ui.text.TextLayoutResult
@@ -73,12 +74,11 @@ open class OrderedListSpanStyle private constructor(val level: Int) : RichSpanSt
 		val lineHeight = layoutResult.multiParagraph.getLineHeight(lineWrap.virtualLineIndex)
 		val y = (lineHeight - measured.size.height) / 2f
 
-		// `Color.Unspecified` means "use the layout's color" — i.e. inherit the
-		// editor's text color. Hosts override via `TextEditorStyle.orderedListMarkerColor`.
+		// Unspecified on both falls to the layout's color, as the body text does.
 		drawText(
 			textLayoutResult = measured,
 			topLeft = Offset(x, y),
-			color = state.orderedListMarkerColor,
+			color = state.orderedListMarkerColor.takeOrElse { state.textColor },
 		)
 	}
 

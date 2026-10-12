@@ -362,10 +362,12 @@ class TextEditorState private constructor(
 	/**
 	 * Theming colors for line-block gutter markers, mirrored from
 	 * [TextEditorStyle][com.darkrockstudios.texteditor.TextEditorStyle] by
-	 * `BasicTextEditor`. `Color.Unspecified` means "use the
-	 * span's hardcoded fallback" so a state created without a host editor (e.g.
+	 * `BasicTextEditor` and `RichTextView`. `Color.Unspecified` means "use the
+	 * span's fallback" so a state created without a host editor (e.g.
 	 * tests) still renders sensibly.
 	 */
+	var textColor: Color by mutableStateOf(Color.Unspecified)
+		internal set
 	var bulletColor: Color by mutableStateOf(Color.Unspecified)
 		internal set
 	var blockquoteBarColor: Color by mutableStateOf(Color.Unspecified)
