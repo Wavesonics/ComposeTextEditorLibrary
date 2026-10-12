@@ -333,36 +333,10 @@ fun BasicTextEditor(
 		}
 	}
 
-	LaunchedEffect(style.textStyle) {
-		state.textStyle = style.textStyle
-	}
+	SyncStyleToState(state, style)
 
 	LaunchedEffect(enabled) {
 		if (!enabled) state.selector.hideCaretHandle()
-	}
-
-	LaunchedEffect(
-		style.bulletColor,
-		style.blockquoteBarColor,
-		style.blockquoteBackgroundColor,
-		style.orderedListMarkerColor,
-		style.codeFenceBackgroundColor,
-		style.codeFenceBorderColor,
-		style.tableBorderColor,
-		style.tableHeaderBackgroundColor,
-	) {
-		state.bulletColor = style.bulletColor
-		state.blockquoteBarColor = style.blockquoteBarColor
-		state.blockquoteBackgroundColor = style.blockquoteBackgroundColor
-		state.orderedListMarkerColor = style.orderedListMarkerColor
-		state.codeFenceBackgroundColor = style.codeFenceBackgroundColor
-		state.codeFenceBorderColor = style.codeFenceBorderColor
-		state.tableBorderColor = style.tableBorderColor
-		state.tableHeaderBackgroundColor = style.tableHeaderBackgroundColor
-	}
-
-	LaunchedEffect(style.paragraphSpacing) {
-		state.paragraphSpacing = style.paragraphSpacing
 	}
 
 	// Re-run layout when an asynchronous block-state change (e.g. an image

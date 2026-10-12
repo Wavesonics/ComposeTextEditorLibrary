@@ -83,13 +83,7 @@ fun RichTextView(
 		SemanticsDocument(state, canvasPlacement, if (hasLinkClick) { url -> currentOnLinkClick?.invoke(url) } else null)
 	}
 
-	LaunchedEffect(style.textStyle) {
-		state.textStyle = style.textStyle
-	}
-
-	LaunchedEffect(style.paragraphSpacing) {
-		state.paragraphSpacing = style.paragraphSpacing
-	}
+	SyncStyleToState(state, style)
 
 	val density = LocalDensity.current
 
