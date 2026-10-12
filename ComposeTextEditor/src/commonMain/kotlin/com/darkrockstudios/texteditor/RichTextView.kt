@@ -219,7 +219,8 @@ private fun RichTextViewBody(
 				.textEditorPointerInputHandling(
 					state = state,
 					onContextMenuRequest = onContextMenuRequest,
-					readOnly = true,
+					hasCaret = false,
+					tasks = null,
 					links = linkClicks,
 					contentOrigin = { contentOrigin },
 					touchToolbar = touchToolbar,

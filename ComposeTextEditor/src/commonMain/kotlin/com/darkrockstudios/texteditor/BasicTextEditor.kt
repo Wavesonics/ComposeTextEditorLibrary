@@ -439,19 +439,21 @@ fun BasicTextEditor(
 						}
 					}
 					val dragAndDrop = remember(state) { TextDragAndDrop(state, inputRequester::editor) }
+					val taskChecking = remember(state) { TaskChecking(state, enabled = { takesInput }, editor = inputRequester::editor) }
 					dragAndDrop.enabled = editable
 					dragAndDrop.textColor = style.textColor
 					// The canvas: a box, so the handles' popups are placed from its content.
 					Box(
 						modifier = Modifier
 							.textDragAndDrop(dragAndDrop)
-							.textEditorPointerIcon(state, linkClicks, contentOrigin = { contentOrigin })
+							.textEditorPointerIcon(state, linkClicks, tasks = taskChecking, contentOrigin = { contentOrigin })
 							.textEditorPointerInputHandling(
 								state = state,
 								onSpanClick = spanClickProxy,
 								onContextMenuRequest = openPointerMenu,
 								links = linkClicks,
 								caretHandle = enabled,
+								tasks = taskChecking,
 								contentOrigin = { contentOrigin },
 								touchToolbar = touchToolbar,
 								selectionDrag = dragAndDrop,

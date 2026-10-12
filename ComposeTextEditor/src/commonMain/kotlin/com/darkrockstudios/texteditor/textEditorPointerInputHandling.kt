@@ -22,8 +22,10 @@ import com.darkrockstudios.texteditor.input.MacKeyBindings
 import com.darkrockstudios.texteditor.input.platformKeyBindings
 import com.darkrockstudios.texteditor.richstyle.LinkSpanStyle
 import com.darkrockstudios.texteditor.richstyle.TaskSpanStyle
-import com.darkrockstudios.texteditor.state.taskCheckedAt
+import com.darkrockstudios.texteditor.richstyle.isTask
+import com.darkrockstudios.texteditor.state.FocusedEditor
 import com.darkrockstudios.texteditor.state.toggleTaskChecked
+import com.darkrockstudios.texteditor.utils.lineTextLeft
 import com.darkrockstudios.texteditor.richstyle.RichSpan
 import com.darkrockstudios.texteditor.state.CaretAffinity
 import com.darkrockstudios.texteditor.state.PointerHit
@@ -46,14 +48,17 @@ data class SelectionHandle(
  * mouse gesture, [handleHandleDrag] and [handleTouchInteractions] every finger gesture.
  * Mouse versus finger is decided from the buttons, not the pointer type, because
  * Android reports an external mouse as [PointerType.Touch] with its buttons filled in.
+ * Without [hasCaret] a press selects but places no caret, as in a read-only view; a click
+ * or tap on a task's box checks it only through [tasks].
  */
 internal fun Modifier.textEditorPointerInputHandling(
 	state: TextEditorState,
 	onSpanClick: SpanClickSink? = null,
 	onContextMenuRequest: ((Offset) -> Unit)? = null,
-	readOnly: Boolean = false,
+	hasCaret: Boolean = true,
 	links: LinkClicks? = null,
-	caretHandle: Boolean = !readOnly,
+	caretHandle: Boolean = hasCaret,
+	tasks: TaskChecking?,
 	contentOrigin: () -> Offset,
 	touchToolbar: TouchToolbar? = null,
 	selectionDrag: SelectionDrag? = null,
@@ -63,11 +68,12 @@ internal fun Modifier.textEditorPointerInputHandling(
 	return this
 		.handleHandleDrag(state, contentOrigin, touchToolbar, handles)
 		.handleTouchInteractions(
-			state, onSpanClick, onContextMenuRequest, readOnly, links, caretHandle, contentOrigin, touchToolbar, selectionDrag,
-			handles,
+			state, onSpanClick, onContextMenuRequest, hasCaret, links, caretHandle, tasks, contentOrigin, touchToolbar,
+			selectionDrag, handles,
 		)
 		.handleMouseInput(
-			state, onSpanClick, onContextMenuRequest, readOnly, links, contentOrigin, touchToolbar, selectionDrag, primaryPaste,
+			state, onSpanClick, onContextMenuRequest, hasCaret, links, tasks, contentOrigin, touchToolbar, selectionDrag,
+			primaryPaste,
 		)
 }
 
@@ -228,8 +234,9 @@ private fun Modifier.handleMouseInput(
 	state: TextEditorState,
 	onSpanClick: SpanClickSink?,
 	onContextMenuRequest: ((Offset) -> Unit)?,
-	readOnly: Boolean,
+	hasCaret: Boolean,
 	links: LinkClicks?,
+	tasks: TaskChecking?,
 	contentOrigin: () -> Offset,
 	touchToolbar: TouchToolbar?,
 	selectionDrag: SelectionDrag?,
@@ -258,7 +265,7 @@ private fun Modifier.handleMouseInput(
 				// The second and third press of a multi-click select; only a plain first
 				// press can become a click on what is under it.
 				val pressed = if (placesCaret) ClickTarget.at(state, downAt) else null
-				val pressedTask = if (placesCaret && !readOnly) state.taskCheckboxAt(downAt) else null
+				val pressedTask = if (placesCaret) tasks?.boxAt(downAt) else null
 				val held = pressed != null && selectionDrag != null && state.selectionContains(downAt)
 				val outcome = if (held) {
 					selectionDrag.holdPress()
@@ -299,7 +306,7 @@ private fun Modifier.handleMouseInput(
 				if (pressed == null || state.selector.hasSelection()) return@awaitEachGesture
 				val releasedAt = release.inContent(origin)
 				if (pressedTask != null && state.taskCheckboxAt(releasedAt) == pressedTask) {
-					state.toggleTaskChecked(pressedTask)
+					tasks?.toggle(pressedTask)
 					return@awaitEachGesture
 				}
 				val released = ClickTarget.at(state, releasedAt)
@@ -322,7 +329,7 @@ private fun Modifier.handleMouseInput(
 					SpanClickType.SECONDARY_CLICK,
 					press.keyboardModifiers,
 					onSpanClick,
-					readOnly,
+					hasCaret,
 				)
 				onContextMenuRequest?.invoke(downAt)
 			}
@@ -458,7 +465,6 @@ private suspend fun AwaitPointerEventScope.followDrag(
 	}
 }
 
-/** What a click at a point would act on: the span that answers it, and any link there. */
 /**
  * The line of the task whose box is under [offset], in the coordinates [characterAt]
  * takes, or null: the box's first row, from a little before the box to the text.
@@ -467,15 +473,33 @@ private fun TextEditorState.taskCheckboxAt(offset: Offset): Int? {
 	val rows = lineOffsets
 	val y = offset.y + scrollState.value
 	val row = rows.getOrNull(rows.rowAtPoint(offset.x + scrollX, y)) ?: return null
-	if (row.virtualLineIndex != 0 || taskCheckedAt(row.line) == null) return null
-	val (box, size) = TaskSpanStyle.checkboxBounds(row.textLayoutResult, density ?: return null)
+	if (row.virtualLineIndex != 0 || !row.isTask) return null
+	val density = density ?: return null
+	val (box, size) = TaskSpanStyle.checkboxBounds(row.textLayoutResult, density)
 	val x = offset.x + scrollX - row.offset.x
 	val slop = size.width / 2f
-	val inside = x >= box.x - slop && x <= box.x + size.width + slop &&
+	val right = minOf(box.x + size.width + slop, row.textLayoutResult.lineTextLeft(0, density))
+	val inside = x >= box.x - slop && x < right &&
 		y >= row.offset.y && y <= row.offset.y + row.effectiveHeight
 	return row.line.takeIf { inside }
 }
 
+/**
+ * Checks and unchecks tasks from clicks and taps on their boxes while [enabled], each
+ * as an edit by [editor].
+ */
+internal class TaskChecking(
+	private val state: TextEditorState,
+	private val enabled: () -> Boolean,
+	private val editor: () -> FocusedEditor?,
+) {
+	/** The line of the task whose box a press at [offset] would check, or null. */
+	fun boxAt(offset: Offset): Int? = if (enabled()) state.taskCheckboxAt(offset) else null
+
+	fun toggle(line: Int) = state.asEditor(editor()) { state.toggleTaskChecked(line) }
+}
+
+/** What a click at a point would act on: the span that answers it, and any link there. */
 private class ClickTarget(val span: RichSpan?, val link: String?) {
 	companion object {
 		fun at(state: TextEditorState, offset: Offset): ClickTarget = ClickTarget(
@@ -540,7 +564,7 @@ private fun TextEditorState.linkToOpenAt(position: CharLineOffset): String? =
 
 /**
  * The pointer icon for a mouse hovering at [offset] with [modifiers] held: a hand over a
- * link that a click would open, [default] everywhere else.
+ * link or a task's box that a click would act on, [default] everywhere else.
  */
 internal fun pointerIconAt(
 	state: TextEditorState,
@@ -548,32 +572,36 @@ internal fun pointerIconAt(
 	modifiers: PointerKeyboardModifiers,
 	links: LinkClicks?,
 	default: PointerIcon?,
+	tasks: TaskChecking? = null,
 ): PointerIcon? {
+	// A Shift-click extends the selection rather than checking the box.
+	if (!modifiers.isShiftPressed && tasks?.boxAt(offset) != null) return PointerIcon.Hand
 	if (links == null || !links.opensOnClick(modifiers)) return default
 	val link = state.characterAt(offset)?.let { state.linkToOpenAt(it) }
 	return if (link != null) PointerIcon.Hand else default
 }
 
 /**
- * Shows [default] over the text and a hand over links a click would open; a null
- * [default] leaves the parent's icon everywhere but over a link. Only a pointer event
- * updates it, so pressing Ctrl or Cmd over a link changes the icon on the next mouse
- * move.
+ * Shows [default] over the text and a hand over links and task boxes a click would act
+ * on; a null [default] leaves the parent's icon everywhere else. Only a pointer event
+ * with no button held updates it, so pressing Ctrl or Cmd over a link changes the icon
+ * on the next mouse move, and a press or a drag keeps the icon it started with.
  */
 internal fun Modifier.textEditorPointerIcon(
 	state: TextEditorState,
 	links: LinkClicks?,
 	default: PointerIcon? = PointerIcon.Text,
+	tasks: TaskChecking? = null,
 	contentOrigin: () -> Offset,
 ): Modifier = composed {
 	var icon by remember(state, default) { mutableStateOf(default) }
-	val tracking = pointerInput(state, links, default) {
+	val tracking = pointerInput(state, links, default, tasks) {
 		awaitPointerEventScope {
 			while (true) {
 				val event = awaitPointerEvent(PointerEventPass.Initial)
 				val change = event.changes.firstOrNull() ?: continue
-				if (change.type != PointerType.Mouse) continue
-				icon = pointerIconAt(state, change.inContent(contentOrigin()), event.keyboardModifiers, links, default)
+				if (change.type != PointerType.Mouse || event.buttons.areAnyPressed) continue
+				icon = pointerIconAt(state, change.inContent(contentOrigin()), event.keyboardModifiers, links, default, tasks)
 			}
 		}
 	}
@@ -828,20 +856,20 @@ private fun Density.handleSpanInteraction(
 	clickType: SpanClickType,
 	modifiers: PointerKeyboardModifiers,
 	onSpanClick: SpanClickSink?,
-	readOnly: Boolean,
+	hasCaret: Boolean,
 	pressedAt: Offset? = null,
 ): Boolean {
 	var hit = state.pointerHitAt(offset)
 	val placesCaret = when (clickType) {
 		SpanClickType.PRIMARY_CLICK, SpanClickType.TAP -> true
 		// Like native editors, a right-click inside the selection keeps it for the context
-		// menu, and one outside it moves the caret there first. Read-only views have no
-		// caret to move, so they keep the selection either way.
-		SpanClickType.SECONDARY_CLICK -> !readOnly && !state.selector.selectionContains(hit.character)
+		// menu, and one outside it moves the caret there first. Views with no caret keep
+		// the selection either way.
+		SpanClickType.SECONDARY_CLICK -> hasCaret && !state.selector.selectionContains(hit.character)
 	}
 	if (placesCaret) {
 		if (state.finishCompositionIfPointerLeaves(hit.position)) hit = state.pointerHitAt(offset)
-		if (!readOnly) {
+		if (hasCaret) {
 			state.cursor.updatePosition(hit.position, hit.affinity)
 		}
 		state.selector.clearSelection()
@@ -871,9 +899,10 @@ private fun Modifier.handleTouchInteractions(
 	state: TextEditorState,
 	onSpanClick: SpanClickSink?,
 	onContextMenuRequest: ((Offset) -> Unit)?,
-	readOnly: Boolean,
+	hasCaret: Boolean,
 	links: LinkClicks?,
 	caretHandle: Boolean,
+	tasks: TaskChecking?,
 	contentOrigin: () -> Offset,
 	touchToolbar: TouchToolbar?,
 	selectionDrag: SelectionDrag?,
@@ -934,7 +963,7 @@ private fun Modifier.handleTouchInteractions(
 				var longPressSelection: PointerSelection? = null
 				var showToolbarOnRelease = false
 				val pressed = ClickTarget.at(state, downAt)
-				val pressedTask = if (!readOnly) state.taskCheckboxAt(downAt) else null
+				val pressedTask = tasks?.boxAt(downAt)
 				val existingSelection = state.selector.selection
 				val longPressJob = state.scope.launch {
 					delay(longPressTimeout)
@@ -984,7 +1013,7 @@ private fun Modifier.handleTouchInteractions(
 								val releasedAt = change.inContent(origin)
 								// A tap on a task's box checks it, and leaves the caret and the keyboard as they were.
 								if (pressedTask != null && state.taskCheckboxAt(releasedAt) == pressedTask) {
-									state.toggleTaskChecked(pressedTask)
+									tasks?.toggle(pressedTask)
 									break
 								}
 								val placed = touchedHandle(releasedAt, state, handles) == null && handleSpanInteraction(
@@ -993,7 +1022,7 @@ private fun Modifier.handleTouchInteractions(
 									SpanClickType.TAP,
 									event.keyboardModifiers,
 									onSpanClick,
-									readOnly,
+									hasCaret,
 									pressedAt = downAt,
 								)
 								if (placed && caretHandle) state.selector.showCaretHandle()
