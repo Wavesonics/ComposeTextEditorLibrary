@@ -1,12 +1,15 @@
 package blocks
 
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.PointerKeyboardModifiers
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.click
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.performCustomAccessibilityActionWithLabel
 import androidx.compose.ui.text.AnnotatedString
+import com.darkrockstudios.texteditor.pointerIconAt
 import com.darkrockstudios.texteditor.richstyle.TaskSpanStyle
 import com.darkrockstudios.texteditor.state.taskCheckedAt
 import org.junit.Test
@@ -58,8 +61,19 @@ class TaskClickTest {
 		test.runOnIdle { state.setBlockLines("- [ ] first") }
 
 		mouse { click(boxOf(0)) }
-		tapAt(boxOf(0))
-
 		assertEquals(false, test.runOnIdle { state.taskCheckedAt(0) })
+		tapAt(boxOf(0))
+		assertEquals(false, test.runOnIdle { state.taskCheckedAt(0) })
+	}
+
+	@Test
+	fun `a hand shows over a task's box where a click would check it`() = editorUiTest(initialText = AnnotatedString("")) {
+		test.runOnIdle { state.setBlockLines("- [ ] first") }
+		fun iconAt(offset: Offset, checksTasks: Boolean) =
+			pointerIconAt(state, offset, PointerKeyboardModifiers(), null, PointerIcon.Text, checksTasks)
+
+		assertEquals(PointerIcon.Hand, iconAt(boxOf(0), checksTasks = true))
+		assertEquals(PointerIcon.Text, iconAt(positionOfCharacter(4), checksTasks = true))
+		assertEquals(PointerIcon.Text, iconAt(boxOf(0), checksTasks = false))
 	}
 }

@@ -46,6 +46,7 @@ data class SelectionHandle(
  * mouse gesture, [handleHandleDrag] and [handleTouchInteractions] every finger gesture.
  * Mouse versus finger is decided from the buttons, not the pointer type, because
  * Android reports an external mouse as [PointerType.Touch] with its buttons filled in.
+ * [checksTasks] is read at each press, so a click or tap on a task's box checks it.
  */
 internal fun Modifier.textEditorPointerInputHandling(
 	state: TextEditorState,
@@ -54,6 +55,7 @@ internal fun Modifier.textEditorPointerInputHandling(
 	readOnly: Boolean = false,
 	links: LinkClicks? = null,
 	caretHandle: Boolean = !readOnly,
+	checksTasks: () -> Boolean = { !readOnly },
 	contentOrigin: () -> Offset,
 	touchToolbar: TouchToolbar? = null,
 	selectionDrag: SelectionDrag? = null,
@@ -63,11 +65,12 @@ internal fun Modifier.textEditorPointerInputHandling(
 	return this
 		.handleHandleDrag(state, contentOrigin, touchToolbar, handles)
 		.handleTouchInteractions(
-			state, onSpanClick, onContextMenuRequest, readOnly, links, caretHandle, contentOrigin, touchToolbar, selectionDrag,
-			handles,
+			state, onSpanClick, onContextMenuRequest, readOnly, links, caretHandle, checksTasks, contentOrigin, touchToolbar,
+			selectionDrag, handles,
 		)
 		.handleMouseInput(
-			state, onSpanClick, onContextMenuRequest, readOnly, links, contentOrigin, touchToolbar, selectionDrag, primaryPaste,
+			state, onSpanClick, onContextMenuRequest, readOnly, links, checksTasks, contentOrigin, touchToolbar, selectionDrag,
+			primaryPaste,
 		)
 }
 
@@ -230,6 +233,7 @@ private fun Modifier.handleMouseInput(
 	onContextMenuRequest: ((Offset) -> Unit)?,
 	readOnly: Boolean,
 	links: LinkClicks?,
+	checksTasks: () -> Boolean,
 	contentOrigin: () -> Offset,
 	touchToolbar: TouchToolbar?,
 	selectionDrag: SelectionDrag?,
@@ -258,7 +262,7 @@ private fun Modifier.handleMouseInput(
 				// The second and third press of a multi-click select; only a plain first
 				// press can become a click on what is under it.
 				val pressed = if (placesCaret) ClickTarget.at(state, downAt) else null
-				val pressedTask = if (placesCaret && !readOnly) state.taskCheckboxAt(downAt) else null
+				val pressedTask = if (placesCaret && checksTasks()) state.taskCheckboxAt(downAt) else null
 				val held = pressed != null && selectionDrag != null && state.selectionContains(downAt)
 				val outcome = if (held) {
 					selectionDrag.holdPress()
@@ -458,7 +462,6 @@ private suspend fun AwaitPointerEventScope.followDrag(
 	}
 }
 
-/** What a click at a point would act on: the span that answers it, and any link there. */
 /**
  * The line of the task whose box is under [offset], in the coordinates [characterAt]
  * takes, or null: the box's first row, from a little before the box to the text.
@@ -476,6 +479,7 @@ private fun TextEditorState.taskCheckboxAt(offset: Offset): Int? {
 	return row.line.takeIf { inside }
 }
 
+/** What a click at a point would act on: the span that answers it, and any link there. */
 private class ClickTarget(val span: RichSpan?, val link: String?) {
 	companion object {
 		fun at(state: TextEditorState, offset: Offset): ClickTarget = ClickTarget(
@@ -540,7 +544,8 @@ private fun TextEditorState.linkToOpenAt(position: CharLineOffset): String? =
 
 /**
  * The pointer icon for a mouse hovering at [offset] with [modifiers] held: a hand over a
- * link that a click would open, [default] everywhere else.
+ * link that a click would open, or over a task's box when [checksTasks], [default]
+ * everywhere else.
  */
 internal fun pointerIconAt(
 	state: TextEditorState,
@@ -548,22 +553,25 @@ internal fun pointerIconAt(
 	modifiers: PointerKeyboardModifiers,
 	links: LinkClicks?,
 	default: PointerIcon?,
+	checksTasks: Boolean = false,
 ): PointerIcon? {
+	if (checksTasks && state.taskCheckboxAt(offset) != null) return PointerIcon.Hand
 	if (links == null || !links.opensOnClick(modifiers)) return default
 	val link = state.characterAt(offset)?.let { state.linkToOpenAt(it) }
 	return if (link != null) PointerIcon.Hand else default
 }
 
 /**
- * Shows [default] over the text and a hand over links a click would open; a null
- * [default] leaves the parent's icon everywhere but over a link. Only a pointer event
- * updates it, so pressing Ctrl or Cmd over a link changes the icon on the next mouse
- * move.
+ * Shows [default] over the text and a hand over links a click would open, and over task
+ * boxes when [checksTasks]; a null [default] leaves the parent's icon everywhere else.
+ * Only a pointer event updates it, so pressing Ctrl or Cmd over a link changes the icon
+ * on the next mouse move.
  */
 internal fun Modifier.textEditorPointerIcon(
 	state: TextEditorState,
 	links: LinkClicks?,
 	default: PointerIcon? = PointerIcon.Text,
+	checksTasks: () -> Boolean = { false },
 	contentOrigin: () -> Offset,
 ): Modifier = composed {
 	var icon by remember(state, default) { mutableStateOf(default) }
@@ -573,7 +581,9 @@ internal fun Modifier.textEditorPointerIcon(
 				val event = awaitPointerEvent(PointerEventPass.Initial)
 				val change = event.changes.firstOrNull() ?: continue
 				if (change.type != PointerType.Mouse) continue
-				icon = pointerIconAt(state, change.inContent(contentOrigin()), event.keyboardModifiers, links, default)
+				icon = pointerIconAt(
+					state, change.inContent(contentOrigin()), event.keyboardModifiers, links, default, checksTasks(),
+				)
 			}
 		}
 	}
@@ -874,6 +884,7 @@ private fun Modifier.handleTouchInteractions(
 	readOnly: Boolean,
 	links: LinkClicks?,
 	caretHandle: Boolean,
+	checksTasks: () -> Boolean,
 	contentOrigin: () -> Offset,
 	touchToolbar: TouchToolbar?,
 	selectionDrag: SelectionDrag?,
@@ -934,7 +945,7 @@ private fun Modifier.handleTouchInteractions(
 				var longPressSelection: PointerSelection? = null
 				var showToolbarOnRelease = false
 				val pressed = ClickTarget.at(state, downAt)
-				val pressedTask = if (!readOnly) state.taskCheckboxAt(downAt) else null
+				val pressedTask = if (checksTasks()) state.taskCheckboxAt(downAt) else null
 				val existingSelection = state.selector.selection
 				val longPressJob = state.scope.launch {
 					delay(longPressTimeout)

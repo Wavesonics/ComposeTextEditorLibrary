@@ -471,13 +471,14 @@ fun BasicTextEditor(
 					Box(
 						modifier = Modifier
 							.textDragAndDrop(dragAndDrop)
-							.textEditorPointerIcon(state, linkClicks, contentOrigin = { contentOrigin })
+							.textEditorPointerIcon(state, linkClicks, checksTasks = { takesInput }, contentOrigin = { contentOrigin })
 							.textEditorPointerInputHandling(
 								state = state,
 								onSpanClick = spanClickProxy,
 								onContextMenuRequest = openPointerMenu,
 								links = linkClicks,
 								caretHandle = enabled,
+								checksTasks = { takesInput },
 								contentOrigin = { contentOrigin },
 								touchToolbar = touchToolbar,
 								selectionDrag = dragAndDrop,
